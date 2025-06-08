@@ -1,4 +1,4 @@
-// server-transporte.js
+// server.js
 import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
@@ -104,14 +104,35 @@ app.get('/obtener-hoteles', async (req, res) => {
   }
 });
 
-// 🔹 Obtener lista de aerolíneas desde la base de datos
+// 🔹 Obtener lista de aerolíneas con logs avanzados
 app.get('/obtener-aerolineas', async (req, res) => {
   try {
+    console.log("📡 Intentando acceder a tabla 'aerolineas'");
+    console.log("🎯 Conexión:", {
+      host: process.env.PGHOST,
+      db: process.env.PGDATABASE,
+      user: process.env.PGUSER,
+      port: process.env.PGPORT
+    });
+
     const result = await pool.query('SELECT nombre FROM aerolineas ORDER BY nombre ASC');
+    console.log("✅ Aerolíneas encontradas:", result.rows.length);
     res.json(result.rows);
   } catch (err) {
-    console.error('❌ Error al obtener aerolíneas:', err);
-    res.status(500).json({ error: 'Error en la base de datos' });
+    console.error('❌ Error al obtener aerolíneas:', err.message);
+
+    try {
+      const tablas = await pool.query(`
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+      `);
+      console.log("📋 Tablas visibles en 'public':", tablas.rows.map(t => t.table_name));
+    } catch (subError) {
+      console.error("⚠️ Error al listar tablas:", subError.message);
+    }
+
+    res.status(500).json({ error: 'Error al consultar aerolíneas', detalle: err.message });
   }
 });
 
