@@ -1,4 +1,3 @@
-// server.js
 import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
@@ -93,14 +92,24 @@ app.get('/validar-descuento', async (req, res) => {
   }
 });
 
-// 🔹 Obtener lista de hoteles
+// 🔹 Obtener lista de hoteles con logs avanzados
 app.get('/obtener-hoteles', async (req, res) => {
   try {
+    console.log("🏨 Intentando cargar hoteles...");
     const result = await pool.query('SELECT DISTINCT hotel AS nombre FROM hoteles_zona ORDER BY hotel ASC');
+    console.log("✅ Hoteles encontrados:", result.rows.length);
     res.json(result.rows);
   } catch (err) {
-    console.error('Error al obtener hoteles:', err);
-    res.status(500).json({ error: 'Error en la base de datos' });
+    console.error('❌ Error al obtener hoteles:', err.message);
+
+    try {
+      const tablas = await pool.query(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`);
+      console.log("📋 Tablas visibles en 'public':", tablas.rows.map(t => t.table_name));
+    } catch (subError) {
+      console.error("⚠️ Error al listar tablas:", subError.message);
+    }
+
+    res.status(500).json({ error: 'Error al consultar hoteles', detalle: err.message });
   }
 });
 
