@@ -28,7 +28,7 @@ app.get('/zona-hotel', async (req, res) => {
   if (!hotel) return res.status(400).json({ error: 'El parámetro "hotel" es requerido' });
 
   try {
-    const result = await pool.query('SELECT zona FROM hoteles_zona WHERE hotel = $1', [hotel]);
+    const result = await pool.query('SELECT zona FROM hoteles_zona WHERE nombre_hotel = $1', [hotel]);
     if (result.rows.length > 0) {
       res.json({ zona: result.rows[0].zona });
     } else {
@@ -92,7 +92,7 @@ app.get('/validar-descuento', async (req, res) => {
   }
 });
 
-// 🔹 Obtener lista de hoteles con logs avanzados
+// 🔹 Obtener lista de hoteles
 app.get('/obtener-hoteles', async (req, res) => {
   try {
     console.log("🏨 Intentando cargar hoteles...");
@@ -101,73 +101,42 @@ app.get('/obtener-hoteles', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error('❌ Error al obtener hoteles:', err.message);
-
-    try {
-      const tablas = await pool.query(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`);
-      console.log("📋 Tablas visibles en 'public':", tablas.rows.map(t => t.table_name));
-    } catch (subError) {
-      console.error("⚠️ Error al listar tablas:", subError.message);
-    }
-
     res.status(500).json({ error: 'Error al consultar hoteles', detalle: err.message });
   }
 });
 
-// 🔹 Obtener lista de aerolíneas con logs avanzados
+// 🔹 Obtener lista de aerolíneas
 app.get('/obtener-aerolineas', async (req, res) => {
   try {
     console.log("📡 Intentando acceder a tabla 'aerolineas'");
-    console.log("🎯 Conexión:", {
-      host: process.env.PGHOST,
-      db: process.env.PGDATABASE,
-      user: process.env.PGUSER,
-      port: process.env.PGPORT
-    });
-
     const result = await pool.query('SELECT nombre FROM aerolineas ORDER BY nombre ASC');
     console.log("✅ Aerolíneas encontradas:", result.rows.length);
     res.json(result.rows);
   } catch (err) {
     console.error('❌ Error al obtener aerolíneas:', err.message);
-
-    try {
-      const tablas = await pool.query(`
-        SELECT table_name
-        FROM information_schema.tables
-        WHERE table_schema = 'public'
-      `);
-      console.log("📋 Tablas visibles en 'public':", tablas.rows.map(t => t.table_name));
-    } catch (subError) {
-      console.error("⚠️ Error al listar tablas:", subError.message);
-    }
-
     res.status(500).json({ error: 'Error al consultar aerolíneas', detalle: err.message });
   }
 });
 
-// 🔹 Obtener opciones de pasajeros por tipo de transporte
-app.get('/opciones-pasajeros', (req, res) => {
-  const tipo = (req.query.tipo || '').toLowerCase();
-  let opciones = [];
+// 🔹 Obtener opciones de pasajeros dinámicamente desde la base de datos
+app.get('/opciones-pasajeros', async (req, res) => {
+  const tipo = req.query.tipo;
+  if (!tipo) return res.status(400).json({ error: 'Falta el parámetro tipo' });
 
-  switch (tipo) {
-    case 'private':
-      opciones = ['1-6 passengers', '7-10 passengers'];
-      break;
-    case 'shuttle':
-      opciones = Array.from({ length: 20 }, (_, i) => `${i + 1} passenger${i + 1 > 1 ? 's' : ''}`);
-      break;
-    case 'limousine':
-      opciones = Array.from({ length: 10 }, (_, i) => `${i + 1} passenger${i + 1 > 1 ? 's' : ''}`);
-      break;
-    case 'sprinter':
-      opciones = ['1-10 passengers', '11-18 passengers'];
-      break;
-    default:
-      opciones = ['1 passenger'];
+  try {
+    const result = await pool.query(
+      `SELECT DISTINCT rango_pasajeros 
+       FROM tarifas_transportacion 
+       WHERE tipo_transporte ILIKE $1 
+       ORDER BY rango_pasajeros`,
+      [tipo]
+    );
+    const opciones = result.rows.map(r => r.rango_pasajeros);
+    res.json(opciones);
+  } catch (err) {
+    console.error('❌ Error al obtener opciones de pasajeros:', err.message);
+    res.status(500).json({ error: 'Error en la base de datos' });
   }
-
-  res.json(opciones);
 });
 
 // 🔹 Ruta POST para calcular precio final
