@@ -96,7 +96,7 @@ app.get('/validar-descuento', async (req, res) => {
 app.get('/obtener-hoteles', async (req, res) => {
   try {
     console.log("🏨 Intentando cargar hoteles...");
-    const result = await pool.query('SELECT DISTINCT hotel AS nombre FROM hoteles_zona ORDER BY hotel ASC');
+    const result = await pool.query('SELECT DISTINCT nombre_hotel AS nombre FROM hoteles_zona ORDER BY nombre_hotel ASC');
     console.log("✅ Hoteles encontrados:", result.rows.length);
     res.json(result.rows);
   } catch (err) {
