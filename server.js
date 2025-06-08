@@ -104,21 +104,14 @@ app.get('/obtener-hoteles', async (req, res) => {
   }
 });
 
-// 🔹 Obtener lista de aerolíneas
+// 🔹 Obtener lista de aerolíneas desde la base de datos
 app.get('/obtener-aerolineas', async (req, res) => {
   try {
-    const aerolineas = [
-      { nombre: 'Aeroméxico' },
-      { nombre: 'Volaris' },
-      { nombre: 'American Airlines' },
-      { nombre: 'Delta' },
-      { nombre: 'United Airlines' },
-      { nombre: 'Southwest' }
-    ];
-    res.json(aerolineas);
+    const result = await pool.query('SELECT nombre FROM aerolineas ORDER BY nombre ASC');
+    res.json(result.rows);
   } catch (err) {
-    console.error('Error al obtener aerolíneas:', err);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('❌ Error al obtener aerolíneas:', err);
+    res.status(500).json({ error: 'Error en la base de datos' });
   }
 });
 
