@@ -1,5 +1,5 @@
-// transporte/getPrecioTransporte.js
-import pool from '../conexion.js';
+// getPrecioTransporte.js
+import pool from './conexion.js';
 
 export default async function getPrecioTransporte(req, res) {
   const { tipo_transporte, hotel, cantidad_pasajeros } = req.body;
