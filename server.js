@@ -1,3 +1,4 @@
+// server.js
 import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
@@ -28,9 +29,9 @@ app.get('/zona-hotel', async (req, res) => {
   if (!hotel) return res.status(400).json({ error: 'El parámetro "hotel" es requerido' });
 
   try {
-    const result = await pool.query('SELECT zona FROM hoteles_zona WHERE nombre_hotel = $1', [hotel]);
+    const result = await pool.query('SELECT zona_id FROM hoteles_zona WHERE nombre_hotel = $1', [hotel]);
     if (result.rows.length > 0) {
-      res.json({ zona: result.rows[0].zona });
+      res.json({ zona: result.rows[0].zona_id });
     } else {
       res.status(404).json({ error: 'Hotel no encontrado' });
     }
@@ -49,9 +50,9 @@ app.get('/tarifa', async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT precio_original, precio_descuento
+      `SELECT precio_original, precio_descuento_13 AS precio_descuento
        FROM tarifas_transportacion
-       WHERE tipo_transporte = $1 AND zona = $2 AND rango_pasajeros = $3`,
+       WHERE tipo_transporte = $1 AND zona_id = $2 AND rango_pasajeros = $3`,
       [transporte, zona, pasajeros]
     );
 
@@ -95,12 +96,10 @@ app.get('/validar-descuento', async (req, res) => {
 // 🔹 Obtener lista de hoteles
 app.get('/obtener-hoteles', async (req, res) => {
   try {
-    console.log("🏨 Intentando cargar hoteles...");
     const result = await pool.query('SELECT DISTINCT nombre_hotel AS nombre FROM hoteles_zona ORDER BY nombre_hotel ASC');
-    console.log("✅ Hoteles encontrados:", result.rows.length);
     res.json(result.rows);
   } catch (err) {
-    console.error('❌ Error al obtener hoteles:', err.message);
+    console.error('Error al obtener hoteles:', err.message);
     res.status(500).json({ error: 'Error al consultar hoteles', detalle: err.message });
   }
 });
@@ -108,17 +107,15 @@ app.get('/obtener-hoteles', async (req, res) => {
 // 🔹 Obtener lista de aerolíneas
 app.get('/obtener-aerolineas', async (req, res) => {
   try {
-    console.log("📡 Intentando acceder a tabla 'aerolineas'");
     const result = await pool.query('SELECT nombre FROM aerolineas ORDER BY nombre ASC');
-    console.log("✅ Aerolíneas encontradas:", result.rows.length);
     res.json(result.rows);
   } catch (err) {
-    console.error('❌ Error al obtener aerolíneas:', err.message);
+    console.error('Error al obtener aerolíneas:', err.message);
     res.status(500).json({ error: 'Error al consultar aerolíneas', detalle: err.message });
   }
 });
 
-// 🔹 Obtener opciones de pasajeros dinámicamente desde la base de datos
+// 🔹 Obtener opciones de pasajeros desde DB
 app.get('/opciones-pasajeros', async (req, res) => {
   const tipo = req.query.tipo;
   if (!tipo) return res.status(400).json({ error: 'Falta el parámetro tipo' });
@@ -127,14 +124,14 @@ app.get('/opciones-pasajeros', async (req, res) => {
     const result = await pool.query(
       `SELECT DISTINCT rango_pasajeros 
        FROM tarifas_transportacion 
-       WHERE tipo_transporte ILIKE $1 
+       WHERE tipo_transporte ILIKE '%' || $1 || '%'
        ORDER BY rango_pasajeros`,
       [tipo]
     );
     const opciones = result.rows.map(r => r.rango_pasajeros);
     res.json(opciones);
   } catch (err) {
-    console.error('❌ Error al obtener opciones de pasajeros:', err.message);
+    console.error('Error al obtener opciones de pasajeros:', err.message);
     res.status(500).json({ error: 'Error en la base de datos' });
   }
 });
