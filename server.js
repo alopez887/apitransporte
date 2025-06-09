@@ -1,3 +1,4 @@
+// server.js
 import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
@@ -22,7 +23,6 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// 🔹 Asignar pool a app.locals para que esté disponible en otros archivos
 app.locals.pool = pool;
 
 // 🔹 Obtener zona por hotel
@@ -46,20 +46,38 @@ app.get('/zona-hotel', async (req, res) => {
   }
 });
 
-// 🔹 Obtener tarifa
+// 🔹 Obtener tarifa (actualizada con campo dinámico)
 app.get('/tarifa', async (req, res) => {
-  const { transporte, zona, pasajeros } = req.query;
+  const { transporte, zona, pasajeros, campo } = req.query;
+
   if (!transporte || !zona || !pasajeros) {
     return res.status(400).json({ error: 'Faltan parámetros requeridos (transporte, zona, pasajeros)' });
   }
 
   try {
-    const result = await pool.query(
-      `SELECT precio_original, precio_descuento_13 AS precio_descuento
-       FROM tarifas_transportacion
-       WHERE UPPER(tipo_transporte) = UPPER($1) AND zona_id = $2 AND rango_pasajeros = $3`,
-      [transporte, zona, pasajeros]
-    );
+    let query;
+    let params = [transporte, zona, pasajeros];
+
+    if (campo && (campo === 'precio_descuento_13' || campo === 'precio_descuento_15')) {
+      query = `
+        SELECT ${campo} AS precio
+        FROM tarifas_transportacion
+        WHERE UPPER(tipo_transporte) = UPPER($1)
+        AND zona_id = $2
+        AND rango_pasajeros = $3
+      `;
+    } else {
+      query = `
+        SELECT precio_original, precio_descuento_13 AS precio_descuento
+        FROM tarifas_transportacion
+        WHERE UPPER(tipo_transporte) = UPPER($1)
+        AND zona_id = $2
+        AND rango_pasajeros = $3
+      `;
+    }
+
+    const result = await pool.query(query, params);
+
     if (result.rows.length > 0) {
       res.json(result.rows[0]);
     } else {
@@ -71,7 +89,7 @@ app.get('/tarifa', async (req, res) => {
   }
 });
 
-// 🔹 Validar código de descuento (ACTUALIZADO)
+// 🔹 Validar código de descuento
 app.get('/validar-descuento', async (req, res) => {
   const { codigo, transporte, zona } = req.query;
   if (!codigo || !transporte || !zona) {
@@ -80,18 +98,13 @@ app.get('/validar-descuento', async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT tipo_descuento, descuento_aplicado
+      `SELECT descuento_aplicado
        FROM codigos_descuento
-       WHERE codigo = $1 AND UPPER(tipo_transporte) = UPPER($2) AND zona = $3`,
+       WHERE codigo = $1 AND UPPER(tipo_transporte) = UPPER($2) AND zona_id = $3`,
       [codigo, transporte, zona]
     );
     if (result.rows.length > 0) {
-      const { tipo_descuento, descuento_aplicado } = result.rows[0];
-      res.json({
-        valido: true,
-        tipo_descuento,
-        descuento_aplicado: parseFloat(descuento_aplicado)
-      });
+      res.json({ valido: true, descuento_aplicado: result.rows[0].descuento_aplicado });
     } else {
       res.json({ valido: false });
     }
@@ -127,7 +140,7 @@ app.get('/obtener-aerolineas', async (req, res) => {
   }
 });
 
-// 🔹 Obtener opciones de pasajeros (por tipo exacto)
+// 🔹 Obtener opciones de pasajeros
 app.get('/opciones-pasajeros', async (req, res) => {
   const tipo = req.query.tipo;
   if (!tipo) return res.status(400).json({ error: 'Falta el parámetro tipo' });
@@ -148,7 +161,7 @@ app.get('/opciones-pasajeros', async (req, res) => {
   }
 });
 
-// 🔹 Ruta POST para calcular precio final
+// 🔹 Ruta POST para precios personalizados
 app.post('/get-precio-transportacion', getPrecioTransporte);
 
 // 🔹 Iniciar servidor
