@@ -1,52 +1,67 @@
 // getPrecioTransporte.js
-import pool from './conexion.js';
-
 export default async function getPrecioTransporte(req, res) {
-  const { tipo_transporte, hotel, cantidad_pasajeros } = req.body;
+  const { transporte, zona, pasajeros, codigo } = req.body;
 
-  if (!tipo_transporte || !hotel || !cantidad_pasajeros) {
-    return res.status(400).json({ error: 'Faltan datos obligatorios' });
+  if (!transporte || !zona || !pasajeros) {
+    return res.status(400).json({ error: 'Faltan datos requeridos (transporte, zona, pasajeros)' });
   }
 
   try {
-    // 1. Obtener zona del hotel
-    const zonaResult = await pool.query('SELECT zona FROM hoteles_zona WHERE hotel = $1', [hotel]);
-    if (zonaResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Zona no encontrada para el hotel seleccionado' });
+    const client = await req.app.locals.pool.connect();
+
+    try {
+      // 🔹 Obtener precio base
+      const precioResult = await client.query(
+        `SELECT precio_original, precio_descuento_13 AS precio_descuento
+         FROM tarifas_transportacion
+         WHERE UPPER(tipo_transporte) = UPPER($1)
+         AND zona_id = $2
+         AND rango_pasajeros = $3`,
+        [transporte, zona, pasajeros]
+      );
+
+      if (precioResult.rows.length === 0) {
+        return res.status(404).json({ error: 'No se encontró tarifa' });
+      }
+
+      const tarifa = precioResult.rows[0];
+      let precioFinal = tarifa.precio_descuento || tarifa.precio_original;
+      let tipoDescuento = null;
+
+      // 🔹 Si se mandó un código de descuento, validar
+      if (codigo && codigo.trim() !== '') {
+        const descResult = await client.query(
+          `SELECT tipo_descuento
+           FROM codigos_descuento
+           WHERE codigo = $1
+           AND UPPER(tipo_transporte) = UPPER($2)
+           AND zona = $3`,
+          [codigo.trim(), transporte, zona]
+        );
+
+        if (descResult.rows.length > 0) {
+          tipoDescuento = descResult.rows[0].tipo_descuento;
+          // Aplicar descuento si se requiere (puedes ajustar este cálculo)
+          if (tipoDescuento === '13') {
+            precioFinal = tarifa.precio_original * 0.87;
+          } else if (tipoDescuento === '13.5') {
+            precioFinal = tarifa.precio_original * 0.865;
+          }
+        }
+      }
+
+      res.json({
+        precio_original: tarifa.precio_original,
+        precio_final: parseFloat(precioFinal.toFixed(2)),
+        tipo_descuento: tipoDescuento || 'Ninguno'
+      });
+
+    } finally {
+      client.release();
     }
-
-    const zona = zonaResult.rows[0].zona;
-
-    // 2. Normalizar el rango desde cantidadPasajeros (ej. "1-6 passengers" → "1-6")
-    const match = cantidad_pasajeros.match(/\d+(?:-\d+)?/);
-    const rango_pasajeros = match ? match[0] : null;
-
-    if (!rango_pasajeros) {
-      return res.status(400).json({ error: 'No se pudo interpretar el rango de pasajeros' });
-    }
-
-    // 3. Buscar tarifa
-    const tarifaResult = await pool.query(
-      `SELECT precio_normal, precio_con_descuento FROM tarifas_transportacion
-       WHERE tipo_transporte = $1 AND zona = $2 AND rango_pasajeros = $3`,
-      [tipo_transporte.toLowerCase(), zona, rango_pasajeros]
-    );
-
-    if (tarifaResult.rows.length === 0) {
-      return res.status(404).json({ error: 'No se encontró tarifa para los datos proporcionados' });
-    }
-
-    const { precio_normal, precio_con_descuento } = tarifaResult.rows[0];
-
-    res.status(200).json({
-      precio_normal: Number(precio_normal),
-      precio_con_descuento: Number(precio_con_descuento),
-      zona,
-      rango: rango_pasajeros
-    });
 
   } catch (err) {
-    console.error('❌ Error al obtener precio:', err);
-    res.status(500).json({ error: 'Error al calcular el precio de transportación.' });
+    console.error('❌ Error en getPrecioTransporte:', err);
+    res.status(500).json({ error: 'Error al calcular precio' });
   }
-} 
+}
