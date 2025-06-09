@@ -71,7 +71,7 @@ app.get('/tarifa', async (req, res) => {
   }
 });
 
-// 🔹 Validar código de descuento
+// 🔹 Validar código de descuento (ACTUALIZADO)
 app.get('/validar-descuento', async (req, res) => {
   const { codigo, transporte, zona } = req.query;
   if (!codigo || !transporte || !zona) {
@@ -80,13 +80,18 @@ app.get('/validar-descuento', async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT tipo_descuento
+      `SELECT tipo_descuento, descuento_aplicado
        FROM codigos_descuento
        WHERE codigo = $1 AND UPPER(tipo_transporte) = UPPER($2) AND zona = $3`,
       [codigo, transporte, zona]
     );
     if (result.rows.length > 0) {
-      res.json({ valido: true, tipo_descuento: result.rows[0].tipo_descuento });
+      const { tipo_descuento, descuento_aplicado } = result.rows[0];
+      res.json({
+        valido: true,
+        tipo_descuento,
+        descuento_aplicado: parseFloat(descuento_aplicado)
+      });
     } else {
       res.json({ valido: false });
     }
