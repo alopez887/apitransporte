@@ -161,6 +161,18 @@ app.get('/opciones-pasajeros', async (req, res) => {
   }
 });
 
+// 🔹 Obtener hoteles sin descuento
+app.get('/hoteles-excluidos', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT nombre FROM hoteles_nodescuento');
+    const nombres = result.rows.map(r => r.nombre.toUpperCase());
+    res.json(nombres);
+  } catch (err) {
+    console.error('Error al obtener hoteles sin descuento:', err.message);
+    res.status(500).json({ error: 'Error en la base de datos', detalle: err.message });
+  }
+});
+
 // 🔹 Ruta POST para precios personalizados
 app.post('/get-precio-transportacion', getPrecioTransporte);
 
