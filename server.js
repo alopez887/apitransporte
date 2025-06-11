@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
 import dotenv from 'dotenv';
-import getPrecioTransporte from './getPrecioTransporte.js';
+// import getPrecioTransporte from './getPrecioTransporte.js'; // ❌ Ya no se necesita
 
 dotenv.config();
 
@@ -129,22 +129,6 @@ app.get('/obtener-hoteles', async (req, res) => {
   }
 });
 
-// 🔹 Obtener solo hoteles con Shuttle
-app.get('/obtener-hoteles-shuttle', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT DISTINCT nombre_hotel AS nombre 
-      FROM hoteles_zona 
-      WHERE shuttle_disponible = true 
-      ORDER BY nombre_hotel ASC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error al obtener hoteles para Shuttle:', err.message);
-    res.status(500).json({ error: 'Error al consultar hoteles Shuttle', detalle: err.message });
-  }
-});
-
 // 🔹 Obtener aerolíneas
 app.get('/obtener-aerolineas', async (req, res) => {
   try {
@@ -191,8 +175,8 @@ app.get('/hoteles-excluidos', async (req, res) => {
   }
 });
 
-// 🔹 Ruta POST para precios personalizados
-app.post('/get-precio-transportacion', getPrecioTransporte);
+// 🔹 Ruta POST para precios personalizados (opcional)
+/// app.post('/get-precio-transportacion', getPrecioTransporte);
 
 // 🔹 Iniciar servidor
 app.listen(PORT, () => {
