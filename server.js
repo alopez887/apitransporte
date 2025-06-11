@@ -46,7 +46,7 @@ app.get('/zona-hotel', async (req, res) => {
   }
 });
 
-// 🔹 Obtener tarifa (actualizada con campo dinámico)
+// 🔹 Obtener tarifa
 app.get('/tarifa', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
 
@@ -114,19 +114,34 @@ app.get('/validar-descuento', async (req, res) => {
   }
 });
 
-// 🔹 Obtener hoteles (solo los que tienen shuttle disponible)
+// 🔹 Obtener todos los hoteles (sin filtro)
 app.get('/obtener-hoteles', async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT DISTINCT nombre_hotel AS nombre 
-       FROM hoteles_zona 
-       WHERE shuttle_disponible = true 
-       ORDER BY nombre_hotel ASC`
-    );
+    const result = await pool.query(`
+      SELECT DISTINCT nombre_hotel AS nombre 
+      FROM hoteles_zona 
+      ORDER BY nombre_hotel ASC
+    `);
     res.json(result.rows);
   } catch (err) {
     console.error('Error al obtener hoteles:', err.message);
     res.status(500).json({ error: 'Error al consultar hoteles', detalle: err.message });
+  }
+});
+
+// 🔹 Obtener solo hoteles con Shuttle
+app.get('/obtener-hoteles-shuttle', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT DISTINCT nombre_hotel AS nombre 
+      FROM hoteles_zona 
+      WHERE shuttle_disponible = true 
+      ORDER BY nombre_hotel ASC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener hoteles para Shuttle:', err.message);
+    res.status(500).json({ error: 'Error al consultar hoteles Shuttle', detalle: err.message });
   }
 });
 
