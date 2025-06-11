@@ -97,12 +97,13 @@ app.get('/validar-descuento', async (req, res) => {
   }
 
   try {
-    const result = await pool.query(
+	  
+	const result = await pool.query(
       `SELECT descuento_aplicado
        FROM codigos_descuento
-       WHERE codigo = $1 AND UPPER(tipo_transporte) = UPPER($2) AND zona_id = $3`,
+       WHERE TRIM(codigo) = TRIM($1) AND UPPER(tipo_transporte) = UPPER($2) AND zona_id = $3`,
       [codigo, transporte, zona]
-    );
+);
     if (result.rows.length > 0) {
       res.json({ valido: true, descuento_aplicado: result.rows[0].descuento_aplicado });
     } else {
