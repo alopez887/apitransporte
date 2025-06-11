@@ -114,11 +114,14 @@ app.get('/validar-descuento', async (req, res) => {
   }
 });
 
-// 🔹 Obtener hoteles
+// 🔹 Obtener hoteles (solo los que tienen shuttle disponible)
 app.get('/obtener-hoteles', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT DISTINCT nombre_hotel AS nombre FROM hoteles_zona ORDER BY nombre_hotel ASC'
+      `SELECT DISTINCT nombre_hotel AS nombre 
+       FROM hoteles_zona 
+       WHERE shuttle_disponible = true 
+       ORDER BY nombre_hotel ASC`
     );
     res.json(result.rows);
   } catch (err) {
