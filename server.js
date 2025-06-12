@@ -119,7 +119,7 @@ app.get('/tarifa-shuttle', async (req, res) => {
   }
 });
 
-// 🔹 Validar código de descuento
+// 🔹 Validar código de descuento y retornar campo de tarifa
 app.get('/validar-descuento', async (req, res) => {
   const { codigo, transporte, zona } = req.query;
   if (!codigo || !transporte || !zona) {
@@ -134,7 +134,12 @@ app.get('/validar-descuento', async (req, res) => {
       [codigo, transporte, zona]
     );
     if (result.rows.length > 0) {
-      res.json({ valido: true, descuento_aplicado: result.rows[0].descuento_aplicado });
+      const porcentaje = parseFloat(result.rows[0].descuento_aplicado);
+      let campo = '';
+      if (porcentaje === 13) campo = 'precio_descuento_13';
+      else if (porcentaje === 15) campo = 'precio_descuento_15';
+      else return res.status(400).json({ error: 'Descuento no soportado' });
+      res.json({ valido: true, descuento_aplicado: porcentaje, campo });
     } else {
       res.json({ valido: false });
     }
