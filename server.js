@@ -44,7 +44,7 @@ app.get('/zona-hotel', async (req, res) => {
   }
 });
 
-// 🔹 Obtener tarifa (rutas generales)
+// 🔹 Obtener tarifa
 app.get('/tarifa', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
 
@@ -87,7 +87,7 @@ app.get('/tarifa', async (req, res) => {
   }
 });
 
-// 🔹 Ruta para shuttle
+// 🔹 Tarifa shuttle
 app.get('/tarifa-shuttle', async (req, res) => {
   const { zona, pasajeros } = req.query;
 
@@ -118,11 +118,14 @@ app.get('/tarifa-shuttle', async (req, res) => {
   }
 });
 
-// 🔹 Validar código de descuento (CORREGIDO: RESPETA PRECIO EN FORMATO esperado)
+// 🔹 Validar código de descuento (con logs y validaciones defensivas)
 app.get('/validar-descuento', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
 
+  console.log("➡️ Validando código:", { codigo, transporte, zona, pasajeros });
+
   if (!codigo || !transporte || !zona || !pasajeros) {
+    console.warn("❌ Faltan parámetros");
     return res.status(400).json({ error: 'Faltan parámetros requeridos (codigo, transporte, zona, pasajeros)' });
   }
 
@@ -137,14 +140,19 @@ app.get('/validar-descuento', async (req, res) => {
     );
 
     if (result.rows.length === 0) {
+      console.log("❌ Código no encontrado en la base de datos.");
       return res.json({ valido: false });
     }
 
     const descuento = result.rows[0].descuento_aplicado;
-    const campo = descuento === 13 ? 'precio_descuento_13' :
-                  descuento === 15 ? 'precio_descuento_15' : null;
+    console.log("✅ Código válido. Descuento aplicado:", descuento);
+
+    const campo = descuento === 13 ? 'precio_descuento_13'
+                : descuento === 15 ? 'precio_descuento_15'
+                : null;
 
     if (!campo) {
+      console.warn("⚠️ Descuento no reconocido:", descuento);
       return res.json({ valido: false });
     }
 
@@ -157,18 +165,28 @@ app.get('/validar-descuento', async (req, res) => {
       [transporte, zona, pasajeros]
     );
 
-    if (tarifa.rows.length > 0) {
-      return res.json({
-        valido: true,
-        descuento_aplicado: descuento,
-        precio_descuento: tarifa.rows[0].precio_descuento
-      });
-    } else {
+    if (tarifa.rows.length === 0) {
+      console.log("❌ No se encontró tarifa con descuento para esa combinación.");
       return res.json({ valido: false });
     }
 
+    const precio = tarifa.rows[0].precio_descuento;
+
+    if (precio === null || precio === undefined) {
+      console.warn("⚠️ El campo de precio con descuento está vacío.");
+      return res.json({ valido: false });
+    }
+
+    console.log("✅ Precio con descuento encontrado:", precio);
+
+    return res.json({
+      valido: true,
+      descuento_aplicado: descuento,
+      precio_descuento: precio
+    });
+
   } catch (err) {
-    console.error('Error validando código de descuento:', err);
+    console.error('💥 Error validando código de descuento:', err);
     res.status(500).json({ error: 'Error en la base de datos' });
   }
 });
