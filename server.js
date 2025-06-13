@@ -210,6 +210,36 @@ app.get('/hoteles-excluidos', async (req, res) => {
   }
 });
 
+// 🔹 Obtener tarifa redondo aplicando campo dinámico (descuento)
+app.get('/tarifa-redondo', async (req, res) => {
+  const { transporte, zona, pasajeros, campo } = req.query;
+
+  if (!transporte || !zona || !pasajeros || !campo) {
+    return res.status(400).json({ error: 'Faltan parámetros requeridos (transporte, zona, pasajeros, campo)' });
+  }
+
+  try {
+    const query = `
+      SELECT ${campo} AS precio
+      FROM tarifas_transportacion
+      WHERE UPPER(tipo_transporte) = UPPER($1)
+      AND zona_id = $2
+      AND rango_pasajeros = $3
+    `;
+
+    const result = await pool.query(query, [transporte, zona, pasajeros]);
+
+    if (result.rows.length > 0) {
+      res.json({ precio: result.rows[0].precio });
+    } else {
+      res.status(404).json({ error: 'No se encontró tarifa para esos parámetros' });
+    }
+  } catch (err) {
+    console.error('Error en /tarifa-redondo:', err.message);
+    res.status(500).json({ error: 'Error en la base de datos', detalle: err.message });
+  }
+});
+
 // 🔹 Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚗 API de transportación corriendo en el puerto ${PORT}`);
