@@ -189,7 +189,7 @@ app.get('/validar-descuento-redondo', async (req, res) => {
         AND zona_id = $2 
         AND rango_pasajeros = $3
     `;
-    const pasajerosFormateado = pasajeros.replace(/\s+/g, '');
+    const pasajerosFormateado = pasajeros.trim();
     const tarifaResult = await pool.query(tarifaQuery, [transporte, zona, pasajerosFormateado]);
 
     if (tarifaResult.rows.length === 0) {
