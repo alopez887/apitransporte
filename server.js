@@ -118,7 +118,7 @@ app.get('/tarifa-shuttle', async (req, res) => {
   }
 });
 
-// 🔹 Validar código de descuento (ACTUALIZADO)
+// 🔹 Validar código de descuento (CORREGIDO: RESPETA PRECIO EN FORMATO esperado)
 app.get('/validar-descuento', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
 
@@ -141,17 +141,15 @@ app.get('/validar-descuento', async (req, res) => {
     }
 
     const descuento = result.rows[0].descuento_aplicado;
-    console.log('✅ Código válido. Descuento aplicado:', descuento);
-
-    const campo = descuento === '13%' ? 'precio_descuento_13' :
-                  descuento === '15%' ? 'precio_descuento_15' : null;
+    const campo = descuento === 13 ? 'precio_descuento_13' :
+                  descuento === 15 ? 'precio_descuento_15' : null;
 
     if (!campo) {
       return res.json({ valido: false });
     }
 
     const tarifa = await pool.query(
-      `SELECT ${campo} AS precio_final
+      `SELECT ${campo} AS precio_descuento
        FROM tarifas_transportacion
        WHERE UPPER(tipo_transporte) = UPPER($1)
        AND zona_id = $2
@@ -163,7 +161,7 @@ app.get('/validar-descuento', async (req, res) => {
       return res.json({
         valido: true,
         descuento_aplicado: descuento,
-        precio_final: tarifa.rows[0].precio_final
+        precio_descuento: tarifa.rows[0].precio_descuento
       });
     } else {
       return res.json({ valido: false });
@@ -172,21 +170,6 @@ app.get('/validar-descuento', async (req, res) => {
   } catch (err) {
     console.error('Error validando código de descuento:', err);
     res.status(500).json({ error: 'Error en la base de datos' });
-  }
-});
-
-// 🔹 Hoteles
-app.get('/obtener-hoteles', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT DISTINCT nombre_hotel AS nombre 
-      FROM hoteles_zona 
-      ORDER BY nombre_hotel ASC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error al obtener hoteles:', err.message);
-    res.status(500).json({ error: 'Error al consultar hoteles', detalle: err.message });
   }
 });
 
