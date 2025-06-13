@@ -45,10 +45,9 @@ app.get('/zona-hotel', async (req, res) => {
   }
 });
 
-// 🔹 Obtener tarifa (rutas generales)
+// 🔹 Obtener tarifa
 app.get('/tarifa', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
-
   if (!transporte || !zona || !pasajeros) {
     return res.status(400).json({ error: 'Faltan parámetros requeridos (transporte, zona, pasajeros)' });
   }
@@ -57,7 +56,7 @@ app.get('/tarifa', async (req, res) => {
     let query;
     let params = [transporte, zona, pasajeros];
 
-    if (campo && (campo === 'precio_descuento_13' || campo === 'precio_descuento_15')) {
+    if (campo && (campo === 'precio_descuento_13' || campo === 'precio_descuento_135' || campo === 'precio_descuento_15')) {
       query = `
         SELECT ${campo} AS precio
         FROM tarifas_transportacion
@@ -76,7 +75,6 @@ app.get('/tarifa', async (req, res) => {
     }
 
     const result = await pool.query(query, params);
-
     if (result.rows.length > 0) {
       res.json(result.rows[0]);
     } else {
@@ -88,20 +86,16 @@ app.get('/tarifa', async (req, res) => {
   }
 });
 
-// 🔹 NUEVA ruta segura para shuttle
+// 🔹 Shuttle
 app.get('/tarifa-shuttle', async (req, res) => {
   const { zona, pasajeros } = req.query;
-
   if (!zona || !pasajeros) {
     return res.status(400).json({ error: 'Faltan parámetros requeridos (zona, pasajeros)' });
   }
 
   try {
     const result = await pool.query(`
-      SELECT 
-        precio_original,
-        precio_descuento_13,
-        precio_descuento_15
+      SELECT precio_original, precio_descuento_13, precio_descuento_15
       FROM tarifas_transportacion
       WHERE UPPER(tipo_transporte) = 'SHUTTLE'
       AND zona_id = $1
@@ -119,7 +113,7 @@ app.get('/tarifa-shuttle', async (req, res) => {
   }
 });
 
-// 🔹 Validar código de descuento general
+// 🔹 ✅ Validar código descuento GENERAL (nuevo comportamiento)
 app.get('/validar-descuento', async (req, res) => {
   const { codigo, transporte, zona } = req.query;
   if (!codigo || !transporte || !zona) {
@@ -130,29 +124,37 @@ app.get('/validar-descuento', async (req, res) => {
     const result = await pool.query(
       `SELECT descuento_aplicado
        FROM codigos_descuento
-       WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1)) AND UPPER(tipo_transporte) = UPPER($2) AND zona_id = $3`,
+       WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1))
+       AND UPPER(tipo_transporte) = UPPER($2)
+       AND zona_id = $3`,
       [codigo, transporte, zona]
     );
-    if (result.rows.length > 0) {
-      const porcentaje = parseFloat(result.rows[0].descuento_aplicado);
-      let campo = '';
-      if (porcentaje === 13) campo = 'precio_descuento_13';
-      else if (porcentaje === 15) campo = 'precio_descuento_15';
-      else return res.status(400).json({ error: 'Descuento no soportado' });
-      res.json({ valido: true, descuento_aplicado: porcentaje, campo });
-    } else {
-      res.json({ valido: false });
-    }
+
+    if (result.rows.length === 0) return res.json({ valido: false });
+
+    const descuento = parseFloat(result.rows[0].descuento_aplicado);
+    const campo = descuento === 13 ? 'precio_descuento_13'
+                 : descuento === 13.5 ? 'precio_descuento_135'
+                 : descuento === 15 ? 'precio_descuento_15'
+                 : null;
+
+    if (!campo) return res.status(400).json({ error: 'Campo de descuento inválido' });
+
+    return res.json({
+      valido: true,
+      descuento_aplicado: descuento,
+      campo
+    });
+
   } catch (err) {
     console.error('Error validando código de descuento:', err);
     res.status(500).json({ error: 'Error en la base de datos' });
   }
 });
 
-// 🔹 ✅ Ruta redondo ajustada para aceptar valores tipo '1 - 6 PAX'
+// 🔹 ✅ Validar código descuento REDONDO (corregida)
 app.get('/validar-descuento-redondo', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
-
   if (!codigo || !transporte || !zona || !pasajeros) {
     return res.status(400).json({ error: 'Faltan parámetros requeridos (codigo, transporte, zona, pasajeros)' });
   }
@@ -161,17 +163,19 @@ app.get('/validar-descuento-redondo', async (req, res) => {
     const result = await pool.query(
       `SELECT descuento_aplicado
        FROM codigos_descuento
-       WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1)) 
-       AND UPPER(tipo_transporte) = UPPER($2) 
+       WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1))
+       AND UPPER(tipo_transporte) = UPPER($2)
        AND zona_id = $3`,
       [codigo, transporte, zona]
     );
 
     if (result.rows.length === 0) return res.json({ valido: false });
 
-    const descuento = result.rows[0].descuento_aplicado;
-    const campo = descuento === 13 ? 'precio_descuento_13' :
-                  descuento === 15 ? 'precio_descuento_15' : null;
+    const descuento = parseFloat(result.rows[0].descuento_aplicado);
+    const campo = descuento === 13 ? 'precio_descuento_13'
+                 : descuento === 13.5 ? 'precio_descuento_135'
+                 : descuento === 15 ? 'precio_descuento_15'
+                 : null;
 
     if (!campo) return res.json({ valido: false });
 
@@ -264,7 +268,6 @@ app.get('/hoteles-excluidos', async (req, res) => {
 // 🔹 Tarifa redondo con campo dinámico
 app.get('/tarifa-redondo', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
-
   if (!transporte || !zona || !pasajeros || !campo) {
     return res.status(400).json({ error: 'Faltan parámetros requeridos (transporte, zona, pasajeros, campo)' });
   }
@@ -279,7 +282,6 @@ app.get('/tarifa-redondo', async (req, res) => {
     `;
 
     const result = await pool.query(query, [transporte, zona, pasajeros]);
-
     if (result.rows.length > 0) {
       res.json({ precio: result.rows[0].precio });
     } else {
