@@ -118,7 +118,7 @@ app.get('/tarifa-shuttle', async (req, res) => {
   }
 });
 
-// 🔹 Ruta original restaurada sin cambios
+// 🔹 Validar código de descuento (ruta original intacta)
 app.get('/validar-descuento', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
 
@@ -173,7 +173,7 @@ app.get('/validar-descuento', async (req, res) => {
   }
 });
 
-// 🔹 NUEVA ruta exclusiva para Redondo
+// 🟦 Nueva ruta exclusiva para Redondo
 app.get('/validar-descuento-redondo', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
 
