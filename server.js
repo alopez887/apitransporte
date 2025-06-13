@@ -149,7 +149,7 @@ app.get('/validar-descuento', async (req, res) => {
   }
 });
 
-// 🔹 ✅ Nueva ruta específica para redondo
+// 🔹 ✅ Ruta redondo ajustada para aceptar valores tipo '1 - 6 PAX'
 app.get('/validar-descuento-redondo', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
 
@@ -167,24 +167,20 @@ app.get('/validar-descuento-redondo', async (req, res) => {
       [codigo, transporte, zona]
     );
 
-    if (result.rows.length === 0) {
-      return res.json({ valido: false });
-    }
+    if (result.rows.length === 0) return res.json({ valido: false });
 
     const descuento = result.rows[0].descuento_aplicado;
     const campo = descuento === 13 ? 'precio_descuento_13' :
                   descuento === 15 ? 'precio_descuento_15' : null;
 
-    if (!campo) {
-      return res.json({ valido: false });
-    }
+    if (!campo) return res.json({ valido: false });
 
     const tarifa = await pool.query(
       `SELECT ${campo} AS precio_descuento
        FROM tarifas_transportacion
        WHERE UPPER(tipo_transporte) = UPPER($1)
        AND zona_id = $2
-       AND rango_pasajeros = $3`,
+       AND TRIM(REPLACE(LOWER(rango_pasajeros), ' ', '')) = TRIM(REPLACE(LOWER($3), ' ', ''))`,
       [transporte, zona, pasajeros]
     );
 
