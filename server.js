@@ -1,4 +1,4 @@
-// server.js recuperado 100% seguro
+// server.js actualizado
 import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
@@ -119,7 +119,7 @@ app.get('/tarifa-shuttle', async (req, res) => {
   }
 });
 
-// 🔹 Validar código de descuento y retornar campo de tarifa
+// 🔹 Validar código de descuento general
 app.get('/validar-descuento', async (req, res) => {
   const { codigo, transporte, zona } = req.query;
   if (!codigo || !transporte || !zona) {
@@ -145,6 +145,61 @@ app.get('/validar-descuento', async (req, res) => {
     }
   } catch (err) {
     console.error('Error validando código de descuento:', err);
+    res.status(500).json({ error: 'Error en la base de datos' });
+  }
+});
+
+// 🔹 ✅ Nueva ruta específica para redondo
+app.get('/validar-descuento-redondo', async (req, res) => {
+  const { codigo, transporte, zona, pasajeros } = req.query;
+
+  if (!codigo || !transporte || !zona || !pasajeros) {
+    return res.status(400).json({ error: 'Faltan parámetros requeridos (codigo, transporte, zona, pasajeros)' });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT descuento_aplicado
+       FROM codigos_descuento
+       WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1)) 
+       AND UPPER(tipo_transporte) = UPPER($2) 
+       AND zona_id = $3`,
+      [codigo, transporte, zona]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ valido: false });
+    }
+
+    const descuento = result.rows[0].descuento_aplicado;
+    const campo = descuento === 13 ? 'precio_descuento_13' :
+                  descuento === 15 ? 'precio_descuento_15' : null;
+
+    if (!campo) {
+      return res.json({ valido: false });
+    }
+
+    const tarifa = await pool.query(
+      `SELECT ${campo} AS precio_descuento
+       FROM tarifas_transportacion
+       WHERE UPPER(tipo_transporte) = UPPER($1)
+       AND zona_id = $2
+       AND rango_pasajeros = $3`,
+      [transporte, zona, pasajeros]
+    );
+
+    if (tarifa.rows.length > 0) {
+      return res.json({
+        valido: true,
+        descuento_aplicado: descuento,
+        precio_descuento: tarifa.rows[0].precio_descuento
+      });
+    } else {
+      return res.json({ valido: false });
+    }
+
+  } catch (err) {
+    console.error('Error validando código de descuento redondo:', err);
     res.status(500).json({ error: 'Error en la base de datos' });
   }
 });
@@ -198,7 +253,7 @@ app.get('/opciones-pasajeros', async (req, res) => {
   }
 });
 
-// 🔹 Obtener hoteles sin descuento
+// 🔹 Hoteles sin descuento
 app.get('/hoteles-excluidos', async (req, res) => {
   try {
     const result = await pool.query('SELECT nombre FROM hoteles_nodescuento');
@@ -210,7 +265,7 @@ app.get('/hoteles-excluidos', async (req, res) => {
   }
 });
 
-// 🔹 Obtener tarifa redondo aplicando campo dinámico (descuento)
+// 🔹 Tarifa redondo con campo dinámico
 app.get('/tarifa-redondo', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
 
