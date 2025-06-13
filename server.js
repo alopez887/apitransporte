@@ -45,7 +45,7 @@ app.get('/zona-hotel', async (req, res) => {
   }
 });
 
-// 🔹 Obtener tarifa (rutas generales)
+// 🔹 Obtener tarifa general
 app.get('/tarifa', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
 
@@ -88,7 +88,7 @@ app.get('/tarifa', async (req, res) => {
   }
 });
 
-// 🔹 NUEVA ruta segura para shuttle
+// 🔹 Tarifa exclusiva para shuttle
 app.get('/tarifa-shuttle', async (req, res) => {
   const { zona, pasajeros } = req.query;
 
@@ -144,7 +144,6 @@ app.get('/validar-descuento', async (req, res) => {
       else if (porcentaje === 15) campo = 'precio_descuento_15';
       else return res.status(400).json({ error: 'Descuento no soportado' });
 
-      // ✅ Corregido: se envía la variable `campo` correctamente
       res.json({ valido: true, descuento_aplicado: porcentaje, campo });
     } else {
       res.json({ valido: false });
@@ -166,7 +165,6 @@ app.get('/validar-descuento-redondo', async (req, res) => {
   }
 
   try {
-    // 1. Buscar descuento aplicado en codigos_descuento
     const descQuery = `
       SELECT descuento_aplicado 
       FROM codigos_descuento 
@@ -184,7 +182,6 @@ app.get('/validar-descuento-redondo', async (req, res) => {
     const descuento = parseFloat(descResult.rows[0].descuento_aplicado);
     console.log("✅ Descuento encontrado:", descuento);
 
-    // 2. Buscar precio original en tarifas_transportacion
     const tarifaQuery = `
       SELECT precio_original 
       FROM tarifas_transportacion 
@@ -193,7 +190,7 @@ app.get('/validar-descuento-redondo', async (req, res) => {
         AND rango_pasajeros = $3
     `;
     const pasajerosFormateado = pasajeros.replace(/-/g, ' - ');
-	const tarifaResult = await pool.query(tarifaQuery, [transporte, zona, pasajerosFormateado]);
+    const tarifaResult = await pool.query(tarifaQuery, [transporte, zona, pasajerosFormateado]);
 
     if (tarifaResult.rows.length === 0) {
       console.log("❌ No se encontró precio en tarifas_transportacion");
@@ -202,9 +199,6 @@ app.get('/validar-descuento-redondo', async (req, res) => {
 
     const precioOriginal = parseFloat(tarifaResult.rows[0].precio_original);
     const precioDescuento = precioOriginal * (1 - descuento / 100);
-
-    console.log("💰 Precio original:", precioOriginal);
-    console.log("💸 Precio con descuento:", precioDescuento);
 
     return res.json({
       valido: true,
