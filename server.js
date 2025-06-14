@@ -1,4 +1,4 @@
-// server.js actualizado y corregido
+// server.js actualizado y corregido confirmacion de caracteres
 import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
@@ -168,8 +168,8 @@ app.get('/validar-descuento-redondo', async (req, res) => {
     const descQuery = `
       SELECT descuento_aplicado 
       FROM codigos_descuento 
-      WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1)) 
-        AND UPPER(tipo_transporte) = UPPER($2) 
+      WHERE codigo = $1 
+        AND tipo_transporte = $2 
         AND zona_id = $3
     `;
     const descResult = await pool.query(descQuery, [codigo, transporte, zona]);
@@ -182,27 +182,23 @@ app.get('/validar-descuento-redondo', async (req, res) => {
     const descuento = parseFloat(descResult.rows[0].descuento_aplicado);
     console.log("? Descuento encontrado:", descuento);
 
-    let campo = '';
-    if (descuento === 13) campo = 'precio_descuento_13';
-    else if (descuento === 13.5) campo = 'precio_descuento_135';
-    else if (descuento === 15) campo = 'precio_descuento_15';
-    else return res.status(400).json({ valido: false, mensaje: 'Descuento no soportado' });
-
     const tarifaQuery = `
-      SELECT ${campo} AS precio_descuento 
+      SELECT precio_original 
       FROM tarifas_transportacion 
-      WHERE TRIM(UPPER(tipo_transporte)) = TRIM(UPPER($1)) 
+      WHERE tipo_transporte = $1 
         AND zona_id = $2 
-        AND TRIM(rango_pasajeros) = TRIM($3)
+        AND rango_pasajeros = $3
     `;
-    const tarifaResult = await pool.query(tarifaQuery, [transporte, zona, pasajeros]);
+    const pasajerosFormateado = pasajeros.trim();
+    const tarifaResult = await pool.query(tarifaQuery, [transporte, zona, pasajerosFormateado]);
 
     if (tarifaResult.rows.length === 0) {
-      console.log("? No se encontr¨® precio con descuento en tarifas_transportacion");
+      console.log("? No se encontr¨® precio en tarifas_transportacion");
       return res.json({ valido: false });
     }
 
-    const precioDescuento = parseFloat(tarifaResult.rows[0].precio_descuento);
+    const precioOriginal = parseFloat(tarifaResult.rows[0].precio_original);
+    const precioDescuento = precioOriginal * (1 - descuento / 100);
 
     return res.json({
       valido: true,
