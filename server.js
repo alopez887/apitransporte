@@ -158,47 +158,54 @@ app.get('/validar-descuento', async (req, res) => {
 app.get('/validar-descuento-redondo', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
 
-  console.log("üì• Par√°metros recibidos:", { codigo, transporte, zona, pasajeros });
+  console.log("?? Par®¢metros recibidos:", { codigo, transporte, zona, pasajeros });
 
   if (!codigo || !transporte || !zona || !pasajeros) {
-    return res.status(400).json({ valido: false, mensaje: 'Faltan par√°metros requeridos' });
+    return res.status(400).json({ valido: false, mensaje: 'Faltan par®¢metros requeridos' });
   }
 
   try {
+    // 1. Validar si el c®Ædigo existe y es aplicable
     const descQuery = `
       SELECT descuento_aplicado 
       FROM codigos_descuento 
-      WHERE codigo = $1 
-        AND tipo_transporte = $2 
+      WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1)) 
+        AND UPPER(tipo_transporte) = UPPER($2) 
         AND zona_id = $3
     `;
     const descResult = await pool.query(descQuery, [codigo, transporte, zona]);
 
     if (descResult.rows.length === 0) {
-      console.log("‚ùå C√≥digo no v√°lido en codigos_descuento");
+      console.log("? C®Ædigo no v®¢lido en codigos_descuento");
       return res.json({ valido: false });
     }
 
     const descuento = parseFloat(descResult.rows[0].descuento_aplicado);
-    console.log("‚úÖ Descuento encontrado:", descuento);
+    console.log("? Descuento encontrado:", descuento);
 
+    // 2. Determinar campo a usar seg®≤n el porcentaje
+    let campo = '';
+    if (descuento === 13) campo = 'precio_descuento_13';
+    else if (descuento === 13.5) campo = 'precio_descuento_135';
+    else if (descuento === 15) campo = 'precio_descuento_15';
+    else return res.status(400).json({ valido: false, mensaje: 'Descuento no soportado' });
+
+    // 3. Buscar precio con descuento directamente en tabla
     const tarifaQuery = `
-      SELECT precio_original 
+      SELECT ${campo} AS precio_descuento 
       FROM tarifas_transportacion 
-      WHERE tipo_transporte = $1 
+      WHERE TRIM(UPPER(tipo_transporte)) = TRIM(UPPER($1)) 
         AND zona_id = $2 
-        AND rango_pasajeros = $3
+        AND TRIM(rango_pasajeros) = TRIM($3)
     `;
-    const pasajerosFormateado = pasajeros.trim();
-    const tarifaResult = await pool.query(tarifaQuery, [transporte, zona, pasajerosFormateado]);
+    const tarifaResult = await pool.query(tarifaQuery, [transporte, zona, pasajeros]);
 
     if (tarifaResult.rows.length === 0) {
-      console.log("‚ùå No se encontr√≥ precio en tarifas_transportacion");
+      console.log("? No se encontr®Æ precio con descuento en tarifas_transportacion");
       return res.json({ valido: false });
     }
 
-    const precioOriginal = parseFloat(tarifaResult.rows[0].precio_original);
-    const precioDescuento = precioOriginal * (1 - descuento / 100);
+    const precioDescuento = parseFloat(tarifaResult.rows[0].precio_descuento);
 
     return res.json({
       valido: true,
@@ -207,7 +214,7 @@ app.get('/validar-descuento-redondo', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("‚ùå Error en /validar-descuento-redondo:", error.message);
+    console.error("? Error en /validar-descuento-redondo:", error.message);
     return res.status(500).json({ valido: false, mensaje: 'Error interno del servidor' });
   }
 });
