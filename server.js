@@ -24,10 +24,10 @@ const pool = new Pool({
 
 app.locals.pool = pool;
 
-// ?? Obtener zona por hotel
+// Obtener zona por hotel
 app.get('/zona-hotel', async (req, res) => {
   const { hotel } = req.query;
-  if (!hotel) return res.status(400).json({ error: 'El par¨¢metro "hotel" es requerido' });
+  if (!hotel) return res.status(400).json({ error: 'El parametro "hotel" es requerido' });
 
   try {
     const result = await pool.query(
@@ -45,12 +45,12 @@ app.get('/zona-hotel', async (req, res) => {
   }
 });
 
-// ?? Obtener tarifa general
+// Obtener tarifa general
 app.get('/tarifa', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
 
   if (!transporte || !zona || !pasajeros) {
-    return res.status(400).json({ error: 'Faltan par¨¢metros requeridos (transporte, zona, pasajeros)' });
+    return res.status(400).json({ error: 'Faltan parametros requeridos (transporte, zona, pasajeros)' });
   }
 
   try {
@@ -80,7 +80,7 @@ app.get('/tarifa', async (req, res) => {
     if (result.rows.length > 0) {
       res.json(result.rows[0]);
     } else {
-      res.status(404).json({ error: 'No se encontr¨® tarifa para esos par¨¢metros' });
+      res.status(404).json({ error: 'No se encontro tarifa para esos parÃ¡metros' });
     }
   } catch (err) {
     console.error('Error obteniendo tarifa:', err);
@@ -88,12 +88,12 @@ app.get('/tarifa', async (req, res) => {
   }
 });
 
-// ?? Tarifa exclusiva para shuttle
+// Tarifa exclusiva para shuttle
 app.get('/tarifa-shuttle', async (req, res) => {
   const { zona, pasajeros } = req.query;
 
   if (!zona || !pasajeros) {
-    return res.status(400).json({ error: 'Faltan par¨¢metros requeridos (zona, pasajeros)' });
+    return res.status(400).json({ error: 'Faltan parÃ¡metros requeridos (zona, pasajeros)' });
   }
 
   try {
@@ -111,7 +111,7 @@ app.get('/tarifa-shuttle', async (req, res) => {
     if (result.rows.length > 0) {
       res.json(result.rows[0]);
     } else {
-      res.status(404).json({ error: 'No se encontr¨® tarifa para esos par¨¢metros' });
+      res.status(404).json({ error: 'No se encontrÃ³ tarifa para esos parÃ¡metros' });
     }
   } catch (err) {
     console.error('Error en /tarifa-shuttle:', err);
@@ -119,11 +119,11 @@ app.get('/tarifa-shuttle', async (req, res) => {
   }
 });
 
-// ?? Validar c¨®digo de descuento general
+// ðŸ”¹ Validar cÃ³digo de descuento general
 app.get('/validar-descuento', async (req, res) => {
   const { codigo, transporte, zona } = req.query;
   if (!codigo || !transporte || !zona) {
-    return res.status(400).json({ error: 'Faltan par¨¢metros requeridos (codigo, transporte, zona)' });
+    return res.status(400).json({ error: 'Faltan parÃ¡metros requeridos (codigo, transporte, zona)' });
   }
 
   try {
@@ -149,19 +149,19 @@ app.get('/validar-descuento', async (req, res) => {
       res.json({ valido: false });
     }
   } catch (err) {
-    console.error('Error validando c¨®digo de descuento:', err);
+    console.error('Error validando cÃ³digo de descuento:', err);
     res.status(500).json({ error: 'Error en la base de datos' });
   }
 });
 
-// ?? Validar c¨®digo redondo
+// ðŸ”¹ Validar cÃ³digo redondo
 app.get('/validar-descuento-redondo', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
 
-  console.log("?? Par¨¢metros recibidos:", { codigo, transporte, zona, pasajeros });
+  console.log("ðŸ“¥ ParÃ¡metros recibidos:", { codigo, transporte, zona, pasajeros });
 
   if (!codigo || !transporte || !zona || !pasajeros) {
-    return res.status(400).json({ valido: false, mensaje: 'Faltan par¨¢metros requeridos' });
+    return res.status(400).json({ valido: false, mensaje: 'Faltan parÃ¡metros requeridos' });
   }
 
   try {
@@ -175,12 +175,12 @@ app.get('/validar-descuento-redondo', async (req, res) => {
     const descResult = await pool.query(descQuery, [codigo, transporte, zona]);
 
     if (descResult.rows.length === 0) {
-      console.log("? C¨®digo no v¨¢lido en codigos_descuento");
+      console.log("âŒ CÃ³digo no vÃ¡lido en codigos_descuento");
       return res.json({ valido: false });
     }
 
     const descuento = parseFloat(descResult.rows[0].descuento_aplicado);
-    console.log("? Descuento encontrado:", descuento);
+    console.log("âœ… Descuento encontrado:", descuento);
 
     const tarifaQuery = `
       SELECT precio_original 
@@ -193,7 +193,7 @@ app.get('/validar-descuento-redondo', async (req, res) => {
     const tarifaResult = await pool.query(tarifaQuery, [transporte, zona, pasajerosFormateado]);
 
     if (tarifaResult.rows.length === 0) {
-      console.log("? No se encontr¨® precio en tarifas_transportacion");
+      console.log("âŒ No se encontrÃ³ precio en tarifas_transportacion");
       return res.json({ valido: false });
     }
 
@@ -207,12 +207,12 @@ app.get('/validar-descuento-redondo', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("? Error en /validar-descuento-redondo:", error.message);
+    console.error("âŒ Error en /validar-descuento-redondo:", error.message);
     return res.status(500).json({ valido: false, mensaje: 'Error interno del servidor' });
   }
 });
 
-// ?? Obtener hoteles
+// ðŸ”¹ Obtener hoteles
 app.get('/obtener-hoteles', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -227,7 +227,7 @@ app.get('/obtener-hoteles', async (req, res) => {
   }
 });
 
-// ?? Aerol¨ªneas
+// ðŸ”¹ AerolÃ­neas
 app.get('/obtener-aerolineas', async (req, res) => {
   try {
     const result = await pool.query(
@@ -235,15 +235,15 @@ app.get('/obtener-aerolineas', async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    console.error('Error al obtener aerol¨ªneas:', err.message);
-    res.status(500).json({ error: 'Error al consultar aerol¨ªneas', detalle: err.message });
+    console.error('Error al obtener aerolÃ­neas:', err.message);
+    res.status(500).json({ error: 'Error al consultar aerolÃ­neas', detalle: err.message });
   }
 });
 
-// ?? Opciones pasajeros
+// ðŸ”¹ Opciones pasajeros
 app.get('/opciones-pasajeros', async (req, res) => {
   const tipo = req.query.tipo;
-  if (!tipo) return res.status(400).json({ error: 'Falta el par¨¢metro tipo' });
+  if (!tipo) return res.status(400).json({ error: 'Falta el parÃ¡metro tipo' });
 
   try {
     const result = await pool.query(
@@ -261,7 +261,7 @@ app.get('/opciones-pasajeros', async (req, res) => {
   }
 });
 
-// ?? Hoteles sin descuento
+// ðŸ”¹ Hoteles sin descuento
 app.get('/hoteles-excluidos', async (req, res) => {
   try {
     const result = await pool.query('SELECT nombre FROM hoteles_nodescuento');
@@ -273,12 +273,12 @@ app.get('/hoteles-excluidos', async (req, res) => {
   }
 });
 
-// ?? Tarifa redondo con campo din¨¢mico
+// ðŸ”¹ Tarifa redondo con campo dinÃ¡mico
 app.get('/tarifa-redondo', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
 
   if (!transporte || !zona || !pasajeros || !campo) {
-    return res.status(400).json({ error: 'Faltan par¨¢metros requeridos (transporte, zona, pasajeros, campo)' });
+    return res.status(400).json({ error: 'Faltan parÃ¡metros requeridos (transporte, zona, pasajeros, campo)' });
   }
 
   try {
@@ -295,7 +295,7 @@ app.get('/tarifa-redondo', async (req, res) => {
     if (result.rows.length > 0) {
       res.json({ precio: result.rows[0].precio });
     } else {
-      res.status(404).json({ error: 'No se encontr¨® tarifa para esos par¨¢metros' });
+      res.status(404).json({ error: 'No se encontrÃ³ tarifa para esos parÃ¡metros' });
     }
   } catch (err) {
     console.error('Error en /tarifa-redondo:', err.message);
@@ -303,7 +303,7 @@ app.get('/tarifa-redondo', async (req, res) => {
   }
 });
 
-// ?? Iniciar servidor
+// ðŸ”¹ Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`?? API de transportaci¨®n corriendo en el puerto ${PORT}`);
+  console.log(`ðŸš— API de transportaciÃ³n corriendo en el puerto ${PORT}`);
 });
