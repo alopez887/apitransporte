@@ -1,4 +1,3 @@
-// server.js actualizado y corregido confirmacion de caracteres
 import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
@@ -80,7 +79,7 @@ app.get('/tarifa', async (req, res) => {
     if (result.rows.length > 0) {
       res.json(result.rows[0]);
     } else {
-      res.status(404).json({ error: 'No se encontro tarifa para esos parámetros' });
+      res.status(404).json({ error: 'No se encontro tarifa para esos parametros' });
     }
   } catch (err) {
     console.error('Error obteniendo tarifa:', err);
@@ -93,7 +92,7 @@ app.get('/tarifa-shuttle', async (req, res) => {
   const { zona, pasajeros } = req.query;
 
   if (!zona || !pasajeros) {
-    return res.status(400).json({ error: 'Faltan parámetros requeridos (zona, pasajeros)' });
+    return res.status(400).json({ error: 'Faltan parametros requeridos (zona, pasajeros)' });
   }
 
   try {
@@ -111,7 +110,7 @@ app.get('/tarifa-shuttle', async (req, res) => {
     if (result.rows.length > 0) {
       res.json(result.rows[0]);
     } else {
-      res.status(404).json({ error: 'No se encontró tarifa para esos parámetros' });
+      res.status(404).json({ error: 'No se encontro tarifa para esos parametros' });
     }
   } catch (err) {
     console.error('Error en /tarifa-shuttle:', err);
@@ -119,11 +118,11 @@ app.get('/tarifa-shuttle', async (req, res) => {
   }
 });
 
-// 🔹 Validar código de descuento general
+// Validar codigo de descuento general
 app.get('/validar-descuento', async (req, res) => {
   const { codigo, transporte, zona } = req.query;
   if (!codigo || !transporte || !zona) {
-    return res.status(400).json({ error: 'Faltan parámetros requeridos (codigo, transporte, zona)' });
+    return res.status(400).json({ error: 'Faltan parametros requeridos (codigo, transporte, zona)' });
   }
 
   try {
@@ -149,24 +148,22 @@ app.get('/validar-descuento', async (req, res) => {
       res.json({ valido: false });
     }
   } catch (err) {
-    console.error('Error validando código de descuento:', err);
+    console.error('Error validando codigo de descuento:', err);
     res.status(500).json({ error: 'Error en la base de datos' });
   }
 });
 
-// 🔹 Validar código redondo
-// 🔹 Validar código redondo
+// Validar codigo redondo
 app.get('/validar-descuento-redondo', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
 
-  console.log("📥 Parámetros recibidos:", { codigo, transporte, zona, pasajeros });
+  console.log("Parametros recibidos:", { codigo, transporte, zona, pasajeros });
 
   if (!codigo || !transporte || !zona || !pasajeros) {
-    return res.status(400).json({ valido: false, mensaje: 'Faltan parámetros requeridos' });
+    return res.status(400).json({ valido: false, mensaje: 'Faltan parametros requeridos' });
   }
 
   try {
-    // 1. Obtener porcentaje del código
     const descQuery = `
       SELECT descuento_aplicado 
       FROM codigos_descuento 
@@ -177,21 +174,19 @@ app.get('/validar-descuento-redondo', async (req, res) => {
     const descResult = await pool.query(descQuery, [codigo, transporte, zona]);
 
     if (descResult.rows.length === 0) {
-      console.log("❌ Código no válido en codigos_descuento");
+      console.log("Codigo no valido en codigos_descuento");
       return res.json({ valido: false });
     }
 
     const descuento = parseFloat(descResult.rows[0].descuento_aplicado);
-    console.log("✅ Descuento encontrado:", descuento);
+    console.log("Descuento encontrado:", descuento);
 
-    // 2. Determinar campo
     let campo = '';
     if (descuento === 13) campo = 'precio_descuento_13';
     else if (descuento === 13.5) campo = 'precio_descuento_135';
     else if (descuento === 15) campo = 'precio_descuento_15';
     else return res.status(400).json({ valido: false, mensaje: 'Descuento no soportado' });
 
-    // 3. Obtener precio ya descontado desde la tabla
     const tarifaQuery = `
       SELECT ${campo} AS precio_descuento 
       FROM tarifas_transportacion 
@@ -202,7 +197,7 @@ app.get('/validar-descuento-redondo', async (req, res) => {
     const tarifaResult = await pool.query(tarifaQuery, [transporte, zona, pasajeros.trim()]);
 
     if (tarifaResult.rows.length === 0) {
-      console.log("❌ No se encontró precio en tarifas_transportacion");
+      console.log("No se encontro precio en tarifas_transportacion");
       return res.json({ valido: false });
     }
 
@@ -215,12 +210,12 @@ app.get('/validar-descuento-redondo', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Error en /validar-descuento-redondo:", error.message);
+    console.error("Error en /validar-descuento-redondo:", error.message);
     return res.status(500).json({ valido: false, mensaje: 'Error interno del servidor' });
   }
 });
 
-// 🔹 Obtener hoteles
+// Obtener hoteles
 app.get('/obtener-hoteles', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -235,7 +230,7 @@ app.get('/obtener-hoteles', async (req, res) => {
   }
 });
 
-// 🔹 Aerolíneas
+// Obtener aerolineas
 app.get('/obtener-aerolineas', async (req, res) => {
   try {
     const result = await pool.query(
@@ -243,15 +238,15 @@ app.get('/obtener-aerolineas', async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    console.error('Error al obtener aerolíneas:', err.message);
-    res.status(500).json({ error: 'Error al consultar aerolíneas', detalle: err.message });
+    console.error('Error al obtener aerolineas:', err.message);
+    res.status(500).json({ error: 'Error al consultar aerolineas', detalle: err.message });
   }
 });
 
-// 🔹 Opciones pasajeros
+// Opciones de pasajeros
 app.get('/opciones-pasajeros', async (req, res) => {
   const tipo = req.query.tipo;
-  if (!tipo) return res.status(400).json({ error: 'Falta el parámetro tipo' });
+  if (!tipo) return res.status(400).json({ error: 'Falta el parametro tipo' });
 
   try {
     const result = await pool.query(
@@ -269,7 +264,7 @@ app.get('/opciones-pasajeros', async (req, res) => {
   }
 });
 
-// 🔹 Hoteles sin descuento
+// Hoteles sin descuento
 app.get('/hoteles-excluidos', async (req, res) => {
   try {
     const result = await pool.query('SELECT nombre FROM hoteles_nodescuento');
@@ -281,12 +276,12 @@ app.get('/hoteles-excluidos', async (req, res) => {
   }
 });
 
-// 🔹 Tarifa redondo con campo dinámico
+// Tarifa redondo con campo dinamico
 app.get('/tarifa-redondo', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
 
   if (!transporte || !zona || !pasajeros || !campo) {
-    return res.status(400).json({ error: 'Faltan parámetros requeridos (transporte, zona, pasajeros, campo)' });
+    return res.status(400).json({ error: 'Faltan parametros requeridos (transporte, zona, pasajeros, campo)' });
   }
 
   try {
@@ -303,7 +298,7 @@ app.get('/tarifa-redondo', async (req, res) => {
     if (result.rows.length > 0) {
       res.json({ precio: result.rows[0].precio });
     } else {
-      res.status(404).json({ error: 'No se encontró tarifa para esos parámetros' });
+      res.status(404).json({ error: 'No se encontro tarifa para esos parametros' });
     }
   } catch (err) {
     console.error('Error en /tarifa-redondo:', err.message);
@@ -311,7 +306,7 @@ app.get('/tarifa-redondo', async (req, res) => {
   }
 });
 
-// 🔹 Iniciar servidor
+// Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`🚗 API de transportación corriendo en el puerto ${PORT}`);
+  console.log(`API de transportacion corriendo en el puerto ${PORT}`);
 });
