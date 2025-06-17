@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
 import dotenv from 'dotenv';
-import guardarTransporte from './routes/guardarTransporte.js';
+import guardarTransporte from './guardarTransporte.js';
 
 dotenv.config();
 
