@@ -1,5 +1,4 @@
-// guardarTransporte.js
-import pool from '../conexion.js';
+import pool from './conexion.js'; // ✅ Ruta relativa correcta
 import enviarCorreoTransporte from './correosTransporte.js';
 
 export default async function guardarTransporte(req, res) {
@@ -63,7 +62,6 @@ export default async function guardarTransporte(req, res) {
     ];
 
     await pool.query(query, valores);
-
     await enviarCorreoTransporte({ folio: nuevoFolio, ...datos });
 
     res.status(200).json({
