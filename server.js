@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
 import dotenv from 'dotenv';
+import guardarTransporte from './routes/guardarTransporte.js';
 
 dotenv.config();
 
@@ -23,7 +24,10 @@ const pool = new Pool({
 
 app.locals.pool = pool;
 
-// Obtener zona por hotel
+// 🔹 Ruta para guardar reservación de transporte
+app.post('/reservar-transporte', guardarTransporte);
+
+// 🔹 Todas tus rutas existentes
 app.get('/zona-hotel', async (req, res) => {
   const { hotel } = req.query;
   if (!hotel) return res.status(400).json({ error: 'El parametro "hotel" es requerido' });
@@ -44,7 +48,6 @@ app.get('/zona-hotel', async (req, res) => {
   }
 });
 
-// Obtener tarifa general
 app.get('/tarifa', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
 
@@ -87,7 +90,6 @@ app.get('/tarifa', async (req, res) => {
   }
 });
 
-// Tarifa exclusiva para shuttle
 app.get('/tarifa-shuttle', async (req, res) => {
   const { zona, pasajeros } = req.query;
 
@@ -118,7 +120,6 @@ app.get('/tarifa-shuttle', async (req, res) => {
   }
 });
 
-// Validar codigo de descuento general
 app.get('/validar-descuento', async (req, res) => {
   const { codigo, transporte, zona } = req.query;
   if (!codigo || !transporte || !zona) {
@@ -153,7 +154,6 @@ app.get('/validar-descuento', async (req, res) => {
   }
 });
 
-// Validar codigo redondo
 app.get('/validar-descuento-redondo', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
 
@@ -215,7 +215,6 @@ app.get('/validar-descuento-redondo', async (req, res) => {
   }
 });
 
-// Obtener hoteles
 app.get('/obtener-hoteles', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -230,7 +229,6 @@ app.get('/obtener-hoteles', async (req, res) => {
   }
 });
 
-// Obtener aerolineas
 app.get('/obtener-aerolineas', async (req, res) => {
   try {
     const result = await pool.query(
@@ -243,7 +241,6 @@ app.get('/obtener-aerolineas', async (req, res) => {
   }
 });
 
-// Opciones de pasajeros
 app.get('/opciones-pasajeros', async (req, res) => {
   const tipo = req.query.tipo;
   if (!tipo) return res.status(400).json({ error: 'Falta el parametro tipo' });
@@ -264,7 +261,6 @@ app.get('/opciones-pasajeros', async (req, res) => {
   }
 });
 
-// Hoteles sin descuento
 app.get('/hoteles-excluidos', async (req, res) => {
   try {
     const result = await pool.query('SELECT nombre FROM hoteles_nodescuento');
@@ -276,7 +272,6 @@ app.get('/hoteles-excluidos', async (req, res) => {
   }
 });
 
-// Tarifa redondo con campo dinamico
 app.get('/tarifa-redondo', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
 
@@ -306,7 +301,6 @@ app.get('/tarifa-redondo', async (req, res) => {
   }
 });
 
-// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
 });
