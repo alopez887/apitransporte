@@ -1,5 +1,5 @@
 import pool from './conexion.js'; // ✅ Ruta relativa correcta
-import enviarCorreoTransporte from './correosTransporte.js';
+import { enviarCorreoTransporte } from './correosTransporte.js';
 
 export default async function guardarTransporte(req, res) {
   const datos = req.body;
