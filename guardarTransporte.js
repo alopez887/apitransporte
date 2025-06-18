@@ -61,8 +61,8 @@ export default async function guardarTransporte(req, res) {
       datos.comentarios || '',
       datos.telefono || '',
       datos.codigo_descuento || '',
-      Number(datos.porcentaje_descuento) || 0,
-      Number(datos.precio_servicio) || 0,
+      isNaN(Number(datos.porcentaje_descuento)) ? null : Number(datos.porcentaje_descuento),
+	  isNaN(Number(datos.precio_servicio)) ? null : Number(datos.precio_servicio),
       Number(datos.precio_total) || 0
     ];
 
