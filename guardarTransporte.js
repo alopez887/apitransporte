@@ -9,21 +9,19 @@ export default async function guardarTransporte(req, res) {
   }
 
   try {
-    const result = await pool.query(
-      "SELECT folio FROM reservaciones WHERE folio LIKE 'TR-%' ORDER BY id DESC LIMIT 1"
-    );
+    const result = await pool.query("SELECT folio FROM reservaciones WHERE folio LIKE 'TR-%' ORDER BY id DESC LIMIT 1");
     const ultimoFolio = result.rows[0]?.folio || 'TR-000000';
     const numero = parseInt(ultimoFolio.replace('TR-', '')) + 1;
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
 
-    // Logs de depuración
-    console.log("📦 porcentaje_descuento recibido:", datos.porcentaje_descuento);
+    // 🟢 Logs para depuración
+    console.log("📦 descuento_aplicado recibido:", datos.descuento_aplicado);
     console.log("📦 precio_servicio recibido:", datos.precio_servicio);
-    console.log("📦 hora_llegada cruda recibida:", datos.hora_llegada);
+    console.log("⏰ hora_llegada cruda recibida:", datos.hora_llegada);
 
-    // Correcciones y validaciones
-    const porcentaje_descuento = (datos.porcentaje_descuento && !isNaN(Number(datos.porcentaje_descuento)))
-      ? Number(datos.porcentaje_descuento)
+    // Validaciones robustas
+    const porcentaje_descuento = (datos.descuento_aplicado && !isNaN(Number(datos.descuento_aplicado)))
+      ? Number(datos.descuento_aplicado)
       : 0;
 
     const precio_servicio = (datos.precio_servicio && !isNaN(Number(datos.precio_servicio)))
@@ -34,11 +32,9 @@ export default async function guardarTransporte(req, res) {
       ? datos.hora_llegada
       : null;
 
-    const hora_salida = datos.hora_salida && datos.hora_salida.trim() !== ''
-      ? datos.hora_salida
-      : null;
+    const hora_salida = datos.hora_salida && datos.hora_salida.trim() !== '' ? datos.hora_salida : null;
 
-    console.log("🕒 hora_llegada enviada a DB:", hora_llegada);
+    console.log("⏱️ hora_llegada enviada a DB:", hora_llegada);
 
     const query = `
       INSERT INTO reservaciones (
@@ -96,7 +92,6 @@ export default async function guardarTransporte(req, res) {
       folio: nuevoFolio,
       mensaje: `Reservación registrada correctamente con folio ${nuevoFolio}.`
     });
-
   } catch (error) {
     console.error("❌ Error al guardar transporte:", error);
     res.status(500).json({ error: "Error interno al guardar transporte." });
