@@ -15,6 +15,7 @@ export default async function guardarTransporte(req, res) {
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
 
     // 🟢 LOGS de entrada
+    console.log("🛬 Datos completos recibidos:", datos);
     console.log("✅ porcentaje_descuento recibido:", datos.porcentaje_descuento);
     console.log("✅ precio_servicio recibido:", datos.precio_servicio);
     console.log("⏰ hora_llegada cruda recibida:", datos.hora_llegada);
@@ -28,19 +29,27 @@ export default async function guardarTransporte(req, res) {
       ? Number(datos.precio_servicio)
       : 0;
 
-    // 🔧 Normalizar hora_llegada a formato HH:mm
+    // ✅ Normalizar hora_llegada desde formatos como "09:41 a. m."
     let hora_llegada = null;
-    if (typeof datos.hora_llegada === 'string') {
-      const match = datos.hora_llegada.match(/^(\d{2}):(\d{2})$/);
-      if (match) {
-        hora_llegada = datos.hora_llegada;
+    if (typeof datos.hora_llegada === 'string' && datos.hora_llegada.trim() !== '') {
+      const cruda = datos.hora_llegada.trim();
+
+      // Si ya viene como HH:mm
+      const formato24 = cruda.match(/^(\d{2}):(\d{2})$/);
+      if (formato24) {
+        hora_llegada = cruda;
       } else {
-        // intenta parsear formatos como "09:47 p. m."
-        const fecha = new Date(`1970-01-01T${datos.hora_llegada}`);
-        if (!isNaN(fecha.getTime())) {
-          const horas = fecha.getHours().toString().padStart(2, '0');
-          const minutos = fecha.getMinutes().toString().padStart(2, '0');
-          hora_llegada = `${horas}:${minutos}`;
+        // Intenta convertir desde formato 12h con AM/PM
+        const match = cruda.match(/(\d{1,2}):(\d{2})\s*(a\.m\.|p\.m\.)/i);
+        if (match) {
+          let horas = parseInt(match[1], 10);
+          const minutos = match[2];
+          const periodo = match[3].toLowerCase();
+
+          if (periodo === 'p.m.' && horas < 12) horas += 12;
+          if (periodo === 'a.m.' && horas === 12) horas = 0;
+
+          hora_llegada = `${horas.toString().padStart(2, '0')}:${minutos}`;
         }
       }
     }
