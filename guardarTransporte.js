@@ -1,4 +1,4 @@
-import pool from './conexion.js'; // ✅ Ruta relativa correcta
+import pool from './conexion.js';
 import { enviarCorreoTransporte } from './correosTransporte.js';
 
 export default async function guardarTransporte(req, res) {
@@ -9,11 +9,14 @@ export default async function guardarTransporte(req, res) {
   }
 
   try {
-    // Generar folio TR-000001
     const result = await pool.query("SELECT folio FROM reservaciones WHERE folio LIKE 'TR-%' ORDER BY id DESC LIMIT 1");
     const ultimoFolio = result.rows[0]?.folio || 'TR-000000';
     const numero = parseInt(ultimoFolio.replace('TR-', '')) + 1;
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
+
+    // 🟡 Logs para depurar los campos
+    console.log("📩 precio_servicio recibido:", datos.precio_servicio);
+    console.log("📩 porcentaje_descuento recibido:", datos.porcentaje_descuento);
 
     const query = `
       INSERT INTO reservaciones (
@@ -22,14 +25,16 @@ export default async function guardarTransporte(req, res) {
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
         nombre, apellido, comentarios, telefono, codigo_descuento,
-        porcentaje_descuento, precio_servicio, precio_total
+        porcentaje_descuento, precio_servicio, precio_total,
+        fecha_reservacion
       ) VALUES (
         $1, 'transportacion', $2, $3, $4, $5,
         $6, $7, $8, $9,
         $10, $11, $12, $13,
         $14, $15, $16, $17,
         $18, $19, $20, $21, $22,
-        $23, $24, $25
+        $23, $24, $25,
+        NOW()
       )
     `;
 
@@ -56,9 +61,9 @@ export default async function guardarTransporte(req, res) {
       datos.comentarios || '',
       datos.telefono || '',
       datos.codigo_descuento || '',
-      datos.porcentaje_descuento || 0,
-      datos.precio_servicio || 0,
-      datos.precio_total || 0
+      Number(datos.porcentaje_descuento) || 0,
+      Number(datos.precio_servicio) || 0,
+      Number(datos.precio_total) || 0
     ];
 
     await pool.query(query, valores);
