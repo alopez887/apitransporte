@@ -14,27 +14,40 @@ export default async function guardarTransporte(req, res) {
     const numero = parseInt(ultimoFolio.replace('TR-', '')) + 1;
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
 
-    // 🟢 Logs para depuración
-    console.log("📦 descuento_aplicado recibido:", datos.descuento_aplicado);
-    console.log("📦 precio_servicio recibido:", datos.precio_servicio);
+    // 🟢 LOGS de entrada
+    console.log("✅ porcentaje_descuento recibido:", datos.porcentaje_descuento);
+    console.log("✅ precio_servicio recibido:", datos.precio_servicio);
     console.log("⏰ hora_llegada cruda recibida:", datos.hora_llegada);
 
-    // Validaciones robustas
-    const porcentaje_descuento = (datos.descuento_aplicado && !isNaN(Number(datos.descuento_aplicado)))
-      ? Number(datos.descuento_aplicado)
+    // Validar campos numéricos
+    const porcentaje_descuento = (datos.porcentaje_descuento && !isNaN(Number(datos.porcentaje_descuento)))
+      ? Number(datos.porcentaje_descuento)
       : 0;
 
     const precio_servicio = (datos.precio_servicio && !isNaN(Number(datos.precio_servicio)))
       ? Number(datos.precio_servicio)
       : 0;
 
-    const hora_llegada = typeof datos.hora_llegada === 'string' && datos.hora_llegada.match(/^\d{2}:\d{2}$/)
-      ? datos.hora_llegada
-      : null;
+    // 🔧 Normalizar hora_llegada a formato HH:mm
+    let hora_llegada = null;
+    if (typeof datos.hora_llegada === 'string') {
+      const match = datos.hora_llegada.match(/^(\d{2}):(\d{2})$/);
+      if (match) {
+        hora_llegada = datos.hora_llegada;
+      } else {
+        // intenta parsear formatos como "09:47 p. m."
+        const fecha = new Date(`1970-01-01T${datos.hora_llegada}`);
+        if (!isNaN(fecha.getTime())) {
+          const horas = fecha.getHours().toString().padStart(2, '0');
+          const minutos = fecha.getMinutes().toString().padStart(2, '0');
+          hora_llegada = `${horas}:${minutos}`;
+        }
+      }
+    }
 
-    const hora_salida = datos.hora_salida && datos.hora_salida.trim() !== '' ? datos.hora_salida : null;
+    console.log("⏳ hora_llegada enviada a DB:", hora_llegada);
 
-    console.log("⏱️ hora_llegada enviada a DB:", hora_llegada);
+    const hora_salida = datos.hora_salida?.trim() || null;
 
     const query = `
       INSERT INTO reservaciones (
