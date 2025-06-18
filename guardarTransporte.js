@@ -29,28 +29,27 @@ export default async function guardarTransporte(req, res) {
       ? Number(datos.precio_servicio)
       : 0;
 
-    // ✅ Normalizar hora_llegada desde formatos como "09:41 a. m."
+    // ✅ Normalizar hora_llegada desde formato 24h o 12h con AM/PM
     let hora_llegada = null;
     if (typeof datos.hora_llegada === 'string' && datos.hora_llegada.trim() !== '') {
       const cruda = datos.hora_llegada.trim();
 
-      // Si ya viene como HH:mm
-      const formato24 = cruda.match(/^(\d{2}):(\d{2})$/);
+      const formato24 = cruda.match(/^(\d{1,2}):(\d{2})$/);
+      const formato12 = cruda.match(/(\d{1,2}):(\d{2})\s*(a\.m\.|p\.m\.)/i);
+
       if (formato24) {
-        hora_llegada = cruda;
-      } else {
-        // Intenta convertir desde formato 12h con AM/PM
-        const match = cruda.match(/(\d{1,2}):(\d{2})\s*(a\.m\.|p\.m\.)/i);
-        if (match) {
-          let horas = parseInt(match[1], 10);
-          const minutos = match[2];
-          const periodo = match[3].toLowerCase();
+        const horas = formato24[1].padStart(2, '0');
+        const minutos = formato24[2];
+        hora_llegada = `${horas}:${minutos}`;
+      } else if (formato12) {
+        let horas = parseInt(formato12[1], 10);
+        const minutos = formato12[2];
+        const periodo = formato12[3].toLowerCase();
 
-          if (periodo === 'p.m.' && horas < 12) horas += 12;
-          if (periodo === 'a.m.' && horas === 12) horas = 0;
+        if (periodo === 'p.m.' && horas < 12) horas += 12;
+        if (periodo === 'a.m.' && horas === 12) horas = 0;
 
-          hora_llegada = `${horas.toString().padStart(2, '0')}:${minutos}`;
-        }
+        hora_llegada = `${horas.toString().padStart(2, '0')}:${minutos}`;
       }
     }
 
@@ -74,7 +73,7 @@ export default async function guardarTransporte(req, res) {
         $14, $15, $16, $17,
         $18, $19, $20, $21, $22,
         $23, $24, $25,
-        NOW()
+        NOW() AT TIME ZONE 'America/Mazatlan'
       )
     `;
 
