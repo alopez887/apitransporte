@@ -14,9 +14,17 @@ export default async function guardarTransporte(req, res) {
     const numero = parseInt(ultimoFolio.replace('TR-', '')) + 1;
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
 
-    // 🟡 Logs para depurar los campos
-    console.log("📩 precio_servicio recibido:", datos.precio_servicio);
-    console.log("📩 porcentaje_descuento recibido:", datos.porcentaje_descuento);
+    // Corrección de campos que podrían venir como string vacío
+    const porcentaje_descuento = (datos.porcentaje_descuento && !isNaN(Number(datos.porcentaje_descuento)))
+      ? Number(datos.porcentaje_descuento)
+      : 0;
+
+    const precio_servicio = (datos.precio_servicio && !isNaN(Number(datos.precio_servicio)))
+      ? Number(datos.precio_servicio)
+      : 0;
+
+    const hora_llegada = datos.hora_llegada && datos.hora_llegada.trim() !== '' ? datos.hora_llegada : null;
+    const hora_salida = datos.hora_salida && datos.hora_salida.trim() !== '' ? datos.hora_salida : null;
 
     const query = `
       INSERT INTO reservaciones (
@@ -42,18 +50,18 @@ export default async function guardarTransporte(req, res) {
       nuevoFolio,
       datos.tipo_transporte || '',
       datos.proveedor || '',
-      datos.estatus || 'pendiente',
+      1, // Estatus 1 = Activo (ya pagado)
       datos.zona || '',
       datos.capacidad || '',
       datos.cantidad_pasajeros || 0,
       datos.hotel_llegada || '',
       datos.hotel_salida || '',
       datos.fecha_llegada || null,
-      datos.hora_llegada || null,
+      hora_llegada,
       datos.aerolinea_llegada || '',
       datos.vuelo_llegada || '',
       datos.fecha_salida || null,
-      datos.hora_salida || null,
+      hora_salida,
       datos.aerolinea_salida || '',
       datos.vuelo_salida || '',
       datos.nombre || '',
@@ -61,8 +69,8 @@ export default async function guardarTransporte(req, res) {
       datos.comentarios || '',
       datos.telefono || '',
       datos.codigo_descuento || '',
-      isNaN(Number(datos.porcentaje_descuento)) ? null : Number(datos.porcentaje_descuento),
-	  isNaN(Number(datos.precio_servicio)) ? null : Number(datos.precio_servicio),
+      porcentaje_descuento,
+      precio_servicio,
       Number(datos.precio_total) || 0
     ];
 
@@ -75,7 +83,7 @@ export default async function guardarTransporte(req, res) {
       mensaje: `Reservación registrada correctamente con folio ${nuevoFolio}.`
     });
   } catch (error) {
-    console.error("❌ Error al guardar transporte:", error);
+    console.error("Error al guardar transporte:", error);
     res.status(500).json({ error: "Error interno al guardar transporte." });
   }
 }
