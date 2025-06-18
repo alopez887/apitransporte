@@ -14,6 +14,10 @@ export default async function guardarTransporte(req, res) {
     const numero = parseInt(ultimoFolio.replace('TR-', '')) + 1;
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
 
+    // 🟢 Logs para ver qué llega
+    console.log("📦 porcentaje_descuento recibido:", datos.porcentaje_descuento);
+    console.log("📦 precio_servicio recibido:", datos.precio_servicio);
+
     // Corrección de campos que podrían venir como string vacío
     const porcentaje_descuento = (datos.porcentaje_descuento && !isNaN(Number(datos.porcentaje_descuento)))
       ? Number(datos.porcentaje_descuento)
@@ -83,7 +87,7 @@ export default async function guardarTransporte(req, res) {
       mensaje: `Reservación registrada correctamente con folio ${nuevoFolio}.`
     });
   } catch (error) {
-    console.error("Error al guardar transporte:", error);
+    console.error("❌ Error al guardar transporte:", error);
     res.status(500).json({ error: "Error interno al guardar transporte." });
   }
 }
