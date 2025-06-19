@@ -129,6 +129,7 @@ export default async function guardarTransporte(req, res) {
     res.status(200).json({
       exito: true,
       folio: nuevoFolio,
+	  correo: datos.correo_cliente, // ✅ Este campo es el que falta
       mensaje: `Reservación registrada correctamente con folio ${nuevoFolio}.`
     });
 
