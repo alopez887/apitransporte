@@ -67,6 +67,12 @@ export default async function guardarTransporte(req, res) {
       console.log("📍 Zona obtenida desde DB:", zonaBD);
     }
 
+    // 🔎 LOG para confirmar base de datos activa
+    const poolClient = await pool.connect();
+    const dbInfo = await poolClient.query('SELECT current_database()');
+    console.log("🧷 Conectado a base de datos:", dbInfo.rows[0]);
+    poolClient.release();
+
     const query = `
       INSERT INTO reservaciones (
         folio, tipo_servicio, tipo_transporte, proveedor, estatus, zona,
@@ -127,6 +133,7 @@ export default async function guardarTransporte(req, res) {
       folio: nuevoFolio,
       mensaje: `Reservación registrada correctamente con folio ${nuevoFolio}.`
     });
+
   } catch (error) {
     console.error("❌ Error al guardar transporte:");
     console.error("📛 Mensaje:", error.message);
