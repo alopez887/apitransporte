@@ -56,13 +56,17 @@ export default async function guardarTransporte(req, res) {
 
     const hora_salida = datos.hora_salida?.trim() || null;
 
+    // ✅ PRIORIDAD zona desde el frontend
     let zonaBD = '';
-    if (datos.hotel_llegada) {
+    if (datos.zona && datos.zona.trim() !== '') {
+      zonaBD = datos.zona.trim();
+      console.log("📍 Zona obtenida desde frontend:", zonaBD);
+    } else if (datos.hotel_llegada) {
       const zonaResult = await pool.query(
         "SELECT zona FROM hoteles_zona WHERE UPPER(hotel) LIKE UPPER($1)",
         [`%${datos.hotel_llegada}%`]
       );
-      console.log("📊 Resultado query zona:", zonaResult.rows);
+      console.log("📊 Resultado query zona desde DB:", zonaResult.rows);
       zonaBD = zonaResult.rows[0]?.zona || '';
       console.log("📍 Zona obtenida desde DB:", zonaBD);
     }
@@ -73,9 +77,11 @@ export default async function guardarTransporte(req, res) {
     console.log("🧷 Conectado a base de datos:", dbInfo.rows[0]);
 
     // 🔎 VERIFICAR COLUMNAS EXISTENTES EN 'reservaciones'
-    const columnas = await poolClient.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'reservaciones'`);
+    const columnas = await poolClient.query(`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'reservaciones'
+    `);
     console.log("🧩 Columnas actuales en reservaciones:", columnas.rows);
-
     poolClient.release();
 
     const query = `
