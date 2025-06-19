@@ -63,9 +63,9 @@ export default async function guardarTransporte(req, res) {
       console.log("📍 Zona obtenida desde frontend:", zonaBD);
     } else if (datos.hotel_llegada) {
       const zonaResult = await pool.query(
-        "SELECT zona_id FROM hoteles_zona WHERE UPPER(hotel) LIKE UPPER($1)",
-        [`%${datos.hotel_llegada}%`]
-      );
+  "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
+  [`%${datos.hotel_llegada}%`]
+);
       console.log("📊 Resultado query zona desde DB:", zonaResult.rows);
       zonaBD = zonaResult.rows[0]?.zona_id || '';
       console.log("📍 Zona obtenida desde DB:", zonaBD);
