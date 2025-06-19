@@ -1,6 +1,8 @@
 import pool from './conexion.js';
 import { enviarCorreoTransporte } from './correosTransporte.js';
 
+console.log("🟢 guardando transporte — versión ACTUAL ejecutándose");
+
 export default async function guardarTransporte(req, res) {
   const datos = req.body;
 
@@ -9,15 +11,14 @@ export default async function guardarTransporte(req, res) {
   }
 
   try {
+    console.log("📥 Datos recibidos:", datos);
+
     const result = await pool.query("SELECT folio FROM reservaciones WHERE folio LIKE 'TR-%' ORDER BY id DESC LIMIT 1");
     const ultimoFolio = result.rows[0]?.folio || 'TR-000000';
     const numero = parseInt(ultimoFolio.replace('TR-', '')) + 1;
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
 
-    console.log("🛬 Datos completos recibidos:", datos);
-    console.log("✅ porcentaje_descuento recibido:", datos.porcentaje_descuento);
-    console.log("✅ precio_servicio recibido:", datos.precio_servicio);
-    console.log("⏰ hora_llegada cruda recibida:", datos.hora_llegada);
+    console.log("🆕 Nuevo folio generado:", nuevoFolio);
 
     const porcentaje_descuento = (datos.porcentaje_descuento && !isNaN(Number(datos.porcentaje_descuento)))
       ? Number(datos.porcentaje_descuento)
@@ -26,6 +27,10 @@ export default async function guardarTransporte(req, res) {
     const precio_servicio = (datos.precio_servicio && !isNaN(Number(datos.precio_servicio)))
       ? Number(datos.precio_servicio)
       : 0;
+
+    console.log("✅ porcentaje_descuento:", porcentaje_descuento);
+    console.log("✅ precio_servicio:", precio_servicio);
+    console.log("⏰ hora_llegada cruda:", datos.hora_llegada);
 
     let hora_llegada = null;
     if (typeof datos.hora_llegada === 'string' && datos.hora_llegada.trim() !== '') {
@@ -41,25 +46,23 @@ export default async function guardarTransporte(req, res) {
         let horas = parseInt(formato12[1], 10);
         const minutos = formato12[2];
         const periodo = formato12[3].toLowerCase();
-
         if (periodo === 'p.m.' && horas < 12) horas += 12;
         if (periodo === 'a.m.' && horas === 12) horas = 0;
-
         hora_llegada = `${horas.toString().padStart(2, '0')}:${minutos}`;
       }
     }
 
-    console.log("⏳ hora_llegada enviada a DB:", hora_llegada);
+    console.log("⏳ hora_llegada final:", hora_llegada);
 
     const hora_salida = datos.hora_salida?.trim() || null;
 
-    // ✅ Zona buscada con coincidencia parcial insensible a mayúsculas
     let zonaBD = '';
     if (datos.hotel_llegada) {
       const zonaResult = await pool.query(
         "SELECT zona FROM hoteles_zona WHERE UPPER(hotel) LIKE UPPER($1)",
         [`%${datos.hotel_llegada}%`]
       );
+      console.log("📊 Resultado query zona:", zonaResult.rows);
       zonaBD = zonaResult.rows[0]?.zona || '';
       console.log("📍 Zona obtenida desde DB:", zonaBD);
     }
@@ -113,6 +116,9 @@ export default async function guardarTransporte(req, res) {
       Number(datos.precio_total) || 0
     ];
 
+    console.log("🧾 QUERY:", query);
+    console.log("📦 VALORES:", valores);
+
     await pool.query(query, valores);
     await enviarCorreoTransporte({ folio: nuevoFolio, ...datos, zona: zonaBD });
 
@@ -122,7 +128,11 @@ export default async function guardarTransporte(req, res) {
       mensaje: `Reservación registrada correctamente con folio ${nuevoFolio}.`
     });
   } catch (error) {
-    console.error("❌ Error al guardar transporte:", error);
+    console.error("❌ Error al guardar transporte:");
+    console.error("📛 Mensaje:", error.message);
+    console.error("📄 Detalle:", error.detail);
+    console.error("📌 Código:", error.code);
+    console.error("📍 Stack:", error.stack);
     res.status(500).json({ error: "Error interno al guardar transporte." });
   }
 }
