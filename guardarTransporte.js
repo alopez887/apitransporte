@@ -77,7 +77,7 @@ export default async function guardarTransporte(req, res) {
         capacidad, cantidad_pasajeros, hotel_llegada, hotel_salida,
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
-        nombre, apellido, comentarios, telefono, codigo_descuento,
+        nombre, apellido, correo_cliente, comentarios, telefono, codigo_descuento,
         porcentaje_descuento, precio_servicio, precio_total,
         fecha
       ) VALUES (
@@ -112,6 +112,7 @@ export default async function guardarTransporte(req, res) {
       datos.vuelo_salida || '',
       datos.nombre || '',
       datos.apellido || '',
+	  datos.correo_cliente || '',
       datos.comentarios || '',
       datos.telefono || '',
       datos.codigo_descuento || '',
