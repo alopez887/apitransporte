@@ -14,7 +14,6 @@ export default async function guardarTransporte(req, res) {
     const numero = parseInt(ultimoFolio.replace('TR-', '')) + 1;
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
 
-    // 🟢 LOGS de entrada
     console.log("🛬 Datos completos recibidos:", datos);
     console.log("✅ porcentaje_descuento recibido:", datos.porcentaje_descuento);
     console.log("✅ precio_servicio recibido:", datos.precio_servicio);
@@ -57,6 +56,17 @@ export default async function guardarTransporte(req, res) {
 
     const hora_salida = datos.hora_salida?.trim() || null;
 
+    // 🔍 Obtener zona desde base de datos según hotel_llegada
+    let zonaBD = '';
+    if (datos.hotel_llegada) {
+      const zonaResult = await pool.query(
+        "SELECT zona FROM hoteles_zona WHERE hotel = $1",
+        [datos.hotel_llegada]
+      );
+      zonaBD = zonaResult.rows[0]?.zona || '';
+      console.log("📍 Zona obtenida desde DB:", zonaBD);
+    }
+
     const query = `
       INSERT INTO reservaciones (
         folio, tipo_servicio, tipo_transporte, proveedor, estatus, zona,
@@ -82,7 +92,7 @@ export default async function guardarTransporte(req, res) {
       datos.tipo_transporte || '',
       datos.proveedor || '',
       1,
-      String(datos.zona ?? ''),
+      zonaBD,
       datos.capacidad || '',
       datos.cantidad_pasajeros || 0,
       datos.hotel_llegada || '',
@@ -106,7 +116,7 @@ export default async function guardarTransporte(req, res) {
     ];
 
     await pool.query(query, valores);
-    await enviarCorreoTransporte({ folio: nuevoFolio, ...datos });
+    await enviarCorreoTransporte({ folio: nuevoFolio, ...datos, zona: zonaBD });
 
     res.status(200).json({
       exito: true,
