@@ -56,16 +56,15 @@ export default async function guardarTransporte(req, res) {
 
     const hora_salida = datos.hora_salida?.trim() || null;
 
-    // ✅ CONSULTA ZONA POR hotel_llegada si zona no viene desde frontend
     let zonaBD = '';
     if (datos.zona && datos.zona.trim() !== '') {
       zonaBD = datos.zona.trim();
       console.log("📍 Zona obtenida desde frontend:", zonaBD);
     } else if (datos.hotel_llegada) {
       const zonaResult = await pool.query(
-  "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
-  [`%${datos.hotel_llegada}%`]
-);
+        "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
+        [`%${datos.hotel_llegada}%`]
+      );
       console.log("📊 Resultado query zona desde DB:", zonaResult.rows);
       zonaBD = zonaResult.rows[0]?.zona_id || '';
       console.log("📍 Zona obtenida desde DB:", zonaBD);
@@ -78,15 +77,14 @@ export default async function guardarTransporte(req, res) {
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
         nombre, apellido, correo_cliente, comentarios, telefono, codigo_descuento,
-        porcentaje_descuento, precio_servicio, precio_total,
-        fecha
+        porcentaje_descuento, precio_servicio, precio_total, fecha
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
         $11, $12, $13, $14,
         $15, $16, $17, $18,
-        $19, $20, $21, $22, $23,
-        $24, $25, $26,
+        $19, $20, $21, $22, $23, $24,
+        $25, $26, $27,
         NOW() AT TIME ZONE 'America/Mazatlan'
       )
     `;
@@ -112,7 +110,7 @@ export default async function guardarTransporte(req, res) {
       datos.vuelo_salida || '',
       datos.nombre || '',
       datos.apellido || '',
-	  datos.correo_cliente || '',
+      datos.correo_cliente || '',
       datos.comentarios || '',
       datos.telefono || '',
       datos.codigo_descuento || '',
@@ -130,7 +128,7 @@ export default async function guardarTransporte(req, res) {
     res.status(200).json({
       exito: true,
       folio: nuevoFolio,
-	  correo: datos.correo_cliente, // ✅ Este campo es el que falta
+      correo: datos.correo_cliente,
       mensaje: `Reservación registrada correctamente con folio ${nuevoFolio}.`
     });
 
