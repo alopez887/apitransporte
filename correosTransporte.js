@@ -49,10 +49,10 @@ export async function enviarCorreoTransporte(datos) {
       </tr>
     </table>
     <p><strong>Folio:</strong> ${datos.folio}</p>
-    <p><strong>Name:</strong> ${datos.nombre_cliente}</p>
+    <p><strong>Name:</strong> ${datos.nombre}</p>
     <p><strong>Email:</strong> ${datos.correo_cliente}</p>
-    <p><strong>Phone:</strong> ${datos.telefono_cliente}</p>
-    <p><strong>Transport:</strong> ${datos.nombre_tour}</p>
+    <p><strong>Phone:</strong> ${datos.telefono}</p>
+    <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
     ${datos.tipo_viaje ? `<p><strong>Trip Type:</strong> ${datos.tipo_viaje}</p>` : ''}
     ${datos.pasajeros ? `<p><strong>Passengers:</strong> ${datos.pasajeros}</p>` : ''}
     ${datos.total_pago ? `<p><strong>Total:</strong> $${datos.total_pago.toFixed(2)} ${datos.moneda}</p>` : ''}
