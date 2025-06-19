@@ -19,7 +19,6 @@ export default async function guardarTransporte(req, res) {
     console.log("✅ precio_servicio recibido:", datos.precio_servicio);
     console.log("⏰ hora_llegada cruda recibida:", datos.hora_llegada);
 
-    // Validar campos numéricos
     const porcentaje_descuento = (datos.porcentaje_descuento && !isNaN(Number(datos.porcentaje_descuento)))
       ? Number(datos.porcentaje_descuento)
       : 0;
@@ -28,11 +27,9 @@ export default async function guardarTransporte(req, res) {
       ? Number(datos.precio_servicio)
       : 0;
 
-    // ✅ Normalizar hora_llegada desde formato 24h o 12h con AM/PM
     let hora_llegada = null;
     if (typeof datos.hora_llegada === 'string' && datos.hora_llegada.trim() !== '') {
       const cruda = datos.hora_llegada.trim();
-
       const formato24 = cruda.match(/^(\d{1,2}):(\d{2})$/);
       const formato12 = cruda.match(/(\d{1,2}):(\d{2})\s*(a\.m\.|p\.m\.)/i);
 
@@ -56,12 +53,12 @@ export default async function guardarTransporte(req, res) {
 
     const hora_salida = datos.hora_salida?.trim() || null;
 
-    // 🔍 Obtener zona desde base de datos según hotel_llegada
+    // ✅ Zona buscada con coincidencia parcial insensible a mayúsculas
     let zonaBD = '';
     if (datos.hotel_llegada) {
       const zonaResult = await pool.query(
-        "SELECT zona FROM hoteles_zona WHERE hotel = $1",
-        [datos.hotel_llegada]
+        "SELECT zona FROM hoteles_zona WHERE UPPER(hotel) LIKE UPPER($1)",
+        [`%${datos.hotel_llegada}%`]
       );
       zonaBD = zonaResult.rows[0]?.zona || '';
       console.log("📍 Zona obtenida desde DB:", zonaBD);
@@ -77,18 +74,19 @@ export default async function guardarTransporte(req, res) {
         porcentaje_descuento, precio_servicio, precio_total,
         fecha
       ) VALUES (
-        $1, 'transportacion', $2, $3, $4, $5,
-        $6, $7, $8, $9,
-        $10, $11, $12, $13,
-        $14, $15, $16, $17,
-        $18, $19, $20, $21, $22,
-        $23, $24, $25,
+        $1, $2, $3, $4, $5, $6,
+        $7, $8, $9, $10,
+        $11, $12, $13, $14,
+        $15, $16, $17, $18,
+        $19, $20, $21, $22, $23,
+        $24, $25, $26,
         NOW() AT TIME ZONE 'America/Mazatlan'
       )
     `;
 
     const valores = [
       nuevoFolio,
+      'transportacion',
       datos.tipo_transporte || '',
       datos.proveedor || '',
       1,
