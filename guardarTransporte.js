@@ -82,7 +82,7 @@ export default async function guardarTransporte(req, res) {
       datos.tipo_transporte || '',
       datos.proveedor || '',
       1,
-      datos.zona || '',
+      String(datos.zona ?? ''),
       datos.capacidad || '',
       datos.cantidad_pasajeros || 0,
       datos.hotel_llegada || '',
