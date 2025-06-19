@@ -1,4 +1,3 @@
-//server.js
 import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
@@ -11,9 +10,16 @@ const { Pool } = pkg;
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+// ✅ Middleware CORS configurado correctamente
+app.use(cors({
+  origin: '*', // Puedes limitarlo a 'https://nkmsistemas.wixsite.com' si gustas
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
+
 app.use(express.json());
 
+// 🔗 Conexión a la base de datos
 const pool = new Pool({
   host: process.env.PGHOST,
   user: process.env.PGUSER,
