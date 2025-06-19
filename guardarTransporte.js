@@ -67,10 +67,15 @@ export default async function guardarTransporte(req, res) {
       console.log("📍 Zona obtenida desde DB:", zonaBD);
     }
 
-    // 🔎 LOG para confirmar base de datos activa
+    // 🔎 VERIFICAR BASE DE DATOS ACTIVA
     const poolClient = await pool.connect();
     const dbInfo = await poolClient.query('SELECT current_database()');
     console.log("🧷 Conectado a base de datos:", dbInfo.rows[0]);
+
+    // 🔎 VERIFICAR COLUMNAS EXISTENTES EN 'reservaciones'
+    const columnas = await poolClient.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'reservaciones'`);
+    console.log("🧩 Columnas actuales en reservaciones:", columnas.rows);
+
     poolClient.release();
 
     const query = `
