@@ -59,19 +59,27 @@ export default async function guardarTransporte(req, res) {
     const vuelo_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Redondo" ? datos.numero_vuelo || '' : '';
 
     // 🧭 Zona
-    let zonaBD = '';
-    if (datos.zona && datos.zona.trim() !== '') {
-      zonaBD = datos.zona.trim();
-      console.log("📍 Zona obtenida desde frontend:", zonaBD);
-    } else if (datos.hotel_llegada) {
-      const zonaResult = await pool.query(
-        "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
-        [`%${datos.hotel_llegada}%`]
-      );
-      console.log("📊 Resultado query zona desde DB:", zonaResult.rows);
-      zonaBD = zonaResult.rows[0]?.zona_id || '';
-      console.log("📍 Zona obtenida desde DB:", zonaBD);
-    }
+let zonaBD = '';
+if (datos.zona && datos.zona.trim() !== '') {
+  zonaBD = datos.zona.trim();
+  console.log("📍 Zona obtenida desde frontend:", zonaBD);
+} else if (datos.hotel_llegada) {
+  const zonaResult = await pool.query(
+    "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
+    [`%${datos.hotel_llegada}%`]
+  );
+  console.log("📊 Resultado query zona (por hotel_llegada):", zonaResult.rows);
+  zonaBD = zonaResult.rows[0]?.zona_id || '';
+  console.log("📍 Zona obtenida desde DB:", zonaBD);
+} else if (datos.hotel_salida) {
+  const zonaResult = await pool.query(
+    "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
+    [`%${datos.hotel_salida}%`]
+  );
+  console.log("📊 Resultado query zona (por hotel_salida):", zonaResult.rows);
+  zonaBD = zonaResult.rows[0]?.zona_id || '';
+  console.log("📍 Zona obtenida desde DB:", zonaBD);
+}
 
     const query = `
       INSERT INTO reservaciones (
