@@ -96,6 +96,13 @@ const tripTypeIngles = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
     ${datos.aerolinea_llegada ? `<p><strong>Arrival Airline:</strong> ${datos.aerolinea_llegada}</p>` : ''}
     ${datos.vuelo_llegada ? `<p><strong>Arrival Flight:</strong> ${datos.vuelo_llegada}</p>` : ''}
 
+	<!-- Departure Specific -->
+    ${datos.hotel_salida ? `<p><strong>Departure Hotel:</strong> ${datos.hotel_salida}</p>` : ''}
+    ${datos.fecha ? `<p><strong>Departure Date:</strong> ${datos.fecha}</p>` : ''}
+    ${datos.hora ? `<p><strong>Departure Time:</strong> ${formatoHora12(datos.hora)}</p>` : ''}
+    ${datos.aerolinea ? `<p><strong>Departure Airline:</strong> ${datos.aerolinea}</p>` : ''}
+    ${datos.numero_vuelo ? `<p><strong>Departure Flight Number:</strong> ${datos.numero_vuelo}</p>` : ''}
+
     <!-- Total & Note -->
     <p><strong>Total:</strong> $${safeToFixed(datos.precio_total)} USD</p>
     ${datos.nota && datos.nota.trim() !== '' ? `<p><strong>Note:</strong> ${datos.nota}</p>` : ''}
