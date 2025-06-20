@@ -30,8 +30,8 @@ export default async function guardarTransporte(req, res) {
 
     console.log("✅ porcentaje_descuento:", porcentaje_descuento);
     console.log("✅ precio_servicio:", precio_servicio);
-    console.log("⏰ hora_llegada cruda:", datos.hora_llegada);
 
+    // 🔁 Compatibilidad: hora_llegada (conformateo si aplica)
     let hora_llegada = null;
     if (typeof datos.hora_llegada === 'string' && datos.hora_llegada.trim() !== '') {
       const cruda = datos.hora_llegada.trim();
@@ -52,10 +52,13 @@ export default async function guardarTransporte(req, res) {
       }
     }
 
-    console.log("⏳ hora_llegada final:", hora_llegada);
+    // ⏰ Datos de salida o redondo
+    const fecha_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Redondo" ? datos.fecha : null;
+    const hora_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Redondo" ? datos.hora?.trim() || null : null;
+    const aerolinea_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Redondo" ? datos.aerolinea || '' : '';
+    const vuelo_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Redondo" ? datos.numero_vuelo || '' : '';
 
-    const hora_salida = datos.hora_salida?.trim() || null;
-
+    // 🧭 Zona
     let zonaBD = '';
     if (datos.zona && datos.zona.trim() !== '') {
       zonaBD = datos.zona.trim();
@@ -104,10 +107,10 @@ export default async function guardarTransporte(req, res) {
       hora_llegada,
       datos.aerolinea_llegada || '',
       datos.vuelo_llegada || '',
-      datos.fecha_salida || null,
+      fecha_salida,
       hora_salida,
-      datos.aerolinea_salida || '',
-      datos.vuelo_salida || '',
+      aerolinea_salida,
+      vuelo_salida,
       datos.nombre || '',
       datos.apellido || '',
       datos.correo_cliente || '',
@@ -121,18 +124,17 @@ export default async function guardarTransporte(req, res) {
 
     console.log("🧾 QUERY:", query);
     console.log("📦 VALORES:", valores);
-
-	console.log("🖼️ Enviando imagen al correo:", datos.imagen);
+    console.log("🖼️ Enviando imagen al correo:", datos.imagen);
 
     await pool.query(query, valores);
 
     await enviarCorreoTransporte({
-	...datos,
-	folio: nuevoFolio,
-	zona: zonaBD,
-	precio_total: Number(datos.precio_total || 0),
-	imagen: datos.imagen || ''
-});
+      ...datos,
+      folio: nuevoFolio,
+      zona: zonaBD,
+      precio_total: Number(datos.precio_total || 0),
+      imagen: datos.imagen || ''
+    });
 
     res.status(200).json({
       exito: true,
