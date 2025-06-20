@@ -122,12 +122,16 @@ export default async function guardarTransporte(req, res) {
     console.log("🧾 QUERY:", query);
     console.log("📦 VALORES:", valores);
 
+	console.log("🖼️ Enviando imagen al correo:", datos.imagen);
+
     await pool.query(query, valores);
+
     await enviarCorreoTransporte({
 	...datos,
 	folio: nuevoFolio,
 	zona: zonaBD,
-	precio_total: Number(datos.precio_total || 0)
+	precio_total: Number(datos.precio_total || 0),
+	imagen: datos.imagen || ''
 });
 
     res.status(200).json({
