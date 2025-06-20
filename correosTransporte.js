@@ -40,6 +40,12 @@ export async function enviarCorreoTransporte(datos) {
       }
     });
 
+    // ✅ Función segura para usar .toFixed()
+    const safeToFixed = (valor) => {
+      const num = Number(valor);
+      return isNaN(num) ? '0.00' : num.toFixed(2);
+    };
+
     const mensajeHTML = `
   <div style="max-width:600px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
     <!-- Header -->
@@ -70,7 +76,7 @@ export async function enviarCorreoTransporte(datos) {
     ${datos.vuelo_llegada ? `<p><strong>Arrival Flight:</strong> ${datos.vuelo_llegada}</p>` : ''}
 
     <!-- Total & Note -->
-    <p><strong>Total:</strong> $${datos.total_pago.toFixed(2)} ${datos.moneda}</p>
+    <p><strong>Total:</strong> $${safeToFixed(datos.precio_total)} USD</p>
     ${datos.nota && datos.nota.trim() !== '' ? `<p><strong>Note:</strong> ${datos.nota}</p>` : ''}
 
     <!-- Transport Image -->
