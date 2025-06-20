@@ -3,6 +3,10 @@ import axios from 'axios';
 
 export async function enviarCorreoTransporte(datos) {
   try {
+	  
+	// 📥 Mostrar todos los datos recibidos
+    console.log("📥 Datos recibidos para el correo:", datos);
+	  
     let imagenAdjunta = null;
 
     if (datos.imagen && datos.imagen.startsWith('http')) {
@@ -75,7 +79,7 @@ export async function enviarCorreoTransporte(datos) {
     <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
     <p><strong>Capacity:</strong> ${datos.capacidad}</p>
     <p><strong>Trip Type:</strong> ${datos.tipo_viaje}</p>
-    <p><strong>Passengers:</strong> ${datos.pasajeros}</p>
+    ${(datos.cantidad_pasajeros || datos.pasajeros) ? `<p><strong>Passengers:</strong> ${datos.cantidad_pasajeros || datos.pasajeros}</p>` : ''}
 
     <!-- Arrival Specific -->
     ${datos.hotel_llegada ? `<p><strong>Arrival Hotel:</strong> ${datos.hotel_llegada}</p>` : ''}
@@ -103,6 +107,8 @@ export async function enviarCorreoTransporte(datos) {
     </p>
   </div>
 `;
+
+console.log("📤 Enviando correo con imagen:", !!imagenAdjunta);
 
     await transporter.sendMail({
       from: `Cabo Travels Solutions - Transport <${process.env.EMAIL_USER}>`,
