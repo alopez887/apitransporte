@@ -1,6 +1,16 @@
 import nodemailer from 'nodemailer';
 import axios from 'axios';
 
+const politicasHTML = `
+  <div style="margin-top:30px;padding-top:15px;border-top:1px solid #ccc;font-size:13px;color:#555;">
+    <strong>📌 Cancellation Policy:</strong><br>
+	
+	- All cancellations or refund requests are subject to a 10% fee of the total amount paid.
+	<strong>- No refunds will be issued for cancellations made less than 24 hours in advance or in case of no-shows.</strong>
+	
+  </div>
+`;
+
 export async function enviarCorreoTransporte(datos) {
   try {
 	  
@@ -120,6 +130,8 @@ const tripTypeIngles = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
     <p style="margin-top:20px;font-size:14px;color:#555;">
       📩 Confirmation sent to: <a href="mailto:${datos.correo_cliente}">${datos.correo_cliente}</a>
     </p>
+	
+  ${politicasHTML}
   </div>
 `;
 
