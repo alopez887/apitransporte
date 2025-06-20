@@ -58,6 +58,14 @@ export async function enviarCorreoTransporte(datos) {
       const hora12 = (horaNum % 12) || 12;
       return `${hora12}:${m} ${sufijo}`;
     };
+	
+	const traduccionTripType = {
+  "Llegada": "Arrival",
+  "Salida": "Departure",
+  "Ida y vuelta": "Round Trip"
+};
+
+const tripTypeIngles = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
 
     const mensajeHTML = `
   <div style="max-width:600px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
@@ -71,14 +79,14 @@ export async function enviarCorreoTransporte(datos) {
 
     <!-- Client Info -->
     <p><strong>Folio:</strong> ${datos.folio}</p>
-    <p><strong>Name:</strong> ${datos.nombre}</p>
+    <p><strong>Name:</strong> ${datos.nombre} ${datos.apellido}</p>
     <p><strong>Email:</strong> ${datos.correo_cliente}</p>
     <p><strong>Phone:</strong> ${datos.telefono}</p>
 
     <!-- Transport Details -->
     <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
     <p><strong>Capacity:</strong> ${datos.capacidad}</p>
-    <p><strong>Trip Type:</strong> ${datos.tipo_viaje}</p>
+    <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
     ${(datos.cantidad_pasajeros || datos.pasajeros) ? `<p><strong>Passengers:</strong> ${datos.cantidad_pasajeros || datos.pasajeros}</p>` : ''}
 
     <!-- Arrival Specific -->
