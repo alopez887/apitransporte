@@ -1,4 +1,3 @@
-// correosTransporte.js
 import nodemailer from 'nodemailer';
 import axios from 'axios';
 
@@ -40,10 +39,20 @@ export async function enviarCorreoTransporte(datos) {
       }
     });
 
-    // ✅ Función segura para usar .toFixed()
+    // 🔐 toFixed seguro
     const safeToFixed = (valor) => {
       const num = Number(valor);
       return isNaN(num) ? '0.00' : num.toFixed(2);
+    };
+
+    // ⏰ Convertir a formato AM/PM si viene como 24h
+    const formatoHora12 = (hora) => {
+      if (!hora) return '';
+      const [h, m] = hora.split(':');
+      const horaNum = parseInt(h, 10);
+      const sufijo = horaNum >= 12 ? 'p.m.' : 'a.m.';
+      const hora12 = (horaNum % 12) || 12;
+      return `${hora12}:${m} ${sufijo}`;
     };
 
     const mensajeHTML = `
@@ -71,7 +80,7 @@ export async function enviarCorreoTransporte(datos) {
     <!-- Arrival Specific -->
     ${datos.hotel_llegada ? `<p><strong>Arrival Hotel:</strong> ${datos.hotel_llegada}</p>` : ''}
     ${datos.fecha_llegada ? `<p><strong>Arrival Date:</strong> ${datos.fecha_llegada}</p>` : ''}
-    ${datos.hora_llegada ? `<p><strong>Arrival Time:</strong> ${datos.hora_llegada}</p>` : ''}
+    ${datos.hora_llegada ? `<p><strong>Arrival Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>` : ''}
     ${datos.aerolinea_llegada ? `<p><strong>Arrival Airline:</strong> ${datos.aerolinea_llegada}</p>` : ''}
     ${datos.vuelo_llegada ? `<p><strong>Arrival Flight:</strong> ${datos.vuelo_llegada}</p>` : ''}
 
@@ -80,7 +89,7 @@ export async function enviarCorreoTransporte(datos) {
     ${datos.nota && datos.nota.trim() !== '' ? `<p><strong>Note:</strong> ${datos.nota}</p>` : ''}
 
     <!-- Transport Image -->
-    ${imagenAdjunta ? `<p><img src="cid:imagenTransporte" width="400" alt="Imagen del transporte" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>` : ''}
+    ${imagenAdjunta ? `<p><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>` : ''}
 
     <!-- Recommendations -->
     <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:10px 15px;margin-top:20px;border-radius:5px;">
