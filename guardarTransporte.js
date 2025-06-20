@@ -123,7 +123,12 @@ export default async function guardarTransporte(req, res) {
     console.log("📦 VALORES:", valores);
 
     await pool.query(query, valores);
-    await enviarCorreoTransporte({ folio: nuevoFolio, ...datos, zona: zonaBD });
+    await enviarCorreoTransporte({
+	...datos,
+	folio: nuevoFolio,
+	zona: zonaBD,
+	precio_total: Number(datos.precio_total || 0)
+});
 
     res.status(200).json({
       exito: true,
