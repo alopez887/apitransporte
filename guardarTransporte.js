@@ -12,7 +12,6 @@ export default async function guardarTransporte(req, res) {
   console.log("Teléfono:", datos.telefono || datos.cliente?.telefono);
   console.log("Total:", datos.precio_total || datos.total);
 
-  // ✅ Compatibilidad con los tres formularios
   const nombre = datos.nombre || datos.cliente?.nombre || '';
   const apellido = datos.apellido || datos.cliente?.apellido || '';
   const telefono = datos.telefono || datos.cliente?.telefono || '';
@@ -34,7 +33,6 @@ export default async function guardarTransporte(req, res) {
 
     console.log("🆕 Nuevo folio generado:", nuevoFolio);
 
-    // ✅ Valores numéricos validados
     const porcentaje_descuento = (datos.porcentaje_descuento && !isNaN(Number(datos.porcentaje_descuento)))
       ? Number(datos.porcentaje_descuento)
       : 0;
@@ -45,76 +43,75 @@ export default async function guardarTransporte(req, res) {
 
     console.log("✅ porcentaje_descuento:", porcentaje_descuento);
     console.log("✅ precio_servicio:", precio_servicio);
-	
-	
-	// 🧳 Datos para redondo
-if (datos.tipo_viaje === "Ida y vuelta") {
-  datos.fecha_llegada = datos.llegada?.fecha || null;
-  datos.hora_llegada = datos.llegada?.hora || null;
-  datos.aerolinea_llegada = datos.llegada?.aerolinea || '';
-  datos.vuelo_llegada = datos.llegada?.vuelo || '';
-  datos.hotel_llegada = datos.hotel || '';
 
-  datos.fecha = datos.salida?.fecha || null;
-  datos.hora = datos.salida?.hora || null;
-  datos.aerolinea = datos.salida?.aerolinea || '';
-  datos.numero_vuelo = datos.salida?.vuelo || '';
-  datos.hotel_salida = datos.hotel || '';
+    // 🧳 Variables para redondo
+    let fecha_llegada = null;
+    let hora_llegada = null;
+    let aerolinea_llegada = '';
+    let vuelo_llegada = '';
+    let hotel_llegada = '';
 
-}
-	
+    if (datos.tipo_viaje === "Ida y vuelta") {
+      fecha_llegada = datos.llegada?.fecha || null;
+      hora_llegada = datos.llegada?.hora || null;
+      aerolinea_llegada = datos.llegada?.aerolinea || '';
+      vuelo_llegada = datos.llegada?.vuelo || '';
+      hotel_llegada = datos.hotel || '';
+    } else {
+      hora_llegada = datos.hora_llegada || null;
+      hotel_llegada = datos.hotel || '';
+    }
 
-    // 🔁 Normalizar hora_llegada (si ya vino en string válida)
-let hora_llegada = datos.hora_llegada || null;
-if (typeof hora_llegada === 'string' && hora_llegada.trim() !== '') {
-  const cruda = hora_llegada.trim();
-  const formato24 = cruda.match(/^(\d{1,2}):(\d{2})$/);
-  const formato12 = cruda.match(/(\d{1,2}):(\d{2})\s*(a\.m\.|p\.m\.)/i);
+    // 🔁 Normalizar hora_llegada
+    if (typeof hora_llegada === 'string' && hora_llegada.trim() !== '') {
+      const cruda = hora_llegada.trim();
+      const formato24 = cruda.match(/^(\d{1,2}):(\d{2})$/);
+      const formato12 = cruda.match(/(\d{1,2}):(\d{2})\s*(a\.m\.|p\.m\.)/i);
 
-  if (formato24) {
-    const horas = formato24[1].padStart(2, '0');
-    const minutos = formato24[2];
-    hora_llegada = `${horas}:${minutos}`;
-  } else if (formato12) {
-    let horas = parseInt(formato12[1], 10);
-    const minutos = formato12[2];
-    const periodo = formato12[3].toLowerCase();
-    if (periodo === 'p.m.' && horas < 12) horas += 12;
-    if (periodo === 'a.m.' && horas === 12) horas = 0;
-    hora_llegada = `${horas.toString().padStart(2, '0')}:${minutos}`;
-  }
-}
+      if (formato24) {
+        const horas = formato24[1].padStart(2, '0');
+        const minutos = formato24[2];
+        hora_llegada = `${horas}:${minutos}`;
+      } else if (formato12) {
+        let horas = parseInt(formato12[1], 10);
+        const minutos = formato12[2];
+        const periodo = formato12[3].toLowerCase();
+        if (periodo === 'p.m.' && horas < 12) horas += 12;
+        if (periodo === 'a.m.' && horas === 12) horas = 0;
+        hora_llegada = `${horas.toString().padStart(2, '0')}:${minutos}`;
+      }
+    }
 
     // ⏰ Datos de salida o redondo
-    const fecha_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Redondo" ? datos.fecha : null;
-    const hora_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Redondo" ? datos.hora?.trim() || null : null;
-    const aerolinea_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Redondo" ? datos.aerolinea || '' : '';
-    const vuelo_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Redondo" ? datos.numero_vuelo || '' : '';
+    const fecha_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Ida y vuelta" ? datos.fecha : null;
+    const hora_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Ida y vuelta" ? datos.hora?.trim() || null : null;
+    const aerolinea_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Ida y vuelta" ? datos.aerolinea || '' : '';
+    const vuelo_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Ida y vuelta" ? datos.numero_vuelo || '' : '';
+    const hotel_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Ida y vuelta" ? datos.hotel || '' : '';
 
     // 🧭 Zona
     let zonaBD = '';
     if (datos.zona && datos.zona.trim() !== '') {
       zonaBD = datos.zona.trim();
       console.log("📍 Zona obtenida desde frontend:", zonaBD);
-    } else if (datos.hotel_llegada) {
+    } else if (hotel_llegada) {
       const zonaResult = await pool.query(
         "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
-        [`%${datos.hotel_llegada}%`]
+        [`%${hotel_llegada}%`]
       );
       console.log("📊 Resultado query zona (por hotel_llegada):", zonaResult.rows);
       zonaBD = zonaResult.rows[0]?.zona_id || '';
       console.log("📍 Zona obtenida desde DB:", zonaBD);
-    } else if (datos.hotel_salida) {
+    } else if (hotel_salida) {
       const zonaResult = await pool.query(
         "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
-        [`%${datos.hotel_salida}%`]
+        [`%${hotel_salida}%`]
       );
       console.log("📊 Resultado query zona (por hotel_salida):", zonaResult.rows);
       zonaBD = zonaResult.rows[0]?.zona_id || '';
       console.log("📍 Zona obtenida desde DB:", zonaBD);
     }
 
-    // 📥 Inserción en la BD
     const query = `
       INSERT INTO reservaciones (
         folio, tipo_servicio, tipo_transporte, proveedor, estatus, zona,
@@ -143,12 +140,12 @@ if (typeof hora_llegada === 'string' && hora_llegada.trim() !== '') {
       zonaBD,
       datos.capacidad || '',
       datos.cantidad_pasajeros || 0,
-      datos.hotel_llegada || '',
-      datos.hotel_salida || '',
-      datos.fecha_llegada || null,
+      hotel_llegada,
+      hotel_salida,
+      fecha_llegada,
       hora_llegada,
-      datos.aerolinea_llegada || '',
-      datos.vuelo_llegada || '',
+      aerolinea_llegada,
+      vuelo_llegada,
       fecha_salida,
       hora_salida,
       aerolinea_salida,
