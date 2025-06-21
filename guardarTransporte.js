@@ -45,6 +45,23 @@ export default async function guardarTransporte(req, res) {
 
     console.log("✅ porcentaje_descuento:", porcentaje_descuento);
     console.log("✅ precio_servicio:", precio_servicio);
+	
+	
+	// 🧳 Datos para redondo
+if (datos.tipo_viaje === "Ida y vuelta") {
+  datos.fecha_llegada = datos.llegada?.fecha || null;
+  datos.hora_llegada = datos.llegada?.hora || null;
+  datos.aerolinea_llegada = datos.llegada?.aerolinea || '';
+  datos.vuelo_llegada = datos.llegada?.vuelo || '';
+  datos.hotel_llegada = datos.hotel || '';
+
+  datos.fecha = datos.salida?.fecha || null;
+  datos.hora = datos.salida?.hora || null;
+  datos.aerolinea = datos.salida?.aerolinea || '';
+  datos.numero_vuelo = datos.salida?.vuelo || '';
+  datos.hotel_salida = datos.hotel || '';
+}
+	
 
     // 🔁 Hora de llegada (formato flexible)
     let hora_llegada = null;
