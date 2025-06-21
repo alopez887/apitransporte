@@ -77,6 +77,7 @@ export async function enviarCorreoTransporte(datos) {
 
 const tripTypeIngles = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
 
+	const nota = datos.nota || datos.comentarios || datos.cliente?.comentarios || '';
     const mensajeHTML = `
   <div style="max-width:600px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
     <!-- Header -->
@@ -115,7 +116,7 @@ const tripTypeIngles = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
 
     <!-- Total & Note -->
     <p><strong>Total:</strong> $${safeToFixed(datos.precio_total)} USD</p>
-    ${datos.nota && datos.nota.trim() !== '' ? `<p><strong>Note:</strong> ${datos.nota}</p>` : ''}
+    ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
 
     <!-- Transport Image -->
     ${imagenAdjunta ? `<p><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>` : ''}
