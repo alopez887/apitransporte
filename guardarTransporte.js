@@ -5,6 +5,12 @@ console.log("🟢 guardando transporte — versión ACTUAL ejecutándose");
 
 export default async function guardarTransporte(req, res) {
   const datos = req.body;
+  
+  console.log("🧩 Validación inicial:");
+  console.log("Nombre:", datos.nombre);
+  console.log("Apellido:", datos.apellido);
+  console.log("Teléfono:", datos.telefono);
+  console.log("Total:", datos.precio_total);
 
   if (!datos || !datos.nombre || !datos.apellido || !datos.telefono || !datos.precio_total) {
     return res.status(400).json({ error: 'Faltan datos requeridos' });
