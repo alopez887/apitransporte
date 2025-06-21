@@ -48,7 +48,6 @@ export default async function guardarTransporte(req, res) {
 	
 	
 	// 🧳 Datos para redondo
-let hora_llegada = null; // ✅ Declarar aquí primero
 if (datos.tipo_viaje === "Ida y vuelta") {
   datos.fecha_llegada = datos.llegada?.fecha || null;
   datos.hora_llegada = datos.llegada?.hora || null;
@@ -62,7 +61,6 @@ if (datos.tipo_viaje === "Ida y vuelta") {
   datos.numero_vuelo = datos.salida?.vuelo || '';
   datos.hotel_salida = datos.hotel || '';
 
-  hora_llegada = datos.hora_llegada || null; // ✅ Ya puedes usarla
 }
 	
 
