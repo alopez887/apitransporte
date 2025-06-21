@@ -5,14 +5,22 @@ console.log("🟢 guardando transporte — versión ACTUAL ejecutándose");
 
 export default async function guardarTransporte(req, res) {
   const datos = req.body;
-  
-  console.log("🧩 Validación inicial:");
-  console.log("Nombre:", datos.nombre);
-  console.log("Apellido:", datos.apellido);
-  console.log("Teléfono:", datos.telefono);
-  console.log("Total:", datos.precio_total);
 
-  if (!datos || !datos.nombre || !datos.apellido || !datos.telefono || !datos.precio_total) {
+  console.log("🧩 Validación inicial:");
+  console.log("Nombre:", datos.nombre || datos.cliente?.nombre);
+  console.log("Apellido:", datos.apellido || datos.cliente?.apellido);
+  console.log("Teléfono:", datos.telefono || datos.cliente?.telefono);
+  console.log("Total:", datos.precio_total || datos.total);
+
+  // ✅ Compatibilidad con los tres formularios
+  const nombre = datos.nombre || datos.cliente?.nombre || '';
+  const apellido = datos.apellido || datos.cliente?.apellido || '';
+  const telefono = datos.telefono || datos.cliente?.telefono || '';
+  const correo_cliente = datos.correo_cliente || datos.cliente?.email || '';
+  const comentarios = datos.comentarios || datos.cliente?.comentarios || '';
+  const precio_total = Number(datos.precio_total || datos.total || 0);
+
+  if (!nombre || !apellido || !telefono || !precio_total) {
     return res.status(400).json({ error: 'Faltan datos requeridos' });
   }
 
@@ -26,6 +34,7 @@ export default async function guardarTransporte(req, res) {
 
     console.log("🆕 Nuevo folio generado:", nuevoFolio);
 
+    // ✅ Valores numéricos validados
     const porcentaje_descuento = (datos.porcentaje_descuento && !isNaN(Number(datos.porcentaje_descuento)))
       ? Number(datos.porcentaje_descuento)
       : 0;
@@ -37,7 +46,7 @@ export default async function guardarTransporte(req, res) {
     console.log("✅ porcentaje_descuento:", porcentaje_descuento);
     console.log("✅ precio_servicio:", precio_servicio);
 
-    // 🔁 Compatibilidad: hora_llegada (conformateo si aplica)
+    // 🔁 Hora de llegada (formato flexible)
     let hora_llegada = null;
     if (typeof datos.hora_llegada === 'string' && datos.hora_llegada.trim() !== '') {
       const cruda = datos.hora_llegada.trim();
@@ -65,28 +74,29 @@ export default async function guardarTransporte(req, res) {
     const vuelo_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Redondo" ? datos.numero_vuelo || '' : '';
 
     // 🧭 Zona
-let zonaBD = '';
-if (datos.zona && datos.zona.trim() !== '') {
-  zonaBD = datos.zona.trim();
-  console.log("📍 Zona obtenida desde frontend:", zonaBD);
-} else if (datos.hotel_llegada) {
-  const zonaResult = await pool.query(
-    "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
-    [`%${datos.hotel_llegada}%`]
-  );
-  console.log("📊 Resultado query zona (por hotel_llegada):", zonaResult.rows);
-  zonaBD = zonaResult.rows[0]?.zona_id || '';
-  console.log("📍 Zona obtenida desde DB:", zonaBD);
-} else if (datos.hotel_salida) {
-  const zonaResult = await pool.query(
-    "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
-    [`%${datos.hotel_salida}%`]
-  );
-  console.log("📊 Resultado query zona (por hotel_salida):", zonaResult.rows);
-  zonaBD = zonaResult.rows[0]?.zona_id || '';
-  console.log("📍 Zona obtenida desde DB:", zonaBD);
-}
+    let zonaBD = '';
+    if (datos.zona && datos.zona.trim() !== '') {
+      zonaBD = datos.zona.trim();
+      console.log("📍 Zona obtenida desde frontend:", zonaBD);
+    } else if (datos.hotel_llegada) {
+      const zonaResult = await pool.query(
+        "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
+        [`%${datos.hotel_llegada}%`]
+      );
+      console.log("📊 Resultado query zona (por hotel_llegada):", zonaResult.rows);
+      zonaBD = zonaResult.rows[0]?.zona_id || '';
+      console.log("📍 Zona obtenida desde DB:", zonaBD);
+    } else if (datos.hotel_salida) {
+      const zonaResult = await pool.query(
+        "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
+        [`%${datos.hotel_salida}%`]
+      );
+      console.log("📊 Resultado query zona (por hotel_salida):", zonaResult.rows);
+      zonaBD = zonaResult.rows[0]?.zona_id || '';
+      console.log("📍 Zona obtenida desde DB:", zonaBD);
+    }
 
+    // 📥 Inserción en la BD
     const query = `
       INSERT INTO reservaciones (
         folio, tipo_servicio, tipo_transporte, proveedor, estatus, zona,
@@ -125,15 +135,15 @@ if (datos.zona && datos.zona.trim() !== '') {
       hora_salida,
       aerolinea_salida,
       vuelo_salida,
-      datos.nombre || '',
-      datos.apellido || '',
-      datos.correo_cliente || '',
-      datos.comentarios || '',
-      datos.telefono || '',
+      nombre,
+      apellido,
+      correo_cliente,
+      comentarios,
+      telefono,
       datos.codigo_descuento || '',
       porcentaje_descuento,
       precio_servicio,
-      Number(datos.precio_total) || 0
+      precio_total
     ];
 
     console.log("🧾 QUERY:", query);
@@ -146,14 +156,14 @@ if (datos.zona && datos.zona.trim() !== '') {
       ...datos,
       folio: nuevoFolio,
       zona: zonaBD,
-      precio_total: Number(datos.precio_total || 0),
+      precio_total,
       imagen: datos.imagen || ''
     });
 
     res.status(200).json({
       exito: true,
       folio: nuevoFolio,
-      correo: datos.correo_cliente,
+      correo: correo_cliente,
       mensaje: `Reservación registrada correctamente con folio ${nuevoFolio}.`
     });
 
