@@ -58,17 +58,19 @@ export default async function guardarTransporte(req, res) {
     let hotel_salida = '';
 
     if (datos.tipo_viaje === "Ida y vuelta") {
-      fecha_llegada = datos.llegada?.fecha || null;
-      hora_llegada = datos.llegada?.hora || null;
-      aerolinea_llegada = datos.llegada?.aerolinea || '';
-      vuelo_llegada = datos.llegada?.vuelo || '';
+      // Corrección clave aquí: soportar estructura plana y anidada
+      fecha_llegada = datos.fecha_llegada || datos.llegada?.fecha || null;
+      hora_llegada = datos.hora_llegada?.trim() || datos.llegada?.hora || null;
+      aerolinea_llegada = datos.aerolinea_llegada || datos.llegada?.aerolinea || '';
+      vuelo_llegada = datos.vuelo_llegada || datos.llegada?.vuelo || '';
       hotel_llegada = datos.hotel_llegada || datos.hotel || '';
 
-      fecha_salida = datos.fecha || null;
-      hora_salida = datos.hora?.trim() || null;
+      fecha_salida = datos.fecha_salida || null;
+      hora_salida = datos.hora_salida?.trim() || null;
       aerolinea_salida = datos.aerolinea || '';
       vuelo_salida = datos.numero_vuelo || '';
       hotel_salida = datos.hotel_salida || datos.hotel || '';
+
     } else if (datos.tipo_viaje === "Llegada") {
       fecha_llegada = datos.fecha || null;
       hora_llegada = datos.hora?.trim() || null;
