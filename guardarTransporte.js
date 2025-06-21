@@ -44,25 +44,46 @@ export default async function guardarTransporte(req, res) {
     console.log("✅ porcentaje_descuento:", porcentaje_descuento);
     console.log("✅ precio_servicio:", precio_servicio);
 
-    // 🧳 Variables para redondo
+    // 🧳 Variables de llegada y salida
     let fecha_llegada = null;
     let hora_llegada = null;
     let aerolinea_llegada = '';
     let vuelo_llegada = '';
     let hotel_llegada = '';
 
+    let fecha_salida = null;
+    let hora_salida = null;
+    let aerolinea_salida = '';
+    let vuelo_salida = '';
+    let hotel_salida = '';
+
     if (datos.tipo_viaje === "Ida y vuelta") {
       fecha_llegada = datos.llegada?.fecha || null;
       hora_llegada = datos.llegada?.hora || null;
       aerolinea_llegada = datos.llegada?.aerolinea || '';
       vuelo_llegada = datos.llegada?.vuelo || '';
+      hotel_llegada = datos.hotel_llegada || datos.hotel || '';
+
+      fecha_salida = datos.fecha || null;
+      hora_salida = datos.hora?.trim() || null;
+      aerolinea_salida = datos.aerolinea || '';
+      vuelo_salida = datos.numero_vuelo || '';
+      hotel_salida = datos.hotel_salida || datos.hotel || '';
+    } else if (datos.tipo_viaje === "Llegada") {
+      fecha_llegada = datos.fecha || null;
+      hora_llegada = datos.hora?.trim() || null;
+      aerolinea_llegada = datos.aerolinea || '';
+      vuelo_llegada = datos.numero_vuelo || '';
       hotel_llegada = datos.hotel || '';
-    } else {
-      hora_llegada = datos.hora_llegada || null;
-      hotel_llegada = datos.hotel || '';
+    } else if (datos.tipo_viaje === "Salida") {
+      fecha_salida = datos.fecha || null;
+      hora_salida = datos.hora?.trim() || null;
+      aerolinea_salida = datos.aerolinea || '';
+      vuelo_salida = datos.numero_vuelo || '';
+      hotel_salida = datos.hotel || '';
     }
 
-    // 🔁 Normalizar hora_llegada
+    // 🔁 Normalizar hora_llegada si es string con am/pm
     if (typeof hora_llegada === 'string' && hora_llegada.trim() !== '') {
       const cruda = hora_llegada.trim();
       const formato24 = cruda.match(/^(\d{1,2}):(\d{2})$/);
@@ -81,13 +102,6 @@ export default async function guardarTransporte(req, res) {
         hora_llegada = `${horas.toString().padStart(2, '0')}:${minutos}`;
       }
     }
-
-    // ⏰ Datos de salida o redondo
-    const fecha_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Ida y vuelta" ? datos.fecha : null;
-    const hora_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Ida y vuelta" ? datos.hora?.trim() || null : null;
-    const aerolinea_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Ida y vuelta" ? datos.aerolinea || '' : '';
-    const vuelo_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Ida y vuelta" ? datos.numero_vuelo || '' : '';
-    const hotel_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Ida y vuelta" ? datos.hotel || '' : '';
 
     // 🧭 Zona
     let zonaBD = '';
