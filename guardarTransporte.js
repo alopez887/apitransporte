@@ -60,29 +60,32 @@ if (datos.tipo_viaje === "Ida y vuelta") {
   datos.aerolinea = datos.salida?.aerolinea || '';
   datos.numero_vuelo = datos.salida?.vuelo || '';
   datos.hotel_salida = datos.hotel || '';
+
+  // 🟢 Aquí actualizamos las variables que SÍ usas más abajo
+  hora_llegada = datos.hora_llegada || null;
 }
 	
 
-    // 🔁 Hora de llegada (formato flexible)
-    let hora_llegada = null;
-    if (typeof datos.hora_llegada === 'string' && datos.hora_llegada.trim() !== '') {
-      const cruda = datos.hora_llegada.trim();
-      const formato24 = cruda.match(/^(\d{1,2}):(\d{2})$/);
-      const formato12 = cruda.match(/(\d{1,2}):(\d{2})\s*(a\.m\.|p\.m\.)/i);
+    // 🔁 Normalizar hora_llegada (si ya vino en string válida)
+let hora_llegada = datos.hora_llegada || null;
+if (typeof hora_llegada === 'string' && hora_llegada.trim() !== '') {
+  const cruda = hora_llegada.trim();
+  const formato24 = cruda.match(/^(\d{1,2}):(\d{2})$/);
+  const formato12 = cruda.match(/(\d{1,2}):(\d{2})\s*(a\.m\.|p\.m\.)/i);
 
-      if (formato24) {
-        const horas = formato24[1].padStart(2, '0');
-        const minutos = formato24[2];
-        hora_llegada = `${horas}:${minutos}`;
-      } else if (formato12) {
-        let horas = parseInt(formato12[1], 10);
-        const minutos = formato12[2];
-        const periodo = formato12[3].toLowerCase();
-        if (periodo === 'p.m.' && horas < 12) horas += 12;
-        if (periodo === 'a.m.' && horas === 12) horas = 0;
-        hora_llegada = `${horas.toString().padStart(2, '0')}:${minutos}`;
-      }
-    }
+  if (formato24) {
+    const horas = formato24[1].padStart(2, '0');
+    const minutos = formato24[2];
+    hora_llegada = `${horas}:${minutos}`;
+  } else if (formato12) {
+    let horas = parseInt(formato12[1], 10);
+    const minutos = formato12[2];
+    const periodo = formato12[3].toLowerCase();
+    if (periodo === 'p.m.' && horas < 12) horas += 12;
+    if (periodo === 'a.m.' && horas === 12) horas = 0;
+    hora_llegada = `${horas.toString().padStart(2, '0')}:${minutos}`;
+  }
+}
 
     // ⏰ Datos de salida o redondo
     const fecha_salida = datos.tipo_viaje === "Salida" || datos.tipo_viaje === "Redondo" ? datos.fecha : null;
