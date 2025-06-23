@@ -10,34 +10,37 @@ export default async function guardarRoundtrip(req, res) {
   }
 
   try {
-    // Obtener folio TR-XXXXXX
+    // Obtener folio consecutivo tipo TR-XXXXXX
     const result = await pool.query("SELECT folio FROM reservaciones WHERE folio LIKE 'TR-%' ORDER BY id DESC LIMIT 1");
     const ultimoFolio = result.rows[0]?.folio || 'TR-000000';
     const numero = parseInt(ultimoFolio.replace('TR-', '')) + 1;
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
 
-    // Obtener zona automáticamente desde hotel
+    // Obtener zona automáticamente desde el hotel
     const zonaQuery = await pool.query("SELECT zona FROM hoteles_zona WHERE hotel = $1", [datos.hotel]);
     const zona = zonaQuery.rows[0]?.zona || '';
 
-    // Insertar en la tabla
+    // Insertar en la tabla de reservaciones
     await pool.query(
       `INSERT INTO reservaciones (
-        folio, tipo_viaje, tipo_transporte, hotel_llegada, zona, capacidad,
+        folio, tipo_viaje, tipo_transporte, hotel_llegada, hotel_salida, zona, capacidad,
         cantidad_pasajeros, codigo_descuento, precio_total, nombre, apellido,
-        correo, telefono, nota, fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
+        correo, telefono, nota,
+        fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida
       ) VALUES (
-        $1, $2, $3, $4, $5, $6,
-        $7, $8, $9, $10, $11,
-        $12, $13, $14, $15, $16, $17, $18,
-        $19, $20, $21, $22
+        $1, $2, $3, $4, $5, $6, $7,
+        $8, $9, $10, $11, $12,
+        $13, $14, $15,
+        $16, $17, $18, $19,
+        $20, $21, $22, $23
       )`,
       [
         nuevoFolio,
         datos.tipo_viaje,
-        datos.tipo_transporte || '', // Puede venir desde session
-        datos.hotel,
+        datos.tipo_transporte || '',
+        datos.hotel,         // hotel_llegada
+        datos.hotel,         // hotel_salida (igual por ahora)
         zona,
         datos.capacidad,
         datos.pasajeros,
@@ -59,7 +62,7 @@ export default async function guardarRoundtrip(req, res) {
       ]
     );
 
-    // Enviar correo
+    // Enviar correo de confirmación
     await enviarCorreoTransporte({
       ...datos,
       folio: nuevoFolio,
