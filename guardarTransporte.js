@@ -83,7 +83,7 @@ export default async function guardarTransporte(req, res) {
       hora_salida = datos.hora?.trim() || null;
       aerolinea_salida = datos.aerolinea || '';
       vuelo_salida = datos.numero_vuelo || '';
-      hotel_salida = datos.hotel || '';
+      hotel_salida = datos.hotel_salida || datos.hotel || '';
     }
 
     // 🔁 Normalizar hora_llegada
