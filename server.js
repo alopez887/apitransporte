@@ -3,6 +3,7 @@ import cors from 'cors';
 import pkg from 'pg';
 import dotenv from 'dotenv';
 import guardarTransporte from './guardarTransporte.js';
+import guardarRoundtrip from './guardarRoundtrip.js';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.locals.pool = pool;
 
 // 🔹 Ruta para guardar reservación de transporte
 app.post('/reservar-transporte', guardarTransporte);
+app.post('/reservar-roundtrip', guardarRoundtrip);
 
 // 🔹 Todas tus rutas existentes
 app.get('/zona-hotel', async (req, res) => {
