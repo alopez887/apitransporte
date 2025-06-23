@@ -13,6 +13,7 @@ export default async function guardarTransporte(req, res) {
   console.log("Teléfono:", datos.telefono || datos.cliente?.telefono);
   console.log("Total:", datos.precio_total || datos.total);
 
+  const cantidadPasajeros = parseInt(datos.pasajeros, 10) || parseInt(datos.cantidad_pasajeros, 10) || 0;
   const nombre = datos.nombre || datos.cliente?.nombre || '';
   const apellido = datos.apellido || datos.cliente?.apellido || '';
   const telefono = datos.telefono || datos.cliente?.telefono || '';
@@ -156,7 +157,7 @@ export default async function guardarTransporte(req, res) {
       1,
       zonaBD,
       datos.capacidad || '',
-      datos.cantidad_pasajeros || 0,
+      cantidadPasajeros,
       hotel_llegada,
       hotel_salida,
       fecha_llegada,
