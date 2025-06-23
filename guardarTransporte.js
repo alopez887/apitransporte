@@ -1,3 +1,4 @@
+// 🛠️ Backup for llegada/salida - 100% funcional
 import pool from './conexion.js';
 import { enviarCorreoTransporte } from './correosTransporte.js';
 
