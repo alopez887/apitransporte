@@ -17,7 +17,7 @@ export default async function guardarTransporte(req, res) {
   const apellido = datos.apellido || datos.cliente?.apellido || '';
   const telefono = datos.telefono || datos.cliente?.telefono || '';
   const correo_cliente = datos.correo_cliente || datos.cliente?.email || '';
-  const comentarios = datos.comentarios || datos.nota || datos.cliente?.comentarios || '';
+  const comentarios = datos.nota || datos.comentarios || datos.cliente?.comentarios || '';
   const precio_total = Number(datos.precio_total || datos.total || 0);
 
   if (!nombre || !apellido || !telefono || !precio_total) {
