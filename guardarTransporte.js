@@ -1,8 +1,7 @@
-// 🛠️ Backup para llegada/salida - 100% funcional
 import pool from './conexion.js';
 import { enviarCorreoTransporte } from './correosTransporte.js';
 
-console.log("🟢 guardando transporte — versión ACTUAL ejecutándose");
+console.log("🟢 guardando transporte — SOLO llegada y salida — versión limpia");
 
 export default async function guardarTransporte(req, res) {
   const datos = req.body;
@@ -59,26 +58,12 @@ export default async function guardarTransporte(req, res) {
     let vuelo_salida = '';
     let hotel_salida = '';
 
-    if (datos.tipo_viaje === "Ida y vuelta") {
-      // 🧩 Soporte para estructura plana o anidada
-      fecha_llegada = datos.fecha_llegada || datos.llegada?.fecha || null;
-      hora_llegada = datos.hora_llegada?.trim() || datos.llegada?.hora || null;
-      aerolinea_llegada = datos.aerolinea_llegada || datos.llegada?.aerolinea || '';
-      vuelo_llegada = datos.vuelo_llegada || datos.llegada?.vuelo || '';
+    if (datos.tipo_viaje === "Llegada") {
+      fecha_llegada = datos.fecha_llegada || datos.fecha || null;
+      hora_llegada = datos.hora_llegada?.trim() || datos.hora || null;
+      aerolinea_llegada = datos.aerolinea_llegada || datos.aerolinea || '';
+      vuelo_llegada = datos.vuelo_llegada || datos.numero_vuelo || '';
       hotel_llegada = datos.hotel_llegada || datos.hotel || '';
-
-      fecha_salida = datos.fecha_salida || datos.salida?.fecha || null;
-      hora_salida = datos.hora_salida?.trim() || datos.salida?.hora || null;
-      aerolinea_salida = datos.aerolinea || datos.salida?.aerolinea || '';
-      vuelo_salida = datos.numero_vuelo || datos.salida?.vuelo || '';
-      hotel_salida = datos.hotel_salida || datos.hotel || '';
-    } else if (datos.tipo_viaje === "Llegada") {
-	 fecha_llegada = datos.fecha_llegada || datos.fecha || null;
-	 hora_llegada = datos.hora_llegada?.trim() || datos.hora || null;
-	 aerolinea_llegada = datos.aerolinea_llegada || datos.aerolinea || '';
-	 vuelo_llegada = datos.vuelo_llegada || datos.numero_vuelo || '';
-	 hotel_llegada = datos.hotel_llegada || datos.hotel || '';
-
     } else if (datos.tipo_viaje === "Salida") {
       fecha_salida = datos.fecha || null;
       hora_salida = datos.hora?.trim() || null;
