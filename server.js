@@ -32,9 +32,11 @@ const pool = new Pool({
 
 app.locals.pool = pool;
 
+// Ruta alternativa para mantener consistencia con guardartransporte
 // 🔹 Ruta para guardar reservación de transporte
 app.post('/reservar-transporte', guardarTransporte);
 app.post('/reservar-roundtrip', guardarRoundtrip);
+app.post('/guardarroundtrip', guardarRoundtrip);
 
 // 🔹 Todas tus rutas existentes
 app.get('/zona-hotel', async (req, res) => {
