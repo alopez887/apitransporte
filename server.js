@@ -34,7 +34,6 @@ app.locals.pool = pool;
 
 // Ruta alternativa para mantener consistencia con guardartransporte
 // 🔹 Ruta para guardar reservación de transporte
-app.post('/reservar-transporte', guardarTransporte);
 app.post('/guardartransporte', guardarTransporte);
 app.post('/guardarroundtrip', guardarRoundtrip);
 
