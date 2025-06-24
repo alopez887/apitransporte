@@ -40,46 +40,53 @@ export default async function guardarRoundtrip(req, res) {
     }
 
     // Insertar en la tabla de reservaciones
-    await pool.query(
-      `INSERT INTO reservaciones (
-        folio, tipo_viaje, tipo_transporte, hotel_llegada, hotel_salida, zona, capacidad,
-        cantidad_pasajeros, codigo_descuento, precio_total, nombre, apellido,
-        correo, telefono, nota,
-        fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
-        fecha_salida, hora_salida, aerolinea_salida, vuelo_salida
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7,
-        $8, $9, $10, $11, $12,
-        $13, $14, $15,
-        $16, $17, $18, $19,
-        $20, $21, $22, $23
-      )`,
-      [
-        nuevoFolio,
-        datos.tipo_viaje,
-        datos.tipo_transporte || '',
-        datos.hotel,         // hotel_llegada
-        datos.hotel,         // hotel_salida
-        zona,
-        datos.capacidad,
-        datos.pasajeros,
-        datos.codigo_descuento || '',
-        datos.total,
-        datos.cliente.nombre,
-        datos.cliente.apellido,
-        datos.cliente.email,
-        datos.cliente.telefono,
-        datos.cliente.comentarios || '',
-        datos.llegada.fecha,
-        datos.llegada.hora,
-        datos.llegada.aerolinea,
-        datos.llegada.vuelo,
-        datos.salida.fecha,
-        datos.salida.hora,
-        datos.salida.aerolinea,
-        datos.salida.vuelo
-      ]
-    );
+  await pool.query(
+  `INSERT INTO reservaciones (
+    folio, tipo_viaje, tipo_transporte, hotel_llegada, hotel_salida, zona, capacidad,
+    cantidad_pasajeros, codigo_descuento, precio_total, nombre, apellido,
+    correo_cliente, telefono, comentarios,
+    fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
+    fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
+    tipo_servicio, porcentaje_descuento, precio_servicio, fecha, estatus
+  ) VALUES (
+    $1, $2, $3, $4, $5, $6, $7,
+    $8, $9, $10, $11, $12,
+    $13, $14, $15,
+    $16, $17, $18, $19,
+    $20, $21, $22, $23,
+    $24, $25, $26, $27, $28
+  )`,
+  [
+    nuevoFolio,
+    datos.tipo_viaje,
+    datos.tipo_transporte || '',
+    datos.hotel,         // hotel_llegada
+    datos.hotel,         // hotel_salida
+    zona,
+    datos.capacidad,
+    datos.pasajeros,
+    datos.codigo_descuento || '',
+    datos.total,
+    datos.cliente.nombre,
+    datos.cliente.apellido,
+    datos.cliente.email,
+    datos.cliente.telefono,
+    datos.cliente.comentarios || '',
+    datos.llegada.fecha,
+    datos.llegada.hora,
+    datos.llegada.aerolinea,
+    datos.llegada.vuelo,
+    datos.salida.fecha,
+    datos.salida.hora,
+    datos.salida.aerolinea,
+    datos.salida.vuelo,
+    'transportacion',                     // tipo_servicio
+    datos.descuento_aplicado || 0,       // porcentaje_descuento
+    datos.precio_original || 0,          // precio_servicio
+    new Date().toISOString().split("T")[0], // fecha (formato YYYY-MM-DD)
+    'pendiente'                          // estatus
+  ]
+);
 
     console.log("✅ Registro insertado correctamente en la tabla de reservaciones");
 
