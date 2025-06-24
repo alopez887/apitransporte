@@ -17,7 +17,7 @@ export default async function guardarRoundtrip(req, res) {
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
 
     // Obtener zona automáticamente desde el hotel
-    const zonaQuery = await pool.query("SELECT zona FROM hoteles_zona WHERE hotel = $1", [datos.hotel]);
+    const zonaQuery = await pool.query("SELECT zona_id AS zona FROM hoteles_zona WHERE nombre_hotel = $1", [datos.hotel]);
     const zona = zonaQuery.rows[0]?.zona || '';
 
     // Insertar en la tabla de reservaciones
