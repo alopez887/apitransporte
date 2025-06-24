@@ -81,10 +81,10 @@ export default async function guardarRoundtrip(req, res) {
     datos.salida.aerolinea,
     datos.salida.vuelo,
     'transportacion',                     // tipo_servicio
-    datos.descuento_aplicado || 0,       // porcentaje_descuento
-    datos.precio_original || 0,          // precio_servicio
+    datos.porcentaje_descuento || 0,     // ← correcto
+	datos.precio_servicio || 0,          // ← correcto
     new Date().toISOString().split("T")[0], // fecha (formato YYYY-MM-DD)
-    'pendiente'                          // estatus
+    '1'                          // estatus
   ]
 );
 
