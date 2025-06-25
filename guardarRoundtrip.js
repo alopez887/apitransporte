@@ -7,7 +7,6 @@ export default async function guardarRoundtrip(req, res) {
 
   console.log("📥 Datos recibidos en guardarRoundtrip:", datos);
 
-  // Asegúrate de que los datos se están recibiendo correctamente
   if (!datos || !datos.tipo_viaje || !datos.hotel || !datos.capacidad || !datos.pasajeros || !datos.total) {
     console.warn("⚠️ Datos incompletos:", datos);
     return res.status(400).json({ error: 'Faltan datos requeridos' });
@@ -29,20 +28,15 @@ export default async function guardarRoundtrip(req, res) {
     console.log(`📍 Zona detectada para hotel '${datos.hotel}':`, zona);
 
     // Validar cliente
-    if (!datos.nombre_cliente || !datos.correo_cliente || !datos.telefono_cliente) {
+    if (!datos.cliente || !datos.cliente.nombre || !datos.cliente.email) {
       console.warn("⚠️ Datos del cliente incompletos:", datos.cliente);
       return res.status(400).json({ error: 'Datos del cliente incompletos' });
     }
 
     // Validar llegada y salida
-    if (!datos.fecha_llegada || !datos.hora_llegada || !datos.aerolinea_llegada || !datos.vuelo_llegada) {
-      console.warn("⚠️ Faltan datos de llegada:", datos);
-      return res.status(400).json({ error: 'Faltan datos de llegada' });
-    }
-    
-    if (!datos.fecha_salida || !datos.hora_salida || !datos.aerolinea_salida || !datos.vuelo_salida) {
-      console.warn("⚠️ Faltan datos de salida:", datos);
-      return res.status(400).json({ error: 'Faltan datos de salida' });
+    if (!datos.llegada || !datos.salida) {
+      console.warn("⚠️ Faltan datos de llegada o salida:", { llegada: datos.llegada, salida: datos.salida });
+      return res.status(400).json({ error: 'Faltan datos de llegada o salida' });
     }
 
     // Insertar en base de datos
@@ -73,19 +67,19 @@ export default async function guardarRoundtrip(req, res) {
         datos.pasajeros,
         datos.codigo_descuento || '',
         datos.total,
-        datos.nombre_cliente,
-        datos.apellido_cliente || '',
-        datos.correo_cliente,
-        datos.telefono_cliente,
-        datos.comentarios || '',
-        datos.fecha_llegada,
-        datos.hora_llegada,
-        datos.aerolinea_llegada,
-        datos.vuelo_llegada,
-        datos.fecha_salida,
-        datos.hora_salida,
-        datos.aerolinea_salida,
-        datos.vuelo_salida,
+        datos.cliente.nombre,
+        datos.cliente.apellido || '',
+        datos.cliente.email,
+        datos.cliente.telefono,
+        datos.cliente.comentarios || '',
+        datos.llegada.fecha,
+        datos.llegada.hora,
+        datos.llegada.aerolinea,
+        datos.llegada.vuelo,
+        datos.salida.fecha,
+        datos.salida.hora,
+        datos.salida.aerolinea,
+        datos.salida.vuelo,
         'transportacion',
         datos.porcentaje_descuento || 0,
         datos.precio_servicio || 0,
@@ -96,7 +90,6 @@ export default async function guardarRoundtrip(req, res) {
 
     console.log("✅ Registro insertado correctamente");
 
-    // Enviar correo
     try {
       console.log("📧 Enviando correo de confirmación...");
       await enviarCorreoTransporte({
@@ -107,6 +100,7 @@ export default async function guardarRoundtrip(req, res) {
       console.log("✅ Correo enviado con éxito");
     } catch (emailError) {
       console.error("❌ Error al enviar el correo:", emailError);
+      // NO detenemos el flujo si falla el correo
     }
 
     return res.status(200).json({ ok: true, folio: nuevoFolio });
