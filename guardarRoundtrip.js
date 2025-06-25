@@ -27,83 +27,87 @@ export default async function guardarRoundtrip(req, res) {
 
     console.log(`📍 Zona detectada para hotel '${datos.hotel}':`, zona);
 
-    // Validar que cliente exista
-    if (!datos.cliente || !datos.cliente.nombre || !datos.cliente.apellido || !datos.cliente.email) {
+    // Validar cliente
+    if (!datos.cliente || !datos.cliente.nombre || !datos.cliente.email) {
       console.warn("⚠️ Datos del cliente incompletos:", datos.cliente);
       return res.status(400).json({ error: 'Datos del cliente incompletos' });
     }
 
-    // Validar que llegada y salida estén completas
+    // Validar llegada y salida
     if (!datos.llegada || !datos.salida) {
       console.warn("⚠️ Faltan datos de llegada o salida:", { llegada: datos.llegada, salida: datos.salida });
       return res.status(400).json({ error: 'Faltan datos de llegada o salida' });
     }
 
-    // Insertar en la tabla de reservaciones
-  await pool.query(
-  `INSERT INTO reservaciones (
-    folio, tipo_viaje, tipo_transporte, hotel_llegada, hotel_salida, zona, capacidad,
-    cantidad_pasajeros, codigo_descuento, precio_total, nombre, apellido,
-    correo_cliente, telefono, comentarios,
-    fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
-    fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
-    tipo_servicio, porcentaje_descuento, precio_servicio, fecha, estatus
-  ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10, $11, $12,
-    $13, $14, $15,
-    $16, $17, $18, $19,
-    $20, $21, $22, $23,
-    $24, $25, $26, $27, $28
-  )`,
-  [
-    nuevoFolio,
-    datos.tipo_viaje,
-    datos.tipo_transporte || '',
-    datos.hotel,         // hotel_llegada
-    datos.hotel,         // hotel_salida
-    zona,
-    datos.capacidad,
-    datos.pasajeros,
-    datos.codigo_descuento || '',
-    datos.total,
-    datos.cliente.nombre,
-    datos.cliente.apellido,
-    datos.cliente.email,
-    datos.cliente.telefono,
-    datos.cliente.comentarios || '',
-    datos.llegada.fecha,
-    datos.llegada.hora,
-    datos.llegada.aerolinea,
-    datos.llegada.vuelo,
-    datos.salida.fecha,
-    datos.salida.hora,
-    datos.salida.aerolinea,
-    datos.salida.vuelo,
-    'transportacion',                     // tipo_servicio
-    datos.porcentaje_descuento || 0,     // ← correcto
-	datos.precio_servicio || 0,          // ← correcto
-    new Date().toISOString().split("T")[0], // fecha (formato YYYY-MM-DD)
-    '1'                          // estatus
-  ]
-);
+    // Insertar en base de datos
+    await pool.query(
+      `INSERT INTO reservaciones (
+        folio, tipo_viaje, tipo_transporte, hotel_llegada, hotel_salida, zona, capacidad,
+        cantidad_pasajeros, codigo_descuento, precio_total, nombre, apellido,
+        correo_cliente, telefono, comentarios,
+        fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
+        fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
+        tipo_servicio, porcentaje_descuento, precio_servicio, fecha, estatus
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7,
+        $8, $9, $10, $11, $12,
+        $13, $14, $15,
+        $16, $17, $18, $19,
+        $20, $21, $22, $23,
+        $24, $25, $26, $27, $28
+      )`,
+      [
+        nuevoFolio,
+        datos.tipo_viaje,
+        datos.tipo_transporte || '',
+        datos.hotel,
+        datos.hotel,
+        zona,
+        datos.capacidad,
+        datos.pasajeros,
+        datos.codigo_descuento || '',
+        datos.total,
+        datos.cliente.nombre,
+        datos.cliente.apellido || '',
+        datos.cliente.email,
+        datos.cliente.telefono,
+        datos.cliente.comentarios || '',
+        datos.llegada.fecha,
+        datos.llegada.hora,
+        datos.llegada.aerolinea,
+        datos.llegada.vuelo,
+        datos.salida.fecha,
+        datos.salida.hora,
+        datos.salida.aerolinea,
+        datos.salida.vuelo,
+        'transportacion',
+        datos.porcentaje_descuento || 0,
+        datos.precio_servicio || 0,
+        new Date().toISOString().split("T")[0],
+        '1'
+      ]
+    );
 
-    console.log("✅ Registro insertado correctamente en la tabla de reservaciones");
+    console.log("✅ Registro insertado correctamente");
 
-    // Enviar correo de confirmación
-    console.log("📧 Enviando correo de confirmación...");
-    await enviarCorreoTransporte({
-      ...datos,
-      folio: nuevoFolio,
-      zona
-    });
+    try {
+      console.log("📧 Enviando correo de confirmación...");
+      await enviarCorreoTransporte({
+        ...datos,
+        folio: nuevoFolio,
+        zona
+      });
+      console.log("✅ Correo enviado con éxito");
+    } catch (emailError) {
+      console.error("❌ Error al enviar el correo:", emailError);
+      // NO detenemos el flujo si falla el correo
+    }
 
-    console.log("✅ Correo enviado con éxito");
-
-    res.json({ ok: true, folio: nuevoFolio });
+    return res.status(200).json({ ok: true, folio: nuevoFolio });
 
   } catch (err) {
     console.error('❌ Error en guardarRoundtrip:', err);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.trace();
+    return res.status(500).json({ error: 'Error interno del servidor' });
   }
 }
