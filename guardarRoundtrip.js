@@ -116,3 +116,4 @@ export default async function guardarRoundtrip(req, res) {
     console.trace();
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
+}
