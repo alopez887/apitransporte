@@ -34,10 +34,15 @@ export default async function guardarRoundtrip(req, res) {
     }
 
     // Validar llegada y salida
-    if (!datos.llegada || !datos.salida) {
-      console.warn("⚠️ Faltan datos de llegada o salida:", { llegada: datos.llegada, salida: datos.salida });
-      return res.status(400).json({ error: 'Faltan datos de llegada o salida' });
-    }
+    if (!datos.fecha_llegada || !datos.hora_llegada || !datos.aerolinea_llegada || !datos.vuelo_llegada) {
+  console.warn("⚠️ Faltan datos de llegada:", datos);
+  return res.status(400).json({ error: 'Faltan datos de llegada' });
+}
+
+if (!datos.fecha_salida || !datos.hora_salida || !datos.aerolinea_salida || !datos.vuelo_salida) {
+  console.warn("⚠️ Faltan datos de salida:", datos);
+  return res.status(400).json({ error: 'Faltan datos de salida' });
+}
 
     // Insertar en base de datos
     await pool.query(
