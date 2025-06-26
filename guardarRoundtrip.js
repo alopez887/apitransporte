@@ -1,4 +1,3 @@
-// guardarRoundtrip.js
 import pool from './conexion.js';
 import { enviarCorreoTransporte } from './correosTransporte.js';
 
@@ -28,21 +27,21 @@ export default async function guardarRoundtrip(req, res) {
     console.log(`📍 Zona detectada para hotel '${datos.hotel}':`, zona);
 
     // Validar cliente
-    if (!datos.cliente || !datos.cliente.nombre || !datos.cliente.email) {
-      console.warn("⚠️ Datos del cliente incompletos:", datos.cliente);
+    if (!datos.nombre_cliente || !datos.correo_cliente) {
+      console.warn("⚠️ Datos del cliente incompletos:", datos);
       return res.status(400).json({ error: 'Datos del cliente incompletos' });
     }
 
     // Validar llegada y salida
     if (!datos.fecha_llegada || !datos.hora_llegada || !datos.aerolinea_llegada || !datos.vuelo_llegada) {
-  console.warn("⚠️ Faltan datos de llegada:", datos);
-  return res.status(400).json({ error: 'Faltan datos de llegada' });
-}
+      console.warn("⚠️ Faltan datos de llegada:", datos);
+      return res.status(400).json({ error: 'Faltan datos de llegada' });
+    }
 
-if (!datos.fecha_salida || !datos.hora_salida || !datos.aerolinea_salida || !datos.vuelo_salida) {
-  console.warn("⚠️ Faltan datos de salida:", datos);
-  return res.status(400).json({ error: 'Faltan datos de salida' });
-}
+    if (!datos.fecha_salida || !datos.hora_salida || !datos.aerolinea_salida || !datos.vuelo_salida) {
+      console.warn("⚠️ Faltan datos de salida:", datos);
+      return res.status(400).json({ error: 'Faltan datos de salida' });
+    }
 
     // Insertar en base de datos
     await pool.query(
@@ -72,19 +71,19 @@ if (!datos.fecha_salida || !datos.hora_salida || !datos.aerolinea_salida || !dat
         datos.pasajeros,
         datos.codigo_descuento || '',
         datos.total,
-        datos.cliente.nombre,
-        datos.cliente.apellido || '',
-        datos.cliente.email,
-        datos.cliente.telefono,
-        datos.cliente.comentarios || '',
-        datos.llegada.fecha,
-        datos.llegada.hora,
-        datos.llegada.aerolinea,
-        datos.llegada.vuelo,
-        datos.salida.fecha,
-        datos.salida.hora,
-        datos.salida.aerolinea,
-        datos.salida.vuelo,
+        datos.nombre_cliente,
+        datos.apellido_cliente || '',
+        datos.correo_cliente,
+        datos.telefono_cliente,
+        datos.comentarios || '',
+        datos.fecha_llegada,
+        datos.hora_llegada,
+        datos.aerolinea_llegada,
+        datos.vuelo_llegada,
+        datos.fecha_salida,
+        datos.hora_salida,
+        datos.aerolinea_salida,
+        datos.vuelo_salida,
         'transportacion',
         datos.porcentaje_descuento || 0,
         datos.precio_servicio || 0,
