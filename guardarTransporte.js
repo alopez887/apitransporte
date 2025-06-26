@@ -52,11 +52,11 @@ export default async function guardarTransporte(req, res) {
     let vuelo_llegada = '';
     let hotel_llegada = '';
 
-    let fecha_salida = null;
-    let hora_salida = null;
-    let aerolinea_salida = '';
-    let vuelo_salida = '';
-    let hotel_salida = '';
+    let fecha_salida = datos.fecha_salida || null;
+    let hora_salida = datos.hora_salida?.trim() || null;
+    let aerolinea_salida = datos.aerolinea_salida || '';
+    let vuelo_salida = datos.vuelo_salida || '';
+    let hotel_salida = datos.hotel_salida || '';
 
     if (datos.tipo_viaje === "Llegada") {
       fecha_llegada = datos.fecha_llegada || datos.fecha || null;
@@ -64,12 +64,6 @@ export default async function guardarTransporte(req, res) {
       aerolinea_llegada = datos.aerolinea_llegada || datos.aerolinea || '';
       vuelo_llegada = datos.vuelo_llegada || datos.numero_vuelo || '';
       hotel_llegada = datos.hotel_llegada || datos.hotel || '';
-    } else if (datos.tipo_viaje === "Salida") {
-      fecha_salida = datos.fecha || null;
-      hora_salida = datos.hora?.trim() || null;
-      aerolinea_salida = datos.aerolinea || '';
-      vuelo_salida = datos.numero_vuelo || '';
-      hotel_salida = datos.hotel_salida || datos.hotel || '';
     }
 
     // 🔁 Normalizar hora_llegada
