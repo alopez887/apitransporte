@@ -6,13 +6,12 @@ export default async function guardarRoundtrip(req, res) {
 
   console.log("📥 Datos recibidos en guardarRoundtrip:", datos);
 
-  if (!datos || !datos.tipo_viaje || !datos.hotel || !datos.capacidad || !datos.pasajeros || !datos.total) {
+  if (!datos || !datos.tipo_viaje || !datos.hotel_llegada || !datos.capacidad || !datos.cantidad_pasajeros || !datos.precio_total) {
     console.warn("⚠️ Datos incompletos:", datos);
     return res.status(400).json({ error: 'Faltan datos requeridos' });
   }
 
   try {
-    // Obtener folio consecutivo tipo TR-XXXXXX
     const result = await pool.query("SELECT folio FROM reservaciones WHERE folio LIKE 'TR-%' ORDER BY id DESC LIMIT 1");
     const ultimoFolio = result.rows[0]?.folio || 'TR-000000';
     const numero = parseInt(ultimoFolio.replace('TR-', '')) + 1;
@@ -20,19 +19,16 @@ export default async function guardarRoundtrip(req, res) {
 
     console.log("🧾 Nuevo folio generado:", nuevoFolio);
 
-    // Obtener zona automáticamente desde el hotel
-    const zonaQuery = await pool.query("SELECT zona_id AS zona FROM hoteles_zona WHERE nombre_hotel = $1", [datos.hotel]);
+    const zonaQuery = await pool.query("SELECT zona_id AS zona FROM hoteles_zona WHERE nombre_hotel = $1", [datos.hotel_llegada]);
     const zona = zonaQuery.rows[0]?.zona || '';
 
-    console.log(`📍 Zona detectada para hotel '${datos.hotel}':`, zona);
+    console.log(`📍 Zona detectada para hotel '${datos.hotel_llegada}':`, zona);
 
-    // Validar cliente
-    if (!datos.nombre_cliente || !datos.correo_cliente) {
+    if (!datos.nombre || !datos.correo_cliente) {
       console.warn("⚠️ Datos del cliente incompletos:", datos);
       return res.status(400).json({ error: 'Datos del cliente incompletos' });
     }
 
-    // Validar llegada y salida
     if (!datos.fecha_llegada || !datos.hora_llegada || !datos.aerolinea_llegada || !datos.vuelo_llegada) {
       console.warn("⚠️ Faltan datos de llegada:", datos);
       return res.status(400).json({ error: 'Faltan datos de llegada' });
@@ -43,7 +39,6 @@ export default async function guardarRoundtrip(req, res) {
       return res.status(400).json({ error: 'Faltan datos de salida' });
     }
 
-    // Insertar en base de datos
     await pool.query(
       `INSERT INTO reservaciones (
         folio, tipo_viaje, tipo_transporte, hotel_llegada, hotel_salida, zona, capacidad,
@@ -64,17 +59,17 @@ export default async function guardarRoundtrip(req, res) {
         nuevoFolio,
         datos.tipo_viaje,
         datos.tipo_transporte || '',
-        datos.hotel,
-        datos.hotel,
+        datos.hotel_llegada,
+        datos.hotel_salida,
         zona,
         datos.capacidad,
-        datos.pasajeros,
+        datos.cantidad_pasajeros,
         datos.codigo_descuento || '',
-        datos.total,
-        datos.nombre_cliente,
-        datos.apellido_cliente || '',
+        datos.precio_total,
+        datos.nombre,
+        datos.apellido || '',
         datos.correo_cliente,
-        datos.telefono_cliente,
+        datos.telefono,
         datos.comentarios || '',
         datos.fecha_llegada,
         datos.hora_llegada,
@@ -104,10 +99,9 @@ export default async function guardarRoundtrip(req, res) {
       console.log("✅ Correo enviado con éxito");
     } catch (emailError) {
       console.error("❌ Error al enviar el correo:", emailError);
-      // NO detenemos el flujo si falla el correo
     }
 
-    return res.status(200).json({ ok: true, folio: nuevoFolio });
+    return res.status(200).json({ exito: true, folio: nuevoFolio });
 
   } catch (err) {
     console.error('❌ Error en guardarRoundtrip:', err);
