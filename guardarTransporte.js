@@ -124,7 +124,7 @@ export default async function guardarTransporte(req, res) {
         $15, $16, $17, $18,
         $19, $20, $21, $22, $23, $24,
         $25, $26, $27,
-        NOW() AT TIME ZONE 'America/Mazatlan'
+        NOW() AT TIME ZONE 'America/Mazatlan', $29
       )
     `;
 
@@ -155,7 +155,8 @@ export default async function guardarTransporte(req, res) {
       datos.codigo_descuento || '',
       porcentaje_descuento,
       precio_servicio,
-      precio_total
+      precio_total,
+	  'Llegada'
     ];
 
     console.log("🧾 QUERY:", query);
