@@ -156,7 +156,7 @@ export default async function guardarTransporte(req, res) {
       porcentaje_descuento,
       precio_servicio,
       precio_total,
-	  'Llegada'
+	  tipo_viaje
     ];
 
     console.log("🧾 QUERY:", query);
