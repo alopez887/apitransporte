@@ -14,7 +14,6 @@ export async function enviarCorreoTransporte(datos) {
     console.log("📥 Datos recibidos para el correo:", datos);
 
     let imagenAdjunta = null;
-
     if (datos.imagen && datos.imagen.startsWith('http')) {
       try {
         const imagenRes = await axios.get(datos.imagen, { responseType: 'arraybuffer' });
@@ -75,7 +74,6 @@ export async function enviarCorreoTransporte(datos) {
     let mensajeHTML = "";
 
     if (datos.tipo_viaje === "Redondo") {
-      // 🟢 Construir tabla con dos columnas
       mensajeHTML = `
       <div style="max-width:700px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
@@ -85,14 +83,24 @@ export async function enviarCorreoTransporte(datos) {
           </tr>
         </table>
 
-        <p><strong>Folio:</strong> ${datos.folio}</p>
-        <p><strong>Name:</strong> ${datos.nombre} ${datos.apellido}</p>
-        <p><strong>Email:</strong> ${datos.correo_cliente}</p>
-        <p><strong>Phone:</strong> ${datos.telefono}</p>
-        <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
-        <p><strong>Capacity:</strong> ${datos.capacidad}</p>
-        <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
-        <p><strong>Passengers:</strong> ${datos.cantidad_pasajeros}</p>
+        <table style="width:100%;margin-top:10px;margin-bottom:20px;">
+          <tr>
+            <td style="vertical-align:top;padding-right:15px;">
+              <p><strong>Name:</strong> ${datos.nombre} ${datos.apellido}</p>
+              <p><strong>Email:</strong> ${datos.correo_cliente}</p>
+              <p><strong>Phone:</strong> ${datos.telefono}</p>
+              <p><strong>Passengers:</strong> ${datos.cantidad_pasajeros}</p>
+              ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
+            </td>
+            <td style="vertical-align:top;">
+              <p><strong>Folio:</strong> ${datos.folio}</p>
+              <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
+              <p><strong>Capacity:</strong> ${datos.capacidad}</p>
+              <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
+              <p><strong>Total:</strong> $${safeToFixed(datos.precio_total)} USD</p>
+            </td>
+          </tr>
+        </table>
 
         <table style="width:100%;border-collapse:collapse;margin-top:20px;">
           <tr>
@@ -117,9 +125,6 @@ export async function enviarCorreoTransporte(datos) {
           </tr>
         </table>
 
-        <p><strong>Total:</strong> $${safeToFixed(datos.precio_total)} USD</p>
-        ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
-
         ${imagenAdjunta ? `<p><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>` : ''}
 
         <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:10px 15px;margin-top:20px;border-radius:5px;">
@@ -135,7 +140,6 @@ export async function enviarCorreoTransporte(datos) {
       </div>
       `;
     } else {
-      // ✉️ Mensaje original para Llegada o Salida
       mensajeHTML = `
       <div style="max-width:600px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
