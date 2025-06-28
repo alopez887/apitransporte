@@ -53,7 +53,7 @@ export default async function guardarRoundtrip(req, res) {
         $13, $14, $15,
         $16, $17, $18, $19,
         $20, $21, $22, $23,
-        $24, $25, $26, $27, $28
+        $24, $25, $26, NOW() AT TIME ZONE 'America/Mazatlan', $27
       )`,
       [
         nuevoFolio,
@@ -82,7 +82,6 @@ export default async function guardarRoundtrip(req, res) {
         'transportacion',
         datos.porcentaje_descuento || 0,
         datos.precio_servicio || 0,
-        new Date().toISOString().split("T")[0],
         '1'
       ]
     );
