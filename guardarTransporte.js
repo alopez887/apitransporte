@@ -130,7 +130,7 @@ export default async function guardarTransporte(req, res) {
 
     const valores = [
       nuevoFolio,
-      'transportacion',
+      'Transportacion',
       datos.tipo_transporte || '',
       '', // proveedor vacío
       1,
