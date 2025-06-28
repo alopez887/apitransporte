@@ -14,6 +14,7 @@ export async function enviarCorreoTransporte(datos) {
     console.log("📥 Datos recibidos para el correo:", datos);
 
     let imagenAdjunta = null;
+
     if (datos.imagen && datos.imagen.startsWith('http')) {
       try {
         const imagenRes = await axios.get(datos.imagen, { responseType: 'arraybuffer' });
@@ -83,7 +84,7 @@ export async function enviarCorreoTransporte(datos) {
           </tr>
         </table>
 
-        <table style="width:100%;margin-top:10px;margin-bottom:20px;">
+        <table style="width:100%;border-collapse:collapse;">
           <tr>
             <td style="vertical-align:top;padding-right:15px;">
               <p><strong>Name:</strong> ${datos.nombre} ${datos.apellido}</p>
@@ -100,22 +101,15 @@ export async function enviarCorreoTransporte(datos) {
               <p><strong>Total:</strong> $${safeToFixed(datos.precio_total)} USD</p>
             </td>
           </tr>
-        </table>
-
-        <table style="width:100%;border-collapse:collapse;margin-top:20px;">
           <tr>
-            <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;">Arrival Information</th>
-            <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;">Departure Information</th>
-          </tr>
-          <tr>
-            <td style="vertical-align:top;padding-right:15px;">
+            <td style="vertical-align:top;padding-right:15px;padding-top:20px;border-top:1px solid #ddd;">
               <p><strong>Hotel:</strong> ${datos.hotel_llegada}</p>
               <p><strong>Date:</strong> ${datos.fecha_llegada}</p>
               <p><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>
               <p><strong>Airline:</strong> ${datos.aerolinea_llegada}</p>
               <p><strong>Flight:</strong> ${datos.vuelo_llegada}</p>
             </td>
-            <td style="vertical-align:top;">
+            <td style="vertical-align:top;padding-top:20px;border-top:1px solid #ddd;">
               <p><strong>Hotel:</strong> ${datos.hotel_salida}</p>
               <p><strong>Date:</strong> ${datos.fecha_salida}</p>
               <p><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</p>
