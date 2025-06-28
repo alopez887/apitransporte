@@ -75,7 +75,7 @@ export async function enviarCorreoTransporte(datos) {
     let mensajeHTML = "";
 
     if (datos.tipo_viaje === "Redondo") {
-      // 🟢 Round Trip con tabla doble columna
+      // Round Trip
       mensajeHTML = `
       <div style="max-width:700px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
@@ -85,16 +85,16 @@ export async function enviarCorreoTransporte(datos) {
           </tr>
         </table>
 
-        <table style="width:100%;margin-top:10px;">
+        <table style="width:100%;margin-bottom:15px;">
           <tr>
-            <td style="vertical-align:top;padding-right:10px;">
+            <td style="vertical-align:top;">
               <p><strong>Name:</strong> ${datos.nombre} ${datos.apellido}</p>
               <p><strong>Email:</strong> ${datos.correo_cliente}</p>
               <p><strong>Phone:</strong> ${datos.telefono}</p>
               <p><strong>Passengers:</strong> ${datos.cantidad_pasajeros}</p>
               <p><strong>Note:</strong> ${nota}</p>
             </td>
-            <td style="vertical-align:top;padding-left:10px;">
+            <td style="vertical-align:top;text-align:right;">
               <p><strong>Folio:</strong> ${datos.folio}</p>
               <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
               <p><strong>Capacity:</strong> ${datos.capacidad}</p>
@@ -144,7 +144,7 @@ export async function enviarCorreoTransporte(datos) {
       </div>
       `;
     } else {
-      // ✉️ Llegada o Salida
+      // Llegada o Salida
       mensajeHTML = `
       <div style="max-width:600px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
@@ -162,13 +162,16 @@ export async function enviarCorreoTransporte(datos) {
         <p><strong>Capacity:</strong> ${datos.capacidad}</p>
         <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
         ${(datos.cantidad_pasajeros || datos.pasajeros) ? `<p><strong>Passengers:</strong> ${datos.cantidad_pasajeros || datos.pasajeros}</p>` : ''}
-
+        ${datos.hotel_llegada ? `<p><strong>Hotel:</strong> ${datos.hotel_llegada}</p>` : ''}
+        ${datos.fecha_llegada ? `<p><strong>Date:</strong> ${datos.fecha_llegada}</p>` : ''}
+        ${datos.hora_llegada ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>` : ''}
+        ${datos.aerolinea_llegada ? `<p><strong>Airline:</strong> ${datos.aerolinea_llegada}</p>` : ''}
+        ${datos.vuelo_llegada ? `<p><strong>Flight:</strong> ${datos.vuelo_llegada}</p>` : ''}
         ${datos.hotel_salida ? `<p><strong>Hotel:</strong> ${datos.hotel_salida}</p>` : ''}
-        ${datos.fecha ? `<p><strong>Date:</strong> ${datos.fecha}</p>` : ''}
-        ${datos.hora ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora)}</p>` : ''}
-        ${datos.aerolinea ? `<p><strong>Airline:</strong> ${datos.aerolinea}</p>` : ''}
-        ${datos.numero_vuelo ? `<p><strong>Flight:</strong> ${datos.numero_vuelo}</p>` : ''}
-
+        ${datos.fecha_salida ? `<p><strong>Date:</strong> ${datos.fecha_salida}</p>` : ''}
+        ${datos.hora_salida ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</p>` : ''}
+        ${datos.aerolinea_salida ? `<p><strong>Airline:</strong> ${datos.aerolinea_salida}</p>` : ''}
+        ${datos.vuelo_salida ? `<p><strong>Flight:</strong> ${datos.vuelo_salida}</p>` : ''}
         <p><strong>Total:</strong> $${safeToFixed(datos.precio_total)} USD</p>
         ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
 
