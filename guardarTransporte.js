@@ -1,7 +1,7 @@
 import pool from './conexion.js';
 import { enviarCorreoTransporte } from './correosTransporte.js';
 
-console.log("🟢 guardando transporte — SOLO llegada y salida — versión limpia");
+console.log("🟢 guardando transporte — llegada, salida y shuttle — versión final");
 
 export default async function guardarTransporte(req, res) {
   const datos = req.body;
@@ -58,7 +58,10 @@ export default async function guardarTransporte(req, res) {
     let vuelo_salida = datos.vuelo_salida || '';
     let hotel_salida = datos.hotel_salida || '';
 
-    if (datos.tipo_viaje === "Llegada") {
+    const esShuttle = datos.tipo_viaje === "Shuttle";
+
+    // ✅ Llegada o Shuttle
+    if (datos.tipo_viaje === "Llegada" || esShuttle) {
       fecha_llegada = datos.fecha_llegada || datos.fecha || null;
       hora_llegada = datos.hora_llegada?.trim() || datos.hora || null;
       aerolinea_llegada = datos.aerolinea_llegada || datos.aerolinea || '';
@@ -156,7 +159,7 @@ export default async function guardarTransporte(req, res) {
       porcentaje_descuento,
       precio_servicio,
       precio_total,
-	  datos.tipo_viaje || ''
+      datos.tipo_viaje || ''
     ];
 
     console.log("🧾 QUERY:", query);
