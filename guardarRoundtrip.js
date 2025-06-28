@@ -79,7 +79,7 @@ export default async function guardarRoundtrip(req, res) {
         datos.hora_salida,
         datos.aerolinea_salida,
         datos.vuelo_salida,
-        'transportacion',
+        'Transportacion',
         datos.porcentaje_descuento || 0,
         datos.precio_servicio || 0,
         '1'

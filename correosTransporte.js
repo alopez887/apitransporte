@@ -75,25 +75,30 @@ export async function enviarCorreoTransporte(datos) {
     let mensajeHTML = "";
 
     if (datos.tipo_viaje === "Redondo") {
+      // Diseño compacto y estético para Round Trip
       mensajeHTML = `
-      <div style="max-width:700px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
+      <div style="max-width:600px;margin:0 auto;padding:20px 20px 30px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
           <tr>
-            <td style="text-align:left;"><h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2></td>
-            <td style="text-align:right;"><img src="cid:logoEmpresa" alt="Logo" style="height:45px;" /></td>
+            <td style="text-align:left;">
+              <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
+            </td>
+            <td style="text-align:right;">
+              <img src="cid:logoEmpresa" alt="Logo" style="height:40px;margin-right:-10px;" />
+            </td>
           </tr>
         </table>
 
-        <table style="width:100%;border-collapse:collapse;">
+        <table style="width:100%;margin-bottom:10px;">
           <tr>
-            <td style="vertical-align:top;padding-right:15px;">
+            <td style="vertical-align:top;width:48%;">
               <p><strong>Name:</strong> ${datos.nombre} ${datos.apellido}</p>
               <p><strong>Email:</strong> ${datos.correo_cliente}</p>
               <p><strong>Phone:</strong> ${datos.telefono}</p>
               <p><strong>Passengers:</strong> ${datos.cantidad_pasajeros}</p>
-              ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
+              <p><strong>Note:</strong> ${nota}</p>
             </td>
-            <td style="vertical-align:top;">
+            <td style="vertical-align:top;width:48%;">
               <p><strong>Folio:</strong> ${datos.folio}</p>
               <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
               <p><strong>Capacity:</strong> ${datos.capacidad}</p>
@@ -101,15 +106,24 @@ export async function enviarCorreoTransporte(datos) {
               <p><strong>Total:</strong> $${safeToFixed(datos.precio_total)} USD</p>
             </td>
           </tr>
+        </table>
+
+        <hr style="border:none;border-top:1px solid #ddd;margin:15px 0;">
+
+        <table style="width:100%;border-collapse:collapse;">
           <tr>
-            <td style="vertical-align:top;padding-right:15px;padding-top:20px;border-top:1px solid #ddd;">
+            <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;">Arrival Information</th>
+            <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;">Departure Information</th>
+          </tr>
+          <tr>
+            <td style="vertical-align:top;">
               <p><strong>Hotel:</strong> ${datos.hotel_llegada}</p>
               <p><strong>Date:</strong> ${datos.fecha_llegada}</p>
               <p><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>
               <p><strong>Airline:</strong> ${datos.aerolinea_llegada}</p>
               <p><strong>Flight:</strong> ${datos.vuelo_llegada}</p>
             </td>
-            <td style="vertical-align:top;padding-top:20px;border-top:1px solid #ddd;">
+            <td style="vertical-align:top;">
               <p><strong>Hotel:</strong> ${datos.hotel_salida}</p>
               <p><strong>Date:</strong> ${datos.fecha_salida}</p>
               <p><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</p>
@@ -134,6 +148,7 @@ export async function enviarCorreoTransporte(datos) {
       </div>
       `;
     } else {
+      // Llegada o Salida
       mensajeHTML = `
       <div style="max-width:600px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
