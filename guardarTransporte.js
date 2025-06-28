@@ -116,7 +116,7 @@ export default async function guardarTransporte(req, res) {
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
         nombre, apellido, correo_cliente, comentarios, telefono, codigo_descuento,
-        porcentaje_descuento, precio_servicio, precio_total, fecha
+        porcentaje_descuento, precio_servicio, precio_total, fecha, tipo_viaje
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
