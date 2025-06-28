@@ -75,30 +75,26 @@ export async function enviarCorreoTransporte(datos) {
     let mensajeHTML = "";
 
     if (datos.tipo_viaje === "Redondo") {
-      // Diseño compacto y estético para Round Trip
+      // 🟢 Round Trip con tabla doble columna
       mensajeHTML = `
-      <div style="max-width:600px;margin:0 auto;padding:20px 20px 30px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
+      <div style="max-width:700px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
           <tr>
-            <td style="text-align:left;">
-              <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
-            </td>
-            <td style="text-align:right;">
-              <img src="cid:logoEmpresa" alt="Logo" style="height:40px;margin-right:-10px;" />
-            </td>
+            <td style="text-align:left;"><h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2></td>
+            <td style="text-align:right;"><img src="cid:logoEmpresa" alt="Logo" style="height:45px;" /></td>
           </tr>
         </table>
 
-        <table style="width:100%;margin-bottom:10px;">
+        <table style="width:100%;margin-top:10px;">
           <tr>
-            <td style="vertical-align:top;width:48%;">
+            <td style="vertical-align:top;padding-right:10px;">
               <p><strong>Name:</strong> ${datos.nombre} ${datos.apellido}</p>
               <p><strong>Email:</strong> ${datos.correo_cliente}</p>
               <p><strong>Phone:</strong> ${datos.telefono}</p>
               <p><strong>Passengers:</strong> ${datos.cantidad_pasajeros}</p>
               <p><strong>Note:</strong> ${nota}</p>
             </td>
-            <td style="vertical-align:top;width:48%;">
+            <td style="vertical-align:top;padding-left:10px;">
               <p><strong>Folio:</strong> ${datos.folio}</p>
               <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
               <p><strong>Capacity:</strong> ${datos.capacidad}</p>
@@ -108,7 +104,7 @@ export async function enviarCorreoTransporte(datos) {
           </tr>
         </table>
 
-        <hr style="border:none;border-top:1px solid #ddd;margin:15px 0;">
+        <hr style="margin:20px 0;">
 
         <table style="width:100%;border-collapse:collapse;">
           <tr>
@@ -116,7 +112,7 @@ export async function enviarCorreoTransporte(datos) {
             <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;">Departure Information</th>
           </tr>
           <tr>
-            <td style="vertical-align:top;">
+            <td style="vertical-align:top;padding-right:15px;">
               <p><strong>Hotel:</strong> ${datos.hotel_llegada}</p>
               <p><strong>Date:</strong> ${datos.fecha_llegada}</p>
               <p><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>
@@ -148,7 +144,7 @@ export async function enviarCorreoTransporte(datos) {
       </div>
       `;
     } else {
-      // Llegada o Salida
+      // ✉️ Llegada o Salida
       mensajeHTML = `
       <div style="max-width:600px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
@@ -167,17 +163,11 @@ export async function enviarCorreoTransporte(datos) {
         <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
         ${(datos.cantidad_pasajeros || datos.pasajeros) ? `<p><strong>Passengers:</strong> ${datos.cantidad_pasajeros || datos.pasajeros}</p>` : ''}
 
-        ${datos.hotel_llegada ? `<p><strong>Hotel:</strong> ${datos.hotel_llegada}</p>` : ''}
-        ${datos.fecha_llegada ? `<p><strong>Date:</strong> ${datos.fecha_llegada}</p>` : ''}
-        ${datos.hora_llegada ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>` : ''}
-        ${datos.aerolinea_llegada ? `<p><strong>Airline:</strong> ${datos.aerolinea_llegada}</p>` : ''}
-        ${datos.vuelo_llegada ? `<p><strong>Flight:</strong> ${datos.vuelo_llegada}</p>` : ''}
-
         ${datos.hotel_salida ? `<p><strong>Hotel:</strong> ${datos.hotel_salida}</p>` : ''}
         ${datos.fecha ? `<p><strong>Date:</strong> ${datos.fecha}</p>` : ''}
         ${datos.hora ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora)}</p>` : ''}
         ${datos.aerolinea ? `<p><strong>Airline:</strong> ${datos.aerolinea}</p>` : ''}
-        ${datos.numero_vuelo ? `<p><strong>Flight Number:</strong> ${datos.numero_vuelo}</p>` : ''}
+        ${datos.numero_vuelo ? `<p><strong>Flight:</strong> ${datos.numero_vuelo}</p>` : ''}
 
         <p><strong>Total:</strong> $${safeToFixed(datos.precio_total)} USD</p>
         ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
