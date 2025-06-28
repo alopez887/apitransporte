@@ -53,7 +53,7 @@ export default async function guardarRoundtrip(req, res) {
         $13, $14, $15,
         $16, $17, $18, $19,
         $20, $21, $22, $23,
-        $24, $25, $26, $27, $28
+        $24, $25, $26, NOW() AT TIME ZONE 'America/Mazatlan', $28
       )`,
       [
         nuevoFolio,
