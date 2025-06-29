@@ -15,12 +15,13 @@ export default async function guardarTransporte(req, res) {
   const cantidadPasajeros = parseInt(datos.pasajeros, 10) || parseInt(datos.cantidad_pasajeros, 10) || 0;
   const nombre = datos.nombre || datos.cliente?.nombre || '';
   const apellido = datos.apellido || datos.cliente?.apellido || '';
+  const nombre_cliente = `${nombre} ${apellido}`.trim();
   const telefono_cliente = datos.telefono_cliente || datos.cliente?.telefono || '';
   const correo_cliente = datos.correo_cliente || datos.cliente?.email || '';
   const nota = datos.nota || datos.nota || datos.cliente?.nota || '';
   const total_pago = Number(datos.total_pago || datos.total || 0);
 
-  if (!nombre || !apellido || !telefono_cliente || !total_pago) {
+  if (!nombre_cliente|| !telefono_cliente || !total_pago) {
     return res.status(400).json({ error: 'Faltan datos requeridos' });
   }
 
@@ -118,16 +119,16 @@ export default async function guardarTransporte(req, res) {
         capacidad, cantidad_pasajeros, hotel_llegada, hotel_salida,
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
-        nombre, apellido, correo_cliente, nota, telefono_cliente, codigo_descuento,
+        nombre_cliente, correo_cliente, nota, telefono_cliente, codigo_descuento,
         porcentaje_descuento, precio_servicio, total_pago, fecha, tipo_viaje
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
         $11, $12, $13, $14,
         $15, $16, $17, $18,
-        $19, $20, $21, $22, $23, $24,
-        $25, $26, $27,
-        NOW() AT TIME ZONE 'America/Mazatlan', $28
+        $19, $20, $21, $22, $23,
+		$24, $25, $26,
+		NOW() AT TIME ZONE 'America/Mazatlan', $27
       )
     `;
 
@@ -150,8 +151,7 @@ export default async function guardarTransporte(req, res) {
       hora_salida,
       aerolinea_salida,
       vuelo_salida,
-      nombre,
-      apellido,
+      nombre_cliente,
       correo_cliente,
       nota,
       telefono_cliente,
