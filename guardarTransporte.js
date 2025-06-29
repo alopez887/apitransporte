@@ -170,6 +170,7 @@ export default async function guardarTransporte(req, res) {
 
     await enviarCorreoTransporte({
       ...datos,
+	  nombre_cliente,
       folio: nuevoFolio,
       zona: zonaBD,
       total_pago,
