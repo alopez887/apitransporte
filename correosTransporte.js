@@ -75,9 +75,8 @@ export async function enviarCorreoTransporte(datos) {
     let mensajeHTML = "";
 
     if (datos.tipo_viaje === "Redondo") {
-      // 🟢 Redondo con alineación limpia
       mensajeHTML = `
-      <div style="max-width:650px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
+      <div style="max-width:600px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
           <tr>
             <td style="text-align:left;">
@@ -148,15 +147,14 @@ export async function enviarCorreoTransporte(datos) {
       </div>
       `;
     } else {
-      // ✉️ Llegada o Salida
       mensajeHTML = `
-      <div style="max-width:650px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
+      <div style="max-width:600px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
           <tr>
             <td style="text-align:left;">
               <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
             </td>
-            <td style="text-align:right;padding-right:10px;">
+            <td style="text-align:right;padding-right:0;">
               <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
             </td>
           </tr>
