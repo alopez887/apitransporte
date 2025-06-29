@@ -103,7 +103,7 @@ export async function enviarCorreoTransporte(datos) {
               <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
               <p><strong>Capacity:</strong> ${datos.capacidad}</p>
               <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
-              <p><strong>Total:</strong> $${safeToFixed(datos.precio_total)} USD</p>
+              <p><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</p>
             </td>
           </tr>
         </table>
@@ -183,7 +183,7 @@ export async function enviarCorreoTransporte(datos) {
         ${datos.aerolinea_salida ? `<p><strong>Airline:</strong> ${datos.aerolinea_salida}</p>` : ''}
         ${datos.vuelo_salida ? `<p><strong>Flight:</strong> ${datos.vuelo_salida}</p>` : ''}
 
-        <p><strong>Total:</strong> $${safeToFixed(datos.precio_total)} USD</p>
+        <p><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</p>
         ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
 
         ${imagenAdjunta ? `<p><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>` : ''}

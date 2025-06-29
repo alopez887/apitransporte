@@ -6,7 +6,7 @@ export default async function guardarRoundtrip(req, res) {
 
   console.log("📥 Datos recibidos en guardarRoundtrip:", datos);
 
-  if (!datos || !datos.tipo_viaje || !datos.hotel_llegada || !datos.capacidad || !datos.cantidad_pasajeros || !datos.precio_total) {
+  if (!datos || !datos.tipo_viaje || !datos.hotel_llegada || !datos.capacidad || !datos.cantidad_pasajeros || !datos.total_pago) {
     console.warn("⚠️ Datos incompletos:", datos);
     return res.status(400).json({ error: 'Faltan datos requeridos' });
   }
@@ -42,7 +42,7 @@ export default async function guardarRoundtrip(req, res) {
     await pool.query(
       `INSERT INTO reservaciones (
         folio, tipo_viaje, tipo_transporte, hotel_llegada, hotel_salida, zona, capacidad,
-        cantidad_pasajeros, codigo_descuento, precio_total, nombre, apellido,
+        cantidad_pasajeros, codigo_descuento, total_pago, nombre, apellido,
         correo_cliente, telefono_cliente, nota,
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
@@ -65,7 +65,7 @@ export default async function guardarRoundtrip(req, res) {
         datos.capacidad,
         datos.cantidad_pasajeros,
         datos.codigo_descuento || '',
-        datos.precio_total,
+        datos.total_pago,
         datos.nombre,
         datos.apellido || '',
         datos.correo_cliente,

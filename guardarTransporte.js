@@ -10,7 +10,7 @@ export default async function guardarTransporte(req, res) {
   console.log("Nombre:", datos.nombre || datos.cliente?.nombre);
   console.log("Apellido:", datos.apellido || datos.cliente?.apellido);
   console.log("Teléfono:", datos.telefono_cliente || datos.cliente?.telefono_cliente);
-  console.log("Total:", datos.precio_total || datos.total);
+  console.log("Total:", datos.total_pago || datos.total);
 
   const cantidadPasajeros = parseInt(datos.pasajeros, 10) || parseInt(datos.cantidad_pasajeros, 10) || 0;
   const nombre = datos.nombre || datos.cliente?.nombre || '';
@@ -18,9 +18,9 @@ export default async function guardarTransporte(req, res) {
   const telefono_cliente = datos.telefono_cliente || datos.cliente?.telefono || '';
   const correo_cliente = datos.correo_cliente || datos.cliente?.email || '';
   const nota = datos.nota || datos.nota || datos.cliente?.nota || '';
-  const precio_total = Number(datos.precio_total || datos.total || 0);
+  const total_pago = Number(datos.total_pago || datos.total || 0);
 
-  if (!nombre || !apellido || !telefono_cliente || !precio_total) {
+  if (!nombre || !apellido || !telefono_cliente || !total_pago) {
     return res.status(400).json({ error: 'Faltan datos requeridos' });
   }
 
@@ -119,7 +119,7 @@ export default async function guardarTransporte(req, res) {
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
         nombre, apellido, correo_cliente, nota, telefono_cliente, codigo_descuento,
-        porcentaje_descuento, precio_servicio, precio_total, fecha, tipo_viaje
+        porcentaje_descuento, precio_servicio, total_pago, fecha, tipo_viaje
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
@@ -158,7 +158,7 @@ export default async function guardarTransporte(req, res) {
       datos.codigo_descuento || '',
       porcentaje_descuento,
       precio_servicio,
-      precio_total,
+      total_pago,
       datos.tipo_viaje || ''
     ];
 
@@ -172,7 +172,7 @@ export default async function guardarTransporte(req, res) {
       ...datos,
       folio: nuevoFolio,
       zona: zonaBD,
-      precio_total,
+      total_pago,
       imagen: datos.imagen || ''
     });
 
