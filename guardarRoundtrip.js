@@ -43,7 +43,7 @@ export default async function guardarRoundtrip(req, res) {
       `INSERT INTO reservaciones (
         folio, tipo_viaje, tipo_transporte, hotel_llegada, hotel_salida, zona, capacidad,
         cantidad_pasajeros, codigo_descuento, precio_total, nombre, apellido,
-        correo_cliente, telefono, comentarios,
+        correo_cliente, telefono_cliente, comentarios,
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
         tipo_servicio, porcentaje_descuento, precio_servicio, fecha, estatus
@@ -69,7 +69,7 @@ export default async function guardarRoundtrip(req, res) {
         datos.nombre,
         datos.apellido || '',
         datos.correo_cliente,
-        datos.telefono,
+        datos.telefono_cliente,
         datos.comentarios || '',
         datos.fecha_llegada,
         datos.hora_llegada,
