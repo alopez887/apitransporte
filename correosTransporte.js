@@ -92,7 +92,7 @@ export async function enviarCorreoTransporte(datos) {
         <table style="width:100%;margin-bottom:10px;">
           <tr>
             <td style="vertical-align:top;width:48%;">
-              <p><strong>Name:</strong> ${datos.nombre} ${datos.apellido}</p>
+              <p><strong>Name:</strong> ${datos.nombre_cliente}</p>
               <p><strong>Email:</strong> ${datos.correo_cliente}</p>
               <p><strong>Phone:</strong> ${datos.telefono_cliente}</p>
               <p><strong>Passengers:</strong> ${datos.cantidad_pasajeros}</p>
@@ -163,7 +163,7 @@ export async function enviarCorreoTransporte(datos) {
         </table>
 
         <p><strong>Folio:</strong> ${datos.folio}</p>
-        <p><strong>Name:</strong> ${datos.nombre} ${datos.apellido}</p>
+        <p><strong>Name:</strong> ${datos.nombre_cliente}</p>
         <p><strong>Email:</strong> ${datos.correo_cliente}</p>
         <p><strong>Phone:</strong> ${datos.telefono_cliente}</p>
         <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
