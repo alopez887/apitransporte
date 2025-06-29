@@ -94,7 +94,7 @@ export async function enviarCorreoTransporte(datos) {
             <td style="vertical-align:top;width:48%;">
               <p><strong>Name:</strong> ${datos.nombre} ${datos.apellido}</p>
               <p><strong>Email:</strong> ${datos.correo_cliente}</p>
-              <p><strong>Phone:</strong> ${datos.telefono}</p>
+              <p><strong>Phone:</strong> ${datos.telefono_cliente}</p>
               <p><strong>Passengers:</strong> ${datos.cantidad_pasajeros}</p>
               ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
             </td>
@@ -165,7 +165,7 @@ export async function enviarCorreoTransporte(datos) {
         <p><strong>Folio:</strong> ${datos.folio}</p>
         <p><strong>Name:</strong> ${datos.nombre} ${datos.apellido}</p>
         <p><strong>Email:</strong> ${datos.correo_cliente}</p>
-        <p><strong>Phone:</strong> ${datos.telefono}</p>
+        <p><strong>Phone:</strong> ${datos.telefono_cliente}</p>
         <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
         <p><strong>Capacity:</strong> ${datos.capacidad}</p>
         <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
