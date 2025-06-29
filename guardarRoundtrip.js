@@ -98,6 +98,7 @@ export default async function guardarRoundtrip(req, res) {
       console.log("📧 Enviando correo de confirmación...");
       await enviarCorreoTransporte({
         ...datos,
+		nombre_cliente,
         folio: nuevoFolio,
         zona
       });
