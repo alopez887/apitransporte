@@ -17,7 +17,7 @@ export default async function guardarTransporte(req, res) {
   const apellido = datos.apellido || datos.cliente?.apellido || '';
   const telefono_cliente = datos.telefono_cliente || datos.cliente?.telefono || '';
   const correo_cliente = datos.correo_cliente || datos.cliente?.email || '';
-  const comentarios = datos.nota || datos.comentarios || datos.cliente?.comentarios || '';
+  const nota = datos.nota || datos.nota || datos.cliente?.nota || '';
   const precio_total = Number(datos.precio_total || datos.total || 0);
 
   if (!nombre || !apellido || !telefono_cliente || !precio_total) {
@@ -118,7 +118,7 @@ export default async function guardarTransporte(req, res) {
         capacidad, cantidad_pasajeros, hotel_llegada, hotel_salida,
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
-        nombre, apellido, correo_cliente, comentarios, telefono_cliente, codigo_descuento,
+        nombre, apellido, correo_cliente, nota, telefono_cliente, codigo_descuento,
         porcentaje_descuento, precio_servicio, precio_total, fecha, tipo_viaje
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
@@ -153,7 +153,7 @@ export default async function guardarTransporte(req, res) {
       nombre,
       apellido,
       correo_cliente,
-      comentarios,
+      nota,
       telefono_cliente,
       datos.codigo_descuento || '',
       porcentaje_descuento,

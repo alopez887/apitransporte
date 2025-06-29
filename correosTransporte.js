@@ -70,7 +70,7 @@ export async function enviarCorreoTransporte(datos) {
     };
 
     const tripTypeIngles = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
-    const nota = datos.nota || datos.comentarios || datos.cliente?.comentarios || '';
+    const nota = datos.nota || datos.nota || datos.cliente?.nota || '';
 
     let mensajeHTML = "";
 
