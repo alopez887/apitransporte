@@ -9,7 +9,7 @@ export default async function guardarTransporte(req, res) {
   console.log("🧩 Validación inicial:");
   console.log("Nombre:", datos.nombre || datos.cliente?.nombre);
   console.log("Apellido:", datos.apellido || datos.cliente?.apellido);
-  console.log("Teléfono:", datos.telefono || datos.cliente?.telefono);
+  console.log("Teléfono:", datos.telefono_cliente || datos.cliente?.telefono_cliente);
   console.log("Total:", datos.precio_total || datos.total);
 
   const cantidadPasajeros = parseInt(datos.pasajeros, 10) || parseInt(datos.cantidad_pasajeros, 10) || 0;
@@ -20,7 +20,7 @@ export default async function guardarTransporte(req, res) {
   const comentarios = datos.nota || datos.comentarios || datos.cliente?.comentarios || '';
   const precio_total = Number(datos.precio_total || datos.total || 0);
 
-  if (!nombre || !apellido || !telefono || !precio_total) {
+  if (!nombre || !apellido || !telefono_cliente || !precio_total) {
     return res.status(400).json({ error: 'Faltan datos requeridos' });
   }
 
