@@ -15,7 +15,7 @@ export default async function guardarTransporte(req, res) {
   const cantidadPasajeros = parseInt(datos.pasajeros, 10) || parseInt(datos.cantidad_pasajeros, 10) || 0;
   const nombre = datos.nombre || datos.cliente?.nombre || '';
   const apellido = datos.apellido || datos.cliente?.apellido || '';
-  const telefono = datos.telefono || datos.cliente?.telefono || '';
+  const telefono_cliente = datos.telefono_cliente || datos.cliente?.telefono || '';
   const correo_cliente = datos.correo_cliente || datos.cliente?.email || '';
   const comentarios = datos.nota || datos.comentarios || datos.cliente?.comentarios || '';
   const precio_total = Number(datos.precio_total || datos.total || 0);
