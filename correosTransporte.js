@@ -83,9 +83,9 @@ export async function enviarCorreoTransporte(datos) {
             <td style="text-align:left;">
               <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
             </td>
-            <td style="text-align:right;padding-right:0;">
-              <img src="cid:logoEmpresa" alt="Logo" style="height:45px; margin-right:-20px;"  />
-            </td>
+            <td style="text-align:right; width:150px;">
+				<img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
+			</td>
           </tr>
         </table>
 
@@ -156,9 +156,9 @@ export async function enviarCorreoTransporte(datos) {
             <td style="text-align:left;">
               <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
             </td>
-            <td style="text-align:right;padding-right:10px;">
-              <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
-            </td>
+            <td style="text-align:right; width:150px;">
+				<img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
+			</td>
           </tr>
         </table>
 
