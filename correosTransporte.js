@@ -75,7 +75,6 @@ export async function enviarCorreoTransporte(datos) {
     let mensajeHTML = "";
 
     if (datos.tipo_viaje === "Redondo") {
-      // 🟢 Redondo con alineación limpia
       mensajeHTML = `
       <div style="max-width:650px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
@@ -83,9 +82,9 @@ export async function enviarCorreoTransporte(datos) {
             <td style="text-align:left;">
               <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
             </td>
-            <td style="text-align:right; width:150px;">
-				<img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
-			</td>
+            <td style="text-align:right;" width="150">
+              <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
+            </td>
           </tr>
         </table>
 
@@ -148,7 +147,6 @@ export async function enviarCorreoTransporte(datos) {
       </div>
       `;
     } else {
-      // ✉️ Llegada o Salida
       mensajeHTML = `
       <div style="max-width:650px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
@@ -156,9 +154,9 @@ export async function enviarCorreoTransporte(datos) {
             <td style="text-align:left;">
               <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
             </td>
-            <td style="text-align:right; width:150px;">
-				<img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
-			</td>
+            <td style="text-align:right;" width="150">
+              <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
+            </td>
           </tr>
         </table>
 
