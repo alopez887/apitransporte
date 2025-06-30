@@ -76,7 +76,7 @@ export async function enviarCorreoTransporte(datos) {
 
     if (datos.tipo_viaje === "Redondo") {
       mensajeHTML = `
-      <div style="max-width:650px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
+      <div style="max-width:600px;margin:0 auto;padding:20px 20px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:5px;">
           <tr>
             <td style="text-align:right;">
@@ -150,7 +150,7 @@ export async function enviarCorreoTransporte(datos) {
       `;
     } else {
       mensajeHTML = `
-      <div style="max-width:650px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
+      <div style="max-width:600px;margin:0 auto;padding:20px 20px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:5px;">
           <tr>
             <td style="text-align:right;">
