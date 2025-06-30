@@ -79,10 +79,10 @@ export async function enviarCorreoTransporte(datos) {
       <div style="max-width:650px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
           <tr>
-            <td style="text-align:left;">
+            <td style="text-align:left;width:80%;">
               <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
             </td>
-            <td style="text-align:right;" width="150">
+            <td style="text-align:right;width:20%;">
               <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
             </td>
           </tr>
@@ -151,10 +151,10 @@ export async function enviarCorreoTransporte(datos) {
       <div style="max-width:650px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:10px;">
           <tr>
-            <td style="text-align:left;">
+            <td style="text-align:left;width:80%;">
               <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
             </td>
-            <td style="text-align:right;" width="150">
+            <td style="text-align:right;width:20%;">
               <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
             </td>
           </tr>
