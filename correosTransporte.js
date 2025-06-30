@@ -77,13 +77,15 @@ export async function enviarCorreoTransporte(datos) {
     if (datos.tipo_viaje === "Redondo") {
       mensajeHTML = `
       <div style="max-width:650px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
-        <table style="width:100%;margin-bottom:10px;">
+        <table style="width:100%;margin-bottom:5px;">
           <tr>
-            <td style="text-align:left;width:80%;">
-              <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
-            </td>
-            <td style="text-align:right;width:20%;">
+            <td style="text-align:right;">
               <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:left;">
+              <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
             </td>
           </tr>
         </table>
@@ -111,18 +113,18 @@ export async function enviarCorreoTransporte(datos) {
 
         <table style="width:100%;border-collapse:collapse;">
           <tr>
-            <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;">Arrival Information</th>
-            <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;">Departure Information</th>
+            <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;width:48%;">Arrival Information</th>
+            <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;width:48%;">Departure Information</th>
           </tr>
           <tr>
-            <td style="vertical-align:top;padding-right:15px;">
+            <td style="vertical-align:top;padding-right:15px;width:48%;">
               <p><strong>Hotel:</strong> ${datos.hotel_llegada}</p>
               <p><strong>Date:</strong> ${datos.fecha_llegada}</p>
               <p><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>
               <p><strong>Airline:</strong> ${datos.aerolinea_llegada}</p>
               <p><strong>Flight:</strong> ${datos.vuelo_llegada}</p>
             </td>
-            <td style="vertical-align:top;">
+            <td style="vertical-align:top;width:48%;">
               <p><strong>Hotel:</strong> ${datos.hotel_salida}</p>
               <p><strong>Date:</strong> ${datos.fecha_salida}</p>
               <p><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</p>
@@ -149,13 +151,15 @@ export async function enviarCorreoTransporte(datos) {
     } else {
       mensajeHTML = `
       <div style="max-width:650px;margin:0 auto;padding:30px 30px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
-        <table style="width:100%;margin-bottom:10px;">
+        <table style="width:100%;margin-bottom:5px;">
           <tr>
-            <td style="text-align:left;width:80%;">
-              <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
-            </td>
-            <td style="text-align:right;width:20%;">
+            <td style="text-align:right;">
               <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:left;">
+              <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
             </td>
           </tr>
         </table>
