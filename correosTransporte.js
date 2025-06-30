@@ -72,11 +72,9 @@ export async function enviarCorreoTransporte(datos) {
 
     const tripTypeIngles = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
     const nota = datos.nota || datos.cliente?.nota || '';
+    const esShuttle = datos.tipo_viaje === "Shuttle";
 
     let mensajeHTML = "";
-
-    // Comprobamos si es Shuttle
-    const esShuttle = datos.tipo_viaje === "Shuttle";
 
     if (datos.tipo_viaje === "Redondo") {
       mensajeHTML = `
@@ -105,7 +103,7 @@ export async function enviarCorreoTransporte(datos) {
             </td>
             <td style="vertical-align:top;width:48%;">
               <p><strong>Folio:</strong> ${datos.folio}</p>
-              <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
+              ${!esShuttle ? `<p><strong>Transport:</strong> ${datos.tipo_transporte}</p>` : ''}
               ${!esShuttle ? `<p><strong>Capacity:</strong> ${datos.capacidad}</p>` : ''}
               <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
               <p><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</p>
@@ -172,7 +170,7 @@ export async function enviarCorreoTransporte(datos) {
         <p><strong>Name:</strong> ${datos.nombre_cliente}</p>
         <p><strong>Email:</strong> ${datos.correo_cliente}</p>
         <p><strong>Phone:</strong> ${datos.telefono_cliente}</p>
-        <p><strong>Transport:</strong> ${datos.tipo_transporte}</p>
+        ${!esShuttle ? `<p><strong>Transport:</strong> ${datos.tipo_transporte}</p>` : ''}
         ${!esShuttle ? `<p><strong>Capacity:</strong> ${datos.capacidad}</p>` : ''}
         <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
         ${(datos.cantidad_pasajeros || datos.pasajeros) ? `<p><strong>Passengers:</strong> ${datos.cantidad_pasajeros || datos.pasajeros}</p>` : ''}
