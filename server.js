@@ -130,21 +130,26 @@ app.get('/tarifa-shuttle', async (req, res) => {
   }
 });
 
-app.get('/validar-descuento', async (req, res) => {
+app.get('/api/verificar-codigo', async (req, res) => {
   const { codigo, transporte, zona } = req.query;
+
   if (!codigo || !transporte || !zona) {
     return res.status(400).json({ error: 'Faltan parametros requeridos (codigo, transporte, zona)' });
   }
 
   try {
-    const result = await pool.query(
-      `SELECT descuento_aplicado
-       FROM codigos_descuento
-       WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1)) 
-       AND UPPER(tipo_transporte) = UPPER($2) 
-       AND zona_id = $3`,
-      [codigo, transporte, zona]
-    );
+    const query = `
+      SELECT descuento_aplicado
+      FROM codigos
+      WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1))
+        AND UPPER(tipo_transporte) = UPPER($2)
+        AND ($3 = ANY(zonas) OR 'GLOBAL' = ANY(zonas))
+        AND activo = true
+      LIMIT 1
+    `;
+    const values = [codigo, transporte, zona];
+
+    const result = await pool.query(query, values);
 
     if (result.rows.length > 0) {
       const porcentaje = parseFloat(result.rows[0].descuento_aplicado);
@@ -164,7 +169,7 @@ app.get('/validar-descuento', async (req, res) => {
   }
 });
 
-app.get('/validar-descuento-redondo', async (req, res) => {
+app.get('/api/verificar-codigo-redondo', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
 
   console.log("Parametros recibidos:", { codigo, transporte, zona, pasajeros });
@@ -176,15 +181,17 @@ app.get('/validar-descuento-redondo', async (req, res) => {
   try {
     const descQuery = `
       SELECT descuento_aplicado 
-      FROM codigos_descuento 
+      FROM codigos
       WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1)) 
         AND UPPER(tipo_transporte) = UPPER($2) 
-        AND zona_id = $3
+        AND ($3 = ANY(zonas) OR 'GLOBAL' = ANY(zonas))
+        AND activo = true
+      LIMIT 1
     `;
     const descResult = await pool.query(descQuery, [codigo, transporte, zona]);
 
     if (descResult.rows.length === 0) {
-      console.log("Codigo no valido en codigos_descuento");
+      console.log("Codigo no valido en codigos");
       return res.json({ valido: false });
     }
 
@@ -220,7 +227,7 @@ app.get('/validar-descuento-redondo', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error en /validar-descuento-redondo:", error.message);
+    console.error("Error en /api/verificar-codigo-redondo:", error.message);
     return res.status(500).json({ valido: false, mensaje: 'Error interno del servidor' });
   }
 });
@@ -310,110 +317,6 @@ app.get('/tarifa-redondo', async (req, res) => {
     res.status(500).json({ error: 'Error en la base de datos', detalle: err.message });
   }
 });
-
-app.get('/api/verificar-codigo-v2', async (req, res) => {
-  const { codigo, transporte, zona } = req.query;
-
-  if (!codigo || !transporte || !zona) {
-    return res.status(400).json({ error: 'Faltan parametros requeridos (codigo, transporte, zona)' });
-  }
-
-  try {
-    const query = `
-      SELECT descuento_aplicado
-      FROM codigos
-      WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1))
-        AND UPPER(tipo_transporte) = UPPER($2)
-        AND ($3 = ANY(zonas) OR 'GLOBAL' = ANY(zonas))
-        AND activo = true
-      LIMIT 1
-    `;
-    const values = [codigo, transporte, zona];
-
-    const result = await pool.query(query, values);
-
-    if (result.rows.length > 0) {
-      const porcentaje = parseFloat(result.rows[0].descuento_aplicado);
-      let campo = '';
-      if (porcentaje === 13) campo = 'precio_descuento_13';
-      else if (porcentaje === 13.5) campo = 'precio_descuento_135';
-      else if (porcentaje === 15) campo = 'precio_descuento_15';
-      else return res.status(400).json({ error: 'Descuento no soportado' });
-
-      res.json({ valido: true, descuento_aplicado: porcentaje, campo });
-    } else {
-      res.json({ valido: false });
-    }
-  } catch (err) {
-    console.error('Error validando codigo de descuento v2:', err);
-    res.status(500).json({ error: 'Error en la base de datos' });
-  }
-});
-
-app.get('/api/verificar-codigo-redondo-v2', async (req, res) => {
-  const { codigo, transporte, zona, pasajeros } = req.query;
-
-  console.log("Parametros recibidos:", { codigo, transporte, zona, pasajeros });
-
-  if (!codigo || !transporte || !zona || !pasajeros) {
-    return res.status(400).json({ valido: false, mensaje: 'Faltan parametros requeridos' });
-  }
-
-  try {
-    const descQuery = `
-      SELECT descuento_aplicado 
-      FROM codigos
-      WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1)) 
-        AND UPPER(tipo_transporte) = UPPER($2) 
-        AND ($3 = ANY(zonas) OR 'GLOBAL' = ANY(zonas))
-        AND activo = true
-      LIMIT 1
-    `;
-    const descResult = await pool.query(descQuery, [codigo, transporte, zona]);
-
-    if (descResult.rows.length === 0) {
-      console.log("Codigo no valido en codigos v2");
-      return res.json({ valido: false });
-    }
-
-    const descuento = parseFloat(descResult.rows[0].descuento_aplicado);
-    console.log("Descuento encontrado:", descuento);
-
-    let campo = '';
-    if (descuento === 13) campo = 'precio_descuento_13';
-    else if (descuento === 13.5) campo = 'precio_descuento_135';
-    else if (descuento === 15) campo = 'precio_descuento_15';
-    else return res.status(400).json({ valido: false, mensaje: 'Descuento no soportado' });
-
-    const tarifaQuery = `
-      SELECT ${campo} AS precio_descuento 
-      FROM tarifas_transportacion 
-      WHERE TRIM(UPPER(tipo_transporte)) = TRIM(UPPER($1)) 
-        AND zona_id = $2 
-        AND TRIM(rango_pasajeros) = TRIM($3)
-    `;
-    const tarifaResult = await pool.query(tarifaQuery, [transporte, zona, pasajeros.trim()]);
-
-    if (tarifaResult.rows.length === 0) {
-      console.log("No se encontro precio en tarifas_transportacion");
-      return res.json({ valido: false });
-    }
-
-    const precioDescuento = parseFloat(tarifaResult.rows[0].precio_descuento);
-
-    return res.json({
-      valido: true,
-      precio_descuento: precioDescuento.toFixed(2),
-      descuento
-    });
-
-  } catch (error) {
-    console.error("Error en /api/verificar-codigo-redondo-v2:", error.message);
-    return res.status(500).json({ valido: false, mensaje: 'Error interno del servidor' });
-  }
-});
-
-
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
