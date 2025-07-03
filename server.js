@@ -140,7 +140,7 @@ app.get('/api/verificar-codigo', async (req, res) => {
   try {
     const query = `
       SELECT descuento_aplicado
-      FROM codigos
+      FROM codigos_descuentos
       WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1))
         AND UPPER(tipo_transporte) = UPPER($2)
         AND ($3 = ANY(zonas) OR 'GLOBAL' = ANY(zonas))
@@ -181,7 +181,7 @@ app.get('/api/verificar-codigo-redondo', async (req, res) => {
   try {
     const descQuery = `
       SELECT descuento_aplicado 
-      FROM codigos
+      FROM codigos_descuentos
       WHERE TRIM(UPPER(codigo)) = TRIM(UPPER($1)) 
         AND UPPER(tipo_transporte) = UPPER($2) 
         AND ($3 = ANY(zonas) OR 'GLOBAL' = ANY(zonas))
