@@ -23,7 +23,7 @@ export default async function guardarTransporte(req, res) {
   const nota = datos.nota || datos.nota || datos.cliente?.nota || '';
   const total_pago = Number(datos.total_pago || datos.total || 0);
 
-  if (!nombre_cliente|| !telefono_cliente || !total_pago) {
+  if (!nombre_cliente || !telefono_cliente || !total_pago) {
     return res.status(400).json({ error: 'Faltan datos requeridos' });
   }
 
@@ -34,12 +34,12 @@ export default async function guardarTransporte(req, res) {
     const ultimoFolio = result.rows[0]?.folio || 'TR-000000';
     const numero = parseInt(ultimoFolio.replace('TR-', '')) + 1;
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
-	
-	const token = crypto.randomBytes(20).toString('hex');
-	console.log("🔑 Token generado:", token);
 
-	const qr = await generarQRTransporte(token);
-	console.log("📄 QR generado:", qr);
+    const token_qr = crypto.randomBytes(20).toString('hex');
+    console.log("🔑 Token QR generado:", token_qr);
+
+    const qr = await generarQRTransporte(token_qr);
+    console.log("📄 QR generado (para el correo):", qr);
 
     console.log("🆕 Nuevo folio generado:", nuevoFolio);
 
@@ -69,7 +69,6 @@ export default async function guardarTransporte(req, res) {
 
     const esShuttle = datos.tipo_viaje === "Shuttle";
 
-    // ✅ Llegada o Shuttle
     if (datos.tipo_viaje === "Llegada" || esShuttle) {
       fecha_llegada = datos.fecha_llegada || datos.fecha || null;
       hora_llegada = datos.hora_llegada?.trim() || datos.hora || null;
@@ -78,7 +77,6 @@ export default async function guardarTransporte(req, res) {
       hotel_llegada = datos.hotel_llegada || datos.hotel || '';
     }
 
-    // 🔁 Normalizar hora_llegada
     if (typeof hora_llegada === 'string' && hora_llegada.trim() !== '') {
       const cruda = hora_llegada.trim();
       const formato24 = cruda.match(/^(\d{1,2}):(\d{2})$/);
@@ -98,7 +96,6 @@ export default async function guardarTransporte(req, res) {
       }
     }
 
-    // 🧭 Zona
     let zonaBD = '';
     if (datos.zona && datos.zona.trim() !== '') {
       zonaBD = datos.zona.trim();
@@ -128,15 +125,15 @@ export default async function guardarTransporte(req, res) {
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
         nombre_cliente, correo_cliente, nota, telefono_cliente, codigo_descuento,
-        porcentaje_descuento, precio_servicio, total_pago, fecha, tipo_viaje, token, qr
+        porcentaje_descuento, precio_servicio, total_pago, fecha, tipo_viaje, token_qr
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
         $11, $12, $13, $14,
         $15, $16, $17, $18,
         $19, $20, $21, $22, $23,
-		$24, $25, $26,
-		NOW() AT TIME ZONE 'America/Mazatlan', $27, $28, $29
+        $24, $25, $26,
+        NOW() AT TIME ZONE 'America/Mazatlan', $27, $28
       )
     `;
 
@@ -168,24 +165,22 @@ export default async function guardarTransporte(req, res) {
       precio_servicio,
       total_pago,
       datos.tipo_viaje || '',
-	  token,
-	  qr
+      token_qr
     ];
 
     console.log("🧾 QUERY:", query);
     console.log("📦 VALORES:", valores);
-    console.log("🖼️ Enviando imagen al correo:", datos.imagen);
 
     await pool.query(query, valores);
 
     await enviarCorreoTransporte({
       ...datos,
-	  nombre_cliente,
+      nombre_cliente,
       folio: nuevoFolio,
       zona: zonaBD,
       total_pago,
       imagen: datos.imagen || '',
-	  qr
+      qr
     });
 
     res.status(200).json({

@@ -42,12 +42,12 @@ export default async function guardarRoundtrip(req, res) {
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
 
     console.log("🧾 Nuevo folio generado:", nuevoFolio);
-	
-	const token = crypto.randomBytes(20).toString('hex');
-	console.log("🔑 Token generado:", token);
+    
+    const token_qr = crypto.randomBytes(20).toString('hex');
+    console.log("🔑 Token QR generado:", token_qr);
 
-	const qr = await generarQRTransporte(token);
-	console.log("📄 QR generado:", qr);
+    const qr = await generarQRTransporte(token_qr);
+    console.log("📄 QR generado (para el correo):", qr);
 
     const zonaQuery = await pool.query("SELECT zona_id AS zona FROM hoteles_zona WHERE nombre_hotel = $1", [datos.hotel_llegada]);
     const zona = zonaQuery.rows[0]?.zona || '';
@@ -61,14 +61,14 @@ export default async function guardarRoundtrip(req, res) {
         correo_cliente, telefono_cliente, nota,
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
-        tipo_servicio, porcentaje_descuento, precio_servicio, fecha, estatus, token, qr
+        tipo_servicio, porcentaje_descuento, precio_servicio, fecha, estatus, token_qr
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7,
         $8, $9, $10, $11,
         $12, $13, $14,
         $15, $16, $17, $18,
         $19, $20, $21, $22,
-        $23, $24, $25, NOW() AT TIME ZONE 'America/Mazatlan', $26, $27, $28
+        $23, $24, $25, NOW() AT TIME ZONE 'America/Mazatlan', $26, $27
       )`,
       [
         nuevoFolio,
@@ -97,8 +97,7 @@ export default async function guardarRoundtrip(req, res) {
         datos.porcentaje_descuento || 0,
         datos.precio_servicio || 0,
         '1',
-		token,
-		qr
+        token_qr
       ]
     );
 
@@ -108,10 +107,10 @@ export default async function guardarRoundtrip(req, res) {
       console.log("📧 Enviando correo de confirmación...");
       await enviarCorreoTransporte({
         ...datos,
-		nombre_cliente,
+        nombre_cliente,
         folio: nuevoFolio,
         zona,
-		qr
+        qr
       });
       console.log("✅ Correo enviado con éxito");
     } catch (emailError) {
