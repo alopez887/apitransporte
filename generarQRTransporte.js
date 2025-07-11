@@ -2,8 +2,8 @@ import QRCode from 'qrcode';
 
 export async function generarQRTransporte(token) {
   try {
-    // URL que se usará en el QR
-    const url = `https://nkmsistemas.wixsite.com/cabo-travel-activiti/validar-qr?token=${token}`;
+    // URL que se usará en el QR con el parámetro type=transporte
+    const url = `https://nkmsistemas.wixsite.com/cabo-travel-activiti/validar-qr?token=${token}&type=transporte`;
 
     // Generar el QR en formato data URL
     const qrDataUrl = await QRCode.toDataURL(url);
