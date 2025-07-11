@@ -8,9 +8,9 @@ export async function actualizarFolioProveedorTransporte(req, res) {
   }
 
   try {
-    // ✅ Verificar que exista la reserva con el token
+    // ✅ Verificar que exista la reserva con el token_qr
     const consulta = await pool.query(
-      'SELECT id FROM reservaciones WHERE token = $1 LIMIT 1',
+      'SELECT id FROM reservaciones WHERE token_qr = $1 LIMIT 1',
       [token]
     );
 
@@ -24,7 +24,7 @@ export async function actualizarFolioProveedorTransporte(req, res) {
        SET folio_proveedor = $1,
            usuario_proveedor = $2,
            fecha_actualizacion_proveedor = NOW() AT TIME ZONE 'America/Mazatlan'
-       WHERE token = $3`,
+       WHERE token_qr = $3`,
       [folio_proveedor, usuario, token]
     );
 
