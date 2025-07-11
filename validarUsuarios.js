@@ -1,25 +1,43 @@
 import pool from './conexion.js';
+import validarUsuarioProveedor from './validarUsuarios.js';
 
-export default async function validarUsuario(req, res) {
-  const { usuario } = req.body;
+export async function actualizarFolioProveedorTransporte(req, res) {
+  const { token, usuario, contrasena, folio_proveedor } = req.body;
 
-  if (!usuario) {
-    return res.status(400).json({ success: false, message: 'Falta usuario' });
+  if (!token || !usuario || !contrasena || !folio_proveedor) {
+    return res.status(400).json({ error: 'Faltan datos requeridos' });
   }
 
   try {
-    const result = await pool.query(
-      'SELECT * FROM usuarios_proveedor WHERE UPPER(usuario) = UPPER($1) AND activo = true',
-      [usuario.trim()]
+    // ✅ Validar usuario proveedor
+    const usuarioValido = await validarUsuarioProveedor(usuario, contrasena);
+    if (!usuarioValido) {
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+    }
+
+    // ✅ Verificar que exista la reserva con el token
+    const consulta = await pool.query(
+      'SELECT id FROM reservaciones WHERE token = $1 LIMIT 1',
+      [token]
     );
 
-    if (result.rows.length > 0) {
-      res.json({ success: true, usuario: result.rows[0] });
-    } else {
-      res.json({ success: false, message: 'Usuario no válido o inactivo.' });
+    if (consulta.rows.length === 0) {
+      return res.status(404).json({ error: 'Reserva no encontrada' });
     }
+
+    // ✅ Actualizar la reserva con el folio interno y datos de proveedor
+    await pool.query(
+      `UPDATE reservaciones
+       SET folio_proveedor = $1,
+           usuario_proveedor = $2,
+           fecha_actualizacion_proveedor = NOW() AT TIME ZONE 'America/Mazatlan'
+       WHERE token = $3`,
+      [folio_proveedor, usuario, token]
+    );
+
+    return res.status(200).json({ success: true, mensaje: 'Folio del proveedor actualizado correctamente' });
   } catch (error) {
-    console.error('❌ Error al validar usuario:', error);
-    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    console.error("❌ Error al actualizar folio proveedor transporte:", error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
   }
 }
