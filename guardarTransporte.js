@@ -1,5 +1,7 @@
 import pool from './conexion.js';
 import { enviarCorreoTransporte } from './correosTransporte.js';
+import { generarQRTransporte } from './generarQRTransporte.js';
+import crypto from 'crypto';
 
 console.log("🟢 guardando transporte — llegada, salida y shuttle — versión final");
 
@@ -32,6 +34,12 @@ export default async function guardarTransporte(req, res) {
     const ultimoFolio = result.rows[0]?.folio || 'TR-000000';
     const numero = parseInt(ultimoFolio.replace('TR-', '')) + 1;
     const nuevoFolio = `TR-${numero.toString().padStart(6, '0')}`;
+	
+	const token = crypto.randomBytes(20).toString('hex');
+	console.log("🔑 Token generado:", token);
+
+	const qr = await generarQRTransporte(token);
+	console.log("📄 QR generado:", qr);
 
     console.log("🆕 Nuevo folio generado:", nuevoFolio);
 
@@ -120,7 +128,7 @@ export default async function guardarTransporte(req, res) {
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
         nombre_cliente, correo_cliente, nota, telefono_cliente, codigo_descuento,
-        porcentaje_descuento, precio_servicio, total_pago, fecha, tipo_viaje
+        porcentaje_descuento, precio_servicio, total_pago, fecha, tipo_viaje, token, qr
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
@@ -128,7 +136,7 @@ export default async function guardarTransporte(req, res) {
         $15, $16, $17, $18,
         $19, $20, $21, $22, $23,
 		$24, $25, $26,
-		NOW() AT TIME ZONE 'America/Mazatlan', $27
+		NOW() AT TIME ZONE 'America/Mazatlan', $27, $28, $29
       )
     `;
 
@@ -159,7 +167,9 @@ export default async function guardarTransporte(req, res) {
       porcentaje_descuento,
       precio_servicio,
       total_pago,
-      datos.tipo_viaje || ''
+      datos.tipo_viaje || '',
+	  token,
+	  qr
     ];
 
     console.log("🧾 QUERY:", query);
@@ -174,7 +184,8 @@ export default async function guardarTransporte(req, res) {
       folio: nuevoFolio,
       zona: zonaBD,
       total_pago,
-      imagen: datos.imagen || ''
+      imagen: datos.imagen || '',
+	  qr
     });
 
     res.status(200).json({

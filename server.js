@@ -4,6 +4,9 @@ import pkg from 'pg';
 import dotenv from 'dotenv';
 import guardarTransporte from './guardarTransporte.js';
 import guardarRoundtrip from './guardarRoundtrip.js';
+import { generarQRTransporte } from './generarQRTransporte.js';
+import { obtenerReservaTransporte } from './obtenerReservaTransporte.js';
+import { actualizarFolioProveedorTransporte } from './actualizarFolioProveedorTransporte.js';
 
 dotenv.config();
 
@@ -317,6 +320,9 @@ app.get('/tarifa-redondo', async (req, res) => {
     res.status(500).json({ error: 'Error en la base de datos', detalle: err.message });
   }
 });
+
+app.get('/api/obtener-reserva-transporte', obtenerReservaTransporte);
+app.post('/api/actualizar-folio-proveedor-transporte', actualizarFolioProveedorTransporte);
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
