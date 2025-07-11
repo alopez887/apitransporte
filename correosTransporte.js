@@ -136,6 +136,13 @@ export async function enviarCorreoTransporte(datos) {
           </tr>
         </table>
 
+        ${datos.qr ? `
+          <p style="margin-top:20px;">
+            <strong>Scan this QR to check your reservation:</strong><br>
+            <img src="${datos.qr}" alt="QR Code" style="max-width:160px; margin-top:10px;" />
+          </p>
+        ` : ''}
+
         ${imagenAdjunta ? `<p><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>` : ''}
 
         <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:10px 15px;margin-top:20px;border-radius:5px;">
@@ -151,6 +158,7 @@ export async function enviarCorreoTransporte(datos) {
       </div>
       `;
     } else {
+      // Llegada, salida y shuttle
       mensajeHTML = `
       <div style="max-width:600px;margin:0 auto;padding:20px 20px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:5px;">
@@ -189,6 +197,13 @@ export async function enviarCorreoTransporte(datos) {
 
         <p><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</p>
         ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
+
+        ${datos.qr ? `
+          <p style="margin-top:20px;">
+            <strong>Scan this QR to check your reservation:</strong><br>
+            <img src="${datos.qr}" alt="QR Code" style="max-width:160px; margin-top:10px;" />
+          </p>
+        ` : ''}
 
         ${imagenAdjunta ? `<p><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>` : ''}
 
