@@ -6,6 +6,7 @@ import guardarTransporte from './guardarTransporte.js';
 import guardarRoundtrip from './guardarRoundtrip.js';
 import { generarQRTransporte } from './generarQRTransporte.js';
 import { obtenerReservaTransporte } from './obtenerReservaTransporte.js';
+console.log("✅ Función obtenerReservaTransporte importada:", obtenerReservaTransporte);
 import { actualizarFolioProveedorTransporte } from './actualizarFolioProveedorTransporte.js';
 
 dotenv.config();
