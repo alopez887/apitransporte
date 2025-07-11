@@ -18,7 +18,7 @@ export async function obtenerReservaTransporte(req, res) {
         porcentaje_descuento, precio_servicio, fecha, estatus, proveedor, folio_proveedor, 
         usuario_proveedor, fecha_actualizacion_proveedor
       FROM reservaciones
-      WHERE token = $1
+      WHERE token_qr = $1
       LIMIT 1
     `;
     const result = await pool.query(query, [token]);
