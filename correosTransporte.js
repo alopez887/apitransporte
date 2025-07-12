@@ -29,6 +29,7 @@ export async function enviarCorreoTransporte(datos) {
       }
     }
 
+    // QR
     let qrAdjunto = null;
     if (datos.qr && datos.qr.startsWith('data:image')) {
       const qrBase64 = datos.qr.split(',')[1];
@@ -89,7 +90,7 @@ export async function enviarCorreoTransporte(datos) {
 
     if (datos.tipo_viaje === "Redondo") {
       mensajeHTML = `
-      <div style="max-width:600px;margin:0 auto;padding:20px 20px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
+      <div style="max-width:600px;margin:0 auto;padding:20px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:5px;">
           <tr>
             <td style="text-align:right;">
@@ -146,29 +147,10 @@ export async function enviarCorreoTransporte(datos) {
             </td>
           </tr>
         </table>
-
-        ${imagenAdjunta ? `<p><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>` : ''}
-
-        <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:10px 15px;margin-top:20px;border-radius:5px;">
-          <strong style="color:#b00000;">⚠ Recommendations:</strong>
-          <span style="color:#333;"> Please confirm your reservation at least 24 hours in advance to avoid any inconvenience.</span>
-        </div>
-
-        <p style="margin-top:20px;font-size:14px;color:#555;">
-          📩 Confirmation sent to: <a href="mailto:${datos.correo_cliente}">${datos.correo_cliente}</a>
-        </p>
-
-        ${qrAdjunto ? `<div style="text-align:center;margin-top:30px;">
-          <p style="font-weight:bold;">Show this QR code to your provider:</p>
-          <img src="cid:qrReserva" alt="QR Code" style="width:180px;"/>
-        </div>` : ''}
-
-        ${politicasHTML}
-      </div>
       `;
     } else {
       mensajeHTML = `
-      <div style="max-width:600px;margin:0 auto;padding:20px 20px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
+      <div style="max-width:600px;margin:0 auto;padding:20px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:5px;">
           <tr>
             <td style="text-align:right;">
@@ -202,10 +184,13 @@ export async function enviarCorreoTransporte(datos) {
         ${datos.hora_salida ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</p>` : ''}
         ${datos.aerolinea_salida ? `<p><strong>Airline:</strong> ${datos.aerolinea_salida}</p>` : ''}
         ${datos.vuelo_salida ? `<p><strong>Flight:</strong> ${datos.vuelo_salida}</p>` : ''}
+      `;
+    }
 
+    // Footer y QR
+    mensajeHTML += `
         <p><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</p>
         ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
-
         ${imagenAdjunta ? `<p><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>` : ''}
 
         <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:10px 15px;margin-top:20px;border-radius:5px;">
@@ -224,10 +209,7 @@ export async function enviarCorreoTransporte(datos) {
 
         ${politicasHTML}
       </div>
-      `;
-    }
-
-    console.log("📤 Enviando correo con imagen y QR:", !!imagenAdjunta, !!qrAdjunto);
+    `;
 
     await transporter.sendMail({
       from: `Cabo Travels Solutions - Transport <${process.env.EMAIL_USER}>`,
