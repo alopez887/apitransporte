@@ -14,6 +14,7 @@ export async function enviarCorreoTransporte(datos) {
     console.log("📥 Datos recibidos para el correo:", datos);
 
     let imagenAdjunta = null;
+    let qrAdjunto = null;
 
     if (datos.imagen && datos.imagen.startsWith('http')) {
       try {
@@ -29,8 +30,6 @@ export async function enviarCorreoTransporte(datos) {
       }
     }
 
-    // QR
-    let qrAdjunto = null;
     if (datos.qr && datos.qr.startsWith('data:image')) {
       const qrBase64 = datos.qr.split(',')[1];
       qrAdjunto = {
@@ -86,10 +85,14 @@ export async function enviarCorreoTransporte(datos) {
     const nota = datos.nota || datos.cliente?.nota || '';
     const esShuttle = datos.tipo_viaje === "Shuttle";
 
-    let mensajeHTML = "";
+    let mensajeHTML = `
+      <style>
+        p { margin: 0; padding: 2px 0; }
+      </style>
+    `;
 
     if (datos.tipo_viaje === "Redondo") {
-      mensajeHTML = `
+      mensajeHTML += `
       <div style="max-width:600px;margin:0 auto;padding:20px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:5px;">
           <tr>
@@ -149,7 +152,7 @@ export async function enviarCorreoTransporte(datos) {
         </table>
       `;
     } else {
-      mensajeHTML = `
+      mensajeHTML += `
       <div style="max-width:600px;margin:0 auto;padding:20px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
         <table style="width:100%;margin-bottom:5px;">
           <tr>
@@ -178,16 +181,9 @@ export async function enviarCorreoTransporte(datos) {
         ${datos.hora_llegada ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>` : ''}
         ${datos.aerolinea_llegada ? `<p><strong>Airline:</strong> ${datos.aerolinea_llegada}</p>` : ''}
         ${datos.vuelo_llegada ? `<p><strong>Flight:</strong> ${datos.vuelo_llegada}</p>` : ''}
-
-        ${datos.hotel_salida ? `<p><strong>Hotel:</strong> ${datos.hotel_salida}</p>` : ''}
-        ${datos.fecha_salida ? `<p><strong>Date:</strong> ${datos.fecha_salida}</p>` : ''}
-        ${datos.hora_salida ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</p>` : ''}
-        ${datos.aerolinea_salida ? `<p><strong>Airline:</strong> ${datos.aerolinea_salida}</p>` : ''}
-        ${datos.vuelo_salida ? `<p><strong>Flight:</strong> ${datos.vuelo_salida}</p>` : ''}
       `;
     }
 
-    // Footer y QR
     mensajeHTML += `
         <p><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</p>
         ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
