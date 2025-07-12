@@ -23,7 +23,7 @@ export async function actualizarFolioProveedorTransporte(req, res) {
       `UPDATE reservaciones
        SET folio_proveedor = $1,
            usuario_proveedor = $2,
-           fecha_actualizacion_proveedor = $3
+           fecha_reservacion = $3
        WHERE token_qr = $4`,
       [folio_proveedor, usuario_proveedor, fecha_reservacion, token_qr]
     );
