@@ -87,7 +87,7 @@ export async function enviarCorreoTransporte(datos) {
 
     let mensajeHTML = `
       <style>
-        p { margin: 0; padding: 2px 0; }
+        div.linea { margin: 0; padding: 2px 0; line-height: 1.4; }
       </style>
     `;
 
@@ -110,18 +110,18 @@ export async function enviarCorreoTransporte(datos) {
         <table style="width:100%;margin-bottom:10px;">
           <tr>
             <td style="vertical-align:top;width:48%;">
-              <p><strong>Name:</strong> ${datos.nombre_cliente}</p>
-              <p><strong>Email:</strong> ${datos.correo_cliente}</p>
-              <p><strong>Phone:</strong> ${datos.telefono_cliente}</p>
-              <p><strong>Passengers:</strong> ${datos.cantidad_pasajeros}</p>
-              ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
+              <div class="linea"><strong>Name:</strong> ${datos.nombre_cliente}</div>
+              <div class="linea"><strong>Email:</strong> ${datos.correo_cliente}</div>
+              <div class="linea"><strong>Phone:</strong> ${datos.telefono_cliente}</div>
+              <div class="linea"><strong>Passengers:</strong> ${datos.cantidad_pasajeros}</div>
+              ${nota && nota.trim() !== '' ? `<div class="linea"><strong>Note:</strong> ${nota}</div>` : ''}
             </td>
             <td style="vertical-align:top;width:48%;">
-              <p><strong>Folio:</strong> ${datos.folio}</p>
-              ${!esShuttle ? `<p><strong>Transport:</strong> ${datos.tipo_transporte}</p>` : ''}
-              ${!esShuttle ? `<p><strong>Capacity:</strong> ${datos.capacidad}</p>` : ''}
-              <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
-              <p><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</p>
+              <div class="linea"><strong>Folio:</strong> ${datos.folio}</div>
+              ${!esShuttle ? `<div class="linea"><strong>Transport:</strong> ${datos.tipo_transporte}</div>` : ''}
+              ${!esShuttle ? `<div class="linea"><strong>Capacity:</strong> ${datos.capacidad}</div>` : ''}
+              <div class="linea"><strong>Trip Type:</strong> ${tripTypeIngles}</div>
+              <div class="linea"><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</div>
             </td>
           </tr>
         </table>
@@ -135,18 +135,18 @@ export async function enviarCorreoTransporte(datos) {
           </tr>
           <tr>
             <td style="vertical-align:top;padding-right:15px;width:48%;">
-              <p><strong>Hotel:</strong> ${datos.hotel_llegada}</p>
-              <p><strong>Date:</strong> ${datos.fecha_llegada}</p>
-              <p><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>
-              <p><strong>Airline:</strong> ${datos.aerolinea_llegada}</p>
-              <p><strong>Flight:</strong> ${datos.vuelo_llegada}</p>
+              <div class="linea"><strong>Hotel:</strong> ${datos.hotel_llegada}</div>
+              <div class="linea"><strong>Date:</strong> ${datos.fecha_llegada}</div>
+              <div class="linea"><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</div>
+              <div class="linea"><strong>Airline:</strong> ${datos.aerolinea_llegada}</div>
+              <div class="linea"><strong>Flight:</strong> ${datos.vuelo_llegada}</div>
             </td>
             <td style="vertical-align:top;width:48%;">
-              <p><strong>Hotel:</strong> ${datos.hotel_salida}</p>
-              <p><strong>Date:</strong> ${datos.fecha_salida}</p>
-              <p><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</p>
-              <p><strong>Airline:</strong> ${datos.aerolinea_salida}</p>
-              <p><strong>Flight:</strong> ${datos.vuelo_salida}</p>
+              <div class="linea"><strong>Hotel:</strong> ${datos.hotel_salida}</div>
+              <div class="linea"><strong>Date:</strong> ${datos.fecha_salida}</div>
+              <div class="linea"><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</div>
+              <div class="linea"><strong>Airline:</strong> ${datos.aerolinea_salida}</div>
+              <div class="linea"><strong>Flight:</strong> ${datos.vuelo_salida}</div>
             </td>
           </tr>
         </table>
@@ -167,36 +167,35 @@ export async function enviarCorreoTransporte(datos) {
           </tr>
         </table>
 
-        <p><strong>Folio:</strong> ${datos.folio}</p>
-        <p><strong>Name:</strong> ${datos.nombre_cliente}</p>
-        <p><strong>Email:</strong> ${datos.correo_cliente}</p>
-        <p><strong>Phone:</strong> ${datos.telefono_cliente}</p>
-        ${!esShuttle ? `<p><strong>Transport:</strong> ${datos.tipo_transporte}</p>` : ''}
-        ${!esShuttle ? `<p><strong>Capacity:</strong> ${datos.capacidad}</p>` : ''}
-        <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
-        ${(datos.cantidad_pasajeros || datos.pasajeros) ? `<p><strong>Passengers:</strong> ${datos.cantidad_pasajeros || datos.pasajeros}</p>` : ''}
-
-        ${datos.hotel_llegada ? `<p><strong>Hotel:</strong> ${datos.hotel_llegada}</p>` : ''}
-        ${datos.fecha_llegada ? `<p><strong>Date:</strong> ${datos.fecha_llegada}</p>` : ''}
-        ${datos.hora_llegada ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>` : ''}
-        ${datos.aerolinea_llegada ? `<p><strong>Airline:</strong> ${datos.aerolinea_llegada}</p>` : ''}
-        ${datos.vuelo_llegada ? `<p><strong>Flight:</strong> ${datos.vuelo_llegada}</p>` : ''}
+        <div class="linea"><strong>Folio:</strong> ${datos.folio}</div>
+        <div class="linea"><strong>Name:</strong> ${datos.nombre_cliente}</div>
+        <div class="linea"><strong>Email:</strong> ${datos.correo_cliente}</div>
+        <div class="linea"><strong>Phone:</strong> ${datos.telefono_cliente}</div>
+        ${!esShuttle ? `<div class="linea"><strong>Transport:</strong> ${datos.tipo_transporte}</div>` : ''}
+        ${!esShuttle ? `<div class="linea"><strong>Capacity:</strong> ${datos.capacidad}</div>` : ''}
+        <div class="linea"><strong>Trip Type:</strong> ${tripTypeIngles}</div>
+        ${(datos.cantidad_pasajeros || datos.pasajeros) ? `<div class="linea"><strong>Passengers:</strong> ${datos.cantidad_pasajeros || datos.pasajeros}</div>` : ''}
+        ${datos.hotel_llegada ? `<div class="linea"><strong>Hotel:</strong> ${datos.hotel_llegada}</div>` : ''}
+        ${datos.fecha_llegada ? `<div class="linea"><strong>Date:</strong> ${datos.fecha_llegada}</div>` : ''}
+        ${datos.hora_llegada ? `<div class="linea"><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</div>` : ''}
+        ${datos.aerolinea_llegada ? `<div class="linea"><strong>Airline:</strong> ${datos.aerolinea_llegada}</div>` : ''}
+        ${datos.vuelo_llegada ? `<div class="linea"><strong>Flight:</strong> ${datos.vuelo_llegada}</div>` : ''}
       `;
     }
 
     mensajeHTML += `
-        <p><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</p>
-        ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
-        ${imagenAdjunta ? `<p><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>` : ''}
+        <div class="linea"><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</div>
+        ${nota && nota.trim() !== '' ? `<div class="linea"><strong>Note:</strong> ${nota}</div>` : ''}
+        ${imagenAdjunta ? `<div><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></div>` : ''}
 
         <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:10px 15px;margin-top:20px;border-radius:5px;">
           <strong style="color:#b00000;">⚠ Recommendations:</strong>
           <span style="color:#333;"> Please confirm your reservation at least 24 hours in advance to avoid any inconvenience.</span>
         </div>
 
-        <p style="margin-top:20px;font-size:14px;color:#555;">
+        <div style="margin-top:20px;font-size:14px;color:#555;">
           📩 Confirmation sent to: <a href="mailto:${datos.correo_cliente}">${datos.correo_cliente}</a>
-        </p>
+        </div>
 
         ${qrAdjunto ? `<div style="text-align:center;margin-top:30px;">
           <p style="font-weight:bold;">Show this QR code to your provider:</p>
