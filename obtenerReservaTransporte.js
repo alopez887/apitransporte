@@ -16,7 +16,7 @@ export async function obtenerReservaTransporte(req, res) {
         telefono_cliente, nota, fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida, tipo_servicio, 
         porcentaje_descuento, precio_servicio, fecha, estatus, proveedor, folio_proveedor, 
-        usuario_proveedor, fecha_actualizacion_proveedor
+        usuario_proveedor, fecha_reservacion
       FROM reservaciones
       WHERE token_qr = $1
       LIMIT 1
