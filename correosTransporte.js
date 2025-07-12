@@ -29,6 +29,17 @@ export async function enviarCorreoTransporte(datos) {
       }
     }
 
+    let qrAdjunto = null;
+    if (datos.qr && datos.qr.startsWith('data:image')) {
+      const qrBase64 = datos.qr.split(',')[1];
+      qrAdjunto = {
+        filename: 'qr.png',
+        content: Buffer.from(qrBase64, 'base64'),
+        cid: 'qrReserva',
+        contentType: 'image/png'
+      };
+    }
+
     const logoBuffer = await axios.get(
       'https://static.wixstatic.com/media/f81ced_636e76aeb741411b87c4fa8aa9219410~mv2.png',
       { responseType: 'arraybuffer' }
@@ -40,8 +51,6 @@ export async function enviarCorreoTransporte(datos) {
       cid: 'logoEmpresa',
       contentType: 'image/png'
     };
-
-
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -149,10 +158,10 @@ export async function enviarCorreoTransporte(datos) {
           📩 Confirmation sent to: <a href="mailto:${datos.correo_cliente}">${datos.correo_cliente}</a>
         </p>
 
-${qrAdjunto ? `<div style="text-align:center;margin-top:30px;">
-  <p style="font-weight:bold;">Show this QR code to your provider:</p>
-  <img src="cid:qrReserva" alt="QR Code" style="width:180px;"/>
-</div>` : ''}
+        ${qrAdjunto ? `<div style="text-align:center;margin-top:30px;">
+          <p style="font-weight:bold;">Show this QR code to your provider:</p>
+          <img src="cid:qrReserva" alt="QR Code" style="width:180px;"/>
+        </div>` : ''}
 
         ${politicasHTML}
       </div>
@@ -208,12 +217,17 @@ ${qrAdjunto ? `<div style="text-align:center;margin-top:30px;">
           📩 Confirmation sent to: <a href="mailto:${datos.correo_cliente}">${datos.correo_cliente}</a>
         </p>
 
+        ${qrAdjunto ? `<div style="text-align:center;margin-top:30px;">
+          <p style="font-weight:bold;">Show this QR code to your provider:</p>
+          <img src="cid:qrReserva" alt="QR Code" style="width:180px;"/>
+        </div>` : ''}
+
         ${politicasHTML}
       </div>
       `;
     }
 
-    console.log("📤 Enviando correo con imagen:", !!imagenAdjunta);
+    console.log("📤 Enviando correo con imagen y QR:", !!imagenAdjunta, !!qrAdjunto);
 
     await transporter.sendMail({
       from: `Cabo Travels Solutions - Transport <${process.env.EMAIL_USER}>`,
@@ -224,7 +238,7 @@ ${qrAdjunto ? `<div style="text-align:center;margin-top:30px;">
       attachments: [
         ...(imagenAdjunta ? [imagenAdjunta] : []),
         logoAdjunto,
-		...(qrAdjunto ? [qrAdjunto] : [])
+        ...(qrAdjunto ? [qrAdjunto] : [])
       ]
     });
 
