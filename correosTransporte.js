@@ -29,7 +29,6 @@ export async function enviarCorreoTransporte(datos) {
       }
     }
 
-    // Descargar QR
     let qrAdjunto = null;
     if (datos.qr && datos.qr.startsWith('data:image')) {
       const qrBase64 = datos.qr.split(',')[1];
@@ -41,7 +40,6 @@ export async function enviarCorreoTransporte(datos) {
       };
     }
 
-    // Logo
     const logoBuffer = await axios.get(
       'https://static.wixstatic.com/media/f81ced_636e76aeb741411b87c4fa8aa9219410~mv2.png',
       { responseType: 'arraybuffer' }
@@ -85,6 +83,36 @@ export async function enviarCorreoTransporte(datos) {
     const tripTypeIngles = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
     const nota = datos.nota || datos.cliente?.nota || '';
     const esShuttle = datos.tipo_viaje === "Shuttle";
+    const esRoundTrip = datos.tipo_viaje === "Redondo";
+
+    let infoPrincipal = `
+      <p><strong>Folio:</strong> ${datos.folio}</p>
+      <p><strong>Name:</strong> ${datos.nombre_cliente}</p>
+      <p><strong>Email:</strong> ${datos.correo_cliente}</p>
+      <p><strong>Phone:</strong> ${datos.telefono_cliente}</p>
+      ${!esShuttle ? `<p><strong>Transport:</strong> ${datos.tipo_transporte}</p>` : ''}
+      ${!esShuttle ? `<p><strong>Capacity:</strong> ${datos.capacidad}</p>` : ''}
+      <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
+      ${(datos.cantidad_pasajeros || datos.pasajeros) ? `<p><strong>Passengers:</strong> ${datos.cantidad_pasajeros || datos.pasajeros}</p>` : ''}
+      ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
+      <p><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</p>
+    `;
+
+    let seccionLlegada = `
+      ${datos.hotel_llegada ? `<p><strong>Hotel:</strong> ${datos.hotel_llegada}</p>` : ''}
+      ${datos.fecha_llegada ? `<p><strong>Date:</strong> ${datos.fecha_llegada}</p>` : ''}
+      ${datos.hora_llegada ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>` : ''}
+      ${datos.aerolinea_llegada ? `<p><strong>Airline:</strong> ${datos.aerolinea_llegada}</p>` : ''}
+      ${datos.vuelo_llegada ? `<p><strong>Flight:</strong> ${datos.vuelo_llegada}</p>` : ''}
+    `;
+
+    let seccionSalida = `
+      ${datos.hotel_salida ? `<p><strong>Hotel:</strong> ${datos.hotel_salida}</p>` : ''}
+      ${datos.fecha_salida ? `<p><strong>Date:</strong> ${datos.fecha_salida}</p>` : ''}
+      ${datos.hora_salida ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</p>` : ''}
+      ${datos.aerolinea_salida ? `<p><strong>Airline:</strong> ${datos.aerolinea_salida}</p>` : ''}
+      ${datos.vuelo_salida ? `<p><strong>Flight:</strong> ${datos.vuelo_salida}</p>` : ''}
+    `;
 
     let mensajeHTML = `
     <div style="max-width:600px;margin:0 auto;padding:20px 20px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
@@ -100,33 +128,33 @@ export async function enviarCorreoTransporte(datos) {
           </td>
         </tr>
       </table>
+      ${infoPrincipal}
+    `;
 
-      <p><strong>Folio:</strong> ${datos.folio}</p>
-      <p><strong>Name:</strong> ${datos.nombre_cliente}</p>
-      <p><strong>Email:</strong> ${datos.correo_cliente}</p>
-      <p><strong>Phone:</strong> ${datos.telefono_cliente}</p>
-      ${!esShuttle ? `<p><strong>Transport:</strong> ${datos.tipo_transporte}</p>` : ''}
-      ${!esShuttle ? `<p><strong>Capacity:</strong> ${datos.capacidad}</p>` : ''}
-      <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
-      ${(datos.cantidad_pasajeros || datos.pasajeros) ? `<p><strong>Passengers:</strong> ${datos.cantidad_pasajeros || datos.pasajeros}</p>` : ''}
+    if (esRoundTrip) {
+      mensajeHTML += `
+      <table style="width:100%;margin-top:20px;">
+        <tr>
+          <td style="vertical-align:top;padding-right:10px;">
+            <h3>Arrival Information</h3>
+            ${seccionLlegada}
+          </td>
+          <td style="vertical-align:top;padding-left:10px;">
+            <h3>Departure Information</h3>
+            ${seccionSalida}
+          </td>
+        </tr>
+      </table>
+      `;
+    } else {
+      mensajeHTML += seccionLlegada + seccionSalida;
+    }
 
-      ${datos.hotel_llegada ? `<p><strong>Hotel:</strong> ${datos.hotel_llegada}</p>` : ''}
-      ${datos.fecha_llegada ? `<p><strong>Date:</strong> ${datos.fecha_llegada}</p>` : ''}
-      ${datos.hora_llegada ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>` : ''}
-      ${datos.aerolinea_llegada ? `<p><strong>Airline:</strong> ${datos.aerolinea_llegada}</p>` : ''}
-      ${datos.vuelo_llegada ? `<p><strong>Flight:</strong> ${datos.vuelo_llegada}</p>` : ''}
+    if (imagenAdjunta) {
+      mensajeHTML += `<p><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>`;
+    }
 
-      ${datos.hotel_salida ? `<p><strong>Hotel:</strong> ${datos.hotel_salida}</p>` : ''}
-      ${datos.fecha_salida ? `<p><strong>Date:</strong> ${datos.fecha_salida}</p>` : ''}
-      ${datos.hora_salida ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</p>` : ''}
-      ${datos.aerolinea_salida ? `<p><strong>Airline:</strong> ${datos.aerolinea_salida}</p>` : ''}
-      ${datos.vuelo_salida ? `<p><strong>Flight:</strong> ${datos.vuelo_salida}</p>` : ''}
-
-      <p><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</p>
-      ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
-
-      ${imagenAdjunta ? `<p><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>` : ''}
-
+    mensajeHTML += `
       <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:10px 15px;margin-top:20px;border-radius:5px;">
         <strong style="color:#b00000;">⚠ Recommendations:</strong>
         <span style="color:#333;"> Please confirm your reservation at least 24 hours in advance to avoid any inconvenience.</span>
@@ -135,15 +163,18 @@ export async function enviarCorreoTransporte(datos) {
       <p style="margin-top:20px;font-size:14px;color:#555;">
         📩 Confirmation sent to: <a href="mailto:${datos.correo_cliente}">${datos.correo_cliente}</a>
       </p>
-
-      ${qrAdjunto ? `<div style="text-align:center;margin-top:20px;">
-        <p style="font-weight:bold;">Show this QR code to your provider:</p>
-        <img src="cid:qrReserva" alt="QR Code" style="width:180px;"/>
-      </div>` : ''}
-
-      ${politicasHTML}
-    </div>
     `;
+
+    if (qrAdjunto) {
+      mensajeHTML += `
+        <div style="text-align:center;margin-top:20px;">
+          <p style="font-weight:bold;">Show this QR code to your provider:</p>
+          <img src="cid:qrReserva" alt="QR Code" style="width:180px;"/>
+        </div>
+      `;
+    }
+
+    mensajeHTML += politicasHTML + `</div>`;
 
     console.log("📤 Enviando correo con QR y adjuntos");
 
