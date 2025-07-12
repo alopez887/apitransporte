@@ -13,7 +13,7 @@ dotenv.config();
 
 const { Pool } = pkg;
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT;
 
 // ✅ Middleware CORS configurado correctamente
 app.use(cors({
