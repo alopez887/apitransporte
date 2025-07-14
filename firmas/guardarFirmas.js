@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import pool from './conexion.js';
+import pool from '../conexion.js';
 
 export default async function guardarFirma(req, res) {
   const { token_qr, firma_base64 } = req.body;
