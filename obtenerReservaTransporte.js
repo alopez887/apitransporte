@@ -8,7 +8,6 @@ export async function obtenerReservaTransporte(req, res) {
   }
 
   try {
-    // Buscar la reserva en la base de datos
     const query = `
       SELECT 
         folio, tipo_viaje, tipo_transporte, hotel_llegada, hotel_salida, zona, capacidad,
@@ -16,7 +15,8 @@ export async function obtenerReservaTransporte(req, res) {
         telefono_cliente, nota, fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida, tipo_servicio, 
         porcentaje_descuento, precio_servicio, fecha, estatus, proveedor, folio_proveedor, 
-        usuario_proveedor, fecha_reservacion
+        usuario_proveedor, fecha_reservacion,
+        fecha_inicioviaje, fecha_finalviaje, comentarios, firma_cliente
       FROM reservaciones
       WHERE token_qr = $1
       LIMIT 1
