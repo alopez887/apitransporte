@@ -12,7 +12,7 @@ import { obtenerReservaTransporte } from './obtenerReservaTransporte.js';
 console.log("✅ Función obtenerReservaTransporte importada:", obtenerReservaTransporte);
 import { actualizarFolioProveedorTransporte } from './actualizarFolioProveedorTransporte.js';
 import actualizarDatosTransporte from './actualizarDatosTransporte.js';
-import guardarFirma from './guardarFirmas.js';
+import guardarFirma from './firmas/guardarFirmas.js';
 
 dotenv.config();
 const { Pool } = pkg;
