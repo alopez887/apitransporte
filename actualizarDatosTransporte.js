@@ -8,10 +8,13 @@ export default async function actualizarDatosTransporte(req, res) {
   }
 
   try {
-    // Construir campos dinámicos
     const updates = [];
-    const values = [usuario_proveedor];
-    let paramIndex = 2;
+    const values = [];
+    let paramIndex = 1;
+
+    // usuario_proveedor siempre
+    updates.push(`usuario_proveedor = $${paramIndex++}`);
+    values.push(usuario_proveedor);
 
     if (fecha_inicioviaje) {
       updates.push(`fecha_inicioviaje = $${paramIndex++}`);
@@ -33,10 +36,7 @@ export default async function actualizarDatosTransporte(req, res) {
       values.push(comentarios);
     }
 
-    // Siempre actualiza usuario_proveedor
-    updates.push(`usuario_proveedor = $1`);
-
-    // Final WHERE
+    // WHERE
     values.push(token_qr);
 
     const query = `
