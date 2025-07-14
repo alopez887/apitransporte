@@ -1,4 +1,7 @@
 import express from 'express';
+import path from 'path';
+import fs from 'fs';
+import pool from './conexion.js';
 import cors from 'cors';
 import pkg from 'pg';
 import dotenv from 'dotenv';
@@ -9,11 +12,14 @@ import { obtenerReservaTransporte } from './obtenerReservaTransporte.js';
 console.log("✅ Función obtenerReservaTransporte importada:", obtenerReservaTransporte);
 import { actualizarFolioProveedorTransporte } from './actualizarFolioProveedorTransporte.js';
 import actualizarDatosTransporte from './actualizarDatosTransporte.js';
+import guardarFirma from './guardarFirmas.js';
 
 dotenv.config();
-
 const { Pool } = pkg;
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 const PORT = process.env.PORT;
 
 // ✅ Middleware CORS configurado correctamente
@@ -326,7 +332,11 @@ app.get('/tarifa-redondo', async (req, res) => {
 app.get('/api/obtener-reserva-transporte', obtenerReservaTransporte);
 app.post('/api/actualizar-folio-proveedor-transporte', actualizarFolioProveedorTransporte);
 app.post('/api/actualizar-datos-transporte', actualizarDatosTransporte);
+app.post('/api/guardar-firma', guardarFirma);
+// ✅ Hacer pública la carpeta firmas
+app.use('/firmas', express.static(path.join(process.cwd(), 'firmas')));
 
 app.listen(PORT, () => {
+
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
 });
