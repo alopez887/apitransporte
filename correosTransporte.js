@@ -14,6 +14,7 @@ export async function enviarCorreoTransporte(datos) {
     console.log("📥 Datos recibidos para el correo:", datos);
 
     let imagenAdjunta = null;
+    let qrAdjunto = null;
 
     if (datos.imagen && datos.imagen.startsWith('http')) {
       try {
@@ -29,7 +30,6 @@ export async function enviarCorreoTransporte(datos) {
       }
     }
 
-    let qrAdjunto = null;
     if (datos.qr && datos.qr.startsWith('data:image')) {
       const qrBase64 = datos.qr.split(',')[1];
       qrAdjunto = {
@@ -44,6 +44,7 @@ export async function enviarCorreoTransporte(datos) {
       'https://static.wixstatic.com/media/f81ced_636e76aeb741411b87c4fa8aa9219410~mv2.png',
       { responseType: 'arraybuffer' }
     );
+
     const logoAdjunto = {
       filename: 'logo.png',
       content: logoBuffer.data,
@@ -83,100 +84,127 @@ export async function enviarCorreoTransporte(datos) {
     const tripTypeIngles = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
     const nota = datos.nota || datos.cliente?.nota || '';
     const esShuttle = datos.tipo_viaje === "Shuttle";
-    const esRoundTrip = datos.tipo_viaje === "Redondo";
-
-    let infoPrincipal = `
-      <p><strong>Folio:</strong> ${datos.folio}</p>
-      <p><strong>Name:</strong> ${datos.nombre_cliente}</p>
-      <p><strong>Email:</strong> ${datos.correo_cliente}</p>
-      <p><strong>Phone:</strong> ${datos.telefono_cliente}</p>
-      ${!esShuttle ? `<p><strong>Transport:</strong> ${datos.tipo_transporte}</p>` : ''}
-      ${!esShuttle ? `<p><strong>Capacity:</strong> ${datos.capacidad}</p>` : ''}
-      <p><strong>Trip Type:</strong> ${tripTypeIngles}</p>
-      ${(datos.cantidad_pasajeros || datos.pasajeros) ? `<p><strong>Passengers:</strong> ${datos.cantidad_pasajeros || datos.pasajeros}</p>` : ''}
-      ${nota && nota.trim() !== '' ? `<p><strong>Note:</strong> ${nota}</p>` : ''}
-      <p><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</p>
-    `;
-
-    let seccionLlegada = `
-      ${datos.hotel_llegada ? `<p><strong>Hotel:</strong> ${datos.hotel_llegada}</p>` : ''}
-      ${datos.fecha_llegada ? `<p><strong>Date:</strong> ${datos.fecha_llegada}</p>` : ''}
-      ${datos.hora_llegada ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</p>` : ''}
-      ${datos.aerolinea_llegada ? `<p><strong>Airline:</strong> ${datos.aerolinea_llegada}</p>` : ''}
-      ${datos.vuelo_llegada ? `<p><strong>Flight:</strong> ${datos.vuelo_llegada}</p>` : ''}
-    `;
-
-    let seccionSalida = `
-      ${datos.hotel_salida ? `<p><strong>Hotel:</strong> ${datos.hotel_salida}</p>` : ''}
-      ${datos.fecha_salida ? `<p><strong>Date:</strong> ${datos.fecha_salida}</p>` : ''}
-      ${datos.hora_salida ? `<p><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</p>` : ''}
-      ${datos.aerolinea_salida ? `<p><strong>Airline:</strong> ${datos.aerolinea_salida}</p>` : ''}
-      ${datos.vuelo_salida ? `<p><strong>Flight:</strong> ${datos.vuelo_salida}</p>` : ''}
-    `;
 
     let mensajeHTML = `
-    <div style="max-width:600px;margin:0 auto;padding:20px 20px 40px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
-      <table style="width:100%;margin-bottom:5px;">
-        <tr>
-          <td style="text-align:right;">
-            <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
-          </td>
-        </tr>
-        <tr>
-          <td style="text-align:left;">
-            <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
-          </td>
-        </tr>
-      </table>
-      ${infoPrincipal}
+      <style>
+        div.linea { margin: 0; padding: 2px 0; line-height: 1.4; }
+      </style>
     `;
 
-    if (esRoundTrip) {
+    if (datos.tipo_viaje === "Redondo") {
       mensajeHTML += `
-      <table style="width:100%;margin-top:20px;">
-        <tr>
-          <td style="vertical-align:top;padding-right:10px;">
-            <h3>Arrival Information</h3>
-            ${seccionLlegada}
-          </td>
-          <td style="vertical-align:top;padding-left:10px;">
-            <h3>Departure Information</h3>
-            ${seccionSalida}
-          </td>
-        </tr>
-      </table>
+      <div style="max-width:600px;margin:0 auto;padding:20px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
+        <table style="width:100%;margin-bottom:5px;">
+          <tr>
+            <td style="text-align:right;">
+              <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:left;">
+              <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
+            </td>
+          </tr>
+        </table>
+
+        <table style="width:100%;margin-bottom:10px;">
+          <tr>
+            <td style="vertical-align:top;width:48%;">
+              <div class="linea"><strong>Name:</strong> ${datos.nombre_cliente}</div>
+              <div class="linea"><strong>Email:</strong> ${datos.correo_cliente}</div>
+              <div class="linea"><strong>Phone:</strong> ${datos.telefono_cliente}</div>
+              <div class="linea"><strong>Passengers:</strong> ${datos.cantidad_pasajeros}</div>
+              ${nota && nota.trim() !== '' ? `<div class="linea"><strong>Note:</strong> ${nota}</div>` : ''}
+            </td>
+            <td style="vertical-align:top;width:48%;">
+              <div class="linea"><strong>Folio:</strong> ${datos.folio}</div>
+              ${!esShuttle ? `<div class="linea"><strong>Transport:</strong> ${datos.tipo_transporte}</div>` : ''}
+              ${!esShuttle ? `<div class="linea"><strong>Capacity:</strong> ${datos.capacidad}</div>` : ''}
+              <div class="linea"><strong>Trip Type:</strong> ${tripTypeIngles}</div>
+              <div class="linea"><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</div>
+            </td>
+          </tr>
+        </table>
+
+        <hr style="margin:20px 0;">
+
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;width:48%;">Arrival Information</th>
+            <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;width:48%;">Departure Information</th>
+          </tr>
+          <tr>
+            <td style="vertical-align:top;padding-right:15px;width:48%;">
+              <div class="linea"><strong>Hotel:</strong> ${datos.hotel_llegada}</div>
+              <div class="linea"><strong>Date:</strong> ${datos.fecha_llegada}</div>
+              <div class="linea"><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</div>
+              <div class="linea"><strong>Airline:</strong> ${datos.aerolinea_llegada}</div>
+              <div class="linea"><strong>Flight:</strong> ${datos.vuelo_llegada}</div>
+            </td>
+            <td style="vertical-align:top;width:48%;">
+              <div class="linea"><strong>Hotel:</strong> ${datos.hotel_salida}</div>
+              <div class="linea"><strong>Date:</strong> ${datos.fecha_salida}</div>
+              <div class="linea"><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</div>
+              <div class="linea"><strong>Airline:</strong> ${datos.aerolinea_salida}</div>
+              <div class="linea"><strong>Flight:</strong> ${datos.vuelo_salida}</div>
+            </td>
+          </tr>
+        </table>
       `;
     } else {
-      mensajeHTML += seccionLlegada + seccionSalida;
-    }
+      mensajeHTML += `
+      <div style="max-width:600px;margin:0 auto;padding:20px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
+        <table style="width:100%;margin-bottom:5px;">
+          <tr>
+            <td style="text-align:right;">
+              <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="text-align:left;">
+              <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
+            </td>
+          </tr>
+        </table>
 
-    if (imagenAdjunta) {
-      mensajeHTML += `<p><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></p>`;
+        <div class="linea"><strong>Folio:</strong> ${datos.folio}</div>
+        <div class="linea"><strong>Name:</strong> ${datos.nombre_cliente}</div>
+        <div class="linea"><strong>Email:</strong> ${datos.correo_cliente}</div>
+        <div class="linea"><strong>Phone:</strong> ${datos.telefono_cliente}</div>
+        ${!esShuttle ? `<div class="linea"><strong>Transport:</strong> ${datos.tipo_transporte}</div>` : ''}
+        ${!esShuttle ? `<div class="linea"><strong>Capacity:</strong> ${datos.capacidad}</div>` : ''}
+        <div class="linea"><strong>Trip Type:</strong> ${tripTypeIngles}</div>
+        ${(datos.cantidad_pasajeros || datos.pasajeros) ? `<div class="linea"><strong>Passengers:</strong> ${datos.cantidad_pasajeros || datos.pasajeros}</div>` : ''}
+        ${datos.hotel_llegada ? `<div class="linea"><strong>Hotel:</strong> ${datos.hotel_llegada}</div>` : ''}
+        ${datos.fecha_llegada ? `<div class="linea"><strong>Date:</strong> ${datos.fecha_llegada}</div>` : ''}
+        ${datos.hora_llegada ? `<div class="linea"><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</div>` : ''}
+        ${datos.aerolinea_llegada ? `<div class="linea"><strong>Airline:</strong> ${datos.aerolinea_llegada}</div>` : ''}
+        ${datos.vuelo_llegada ? `<div class="linea"><strong>Flight:</strong> ${datos.vuelo_llegada}</div>` : ''}
+      `;
     }
 
     mensajeHTML += `
-      <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:10px 15px;margin-top:20px;border-radius:5px;">
-        <strong style="color:#b00000;">⚠ Recommendations:</strong>
-        <span style="color:#333;"> Please confirm your reservation at least 24 hours in advance to avoid any inconvenience.</span>
-      </div>
+        <div class="linea"><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</div>
+        ${nota && nota.trim() !== '' ? `<div class="linea"><strong>Note:</strong> ${nota}</div>` : ''}
+        ${imagenAdjunta ? `<div><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></div>` : ''}
 
-      <p style="margin-top:20px;font-size:14px;color:#555;">
-        📩 Confirmation sent to: <a href="mailto:${datos.correo_cliente}">${datos.correo_cliente}</a>
-      </p>
-    `;
+        <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:10px 15px;margin-top:20px;border-radius:5px;">
+          <strong style="color:#b00000;">⚠ Recommendations:</strong>
+          <span style="color:#333;"> Please confirm your reservation at least 24 hours in advance to avoid any inconvenience.</span>
+        </div>
 
-    if (qrAdjunto) {
-      mensajeHTML += `
-        <div style="text-align:center;margin-top:20px;">
+        <div style="margin-top:20px;font-size:14px;color:#555;">
+          📩 Confirmation sent to: <a href="mailto:${datos.correo_cliente}">${datos.correo_cliente}</a>
+        </div>
+
+        ${qrAdjunto ? `<div style="text-align:center;margin-top:30px;">
           <p style="font-weight:bold;">Show this QR code to your provider:</p>
           <img src="cid:qrReserva" alt="QR Code" style="width:180px;"/>
-        </div>
-      `;
-    }
+        </div>` : ''}
 
-    mensajeHTML += politicasHTML + `</div>`;
-
-    console.log("📤 Enviando correo con QR y adjuntos");
+        ${politicasHTML}
+      </div>
+    `;
 
     await transporter.sendMail({
       from: `Cabo Travels Solutions - Transport <${process.env.EMAIL_USER}>`,
