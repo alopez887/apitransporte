@@ -8,6 +8,7 @@ import { generarQRTransporte } from './generarQRTransporte.js';
 import { obtenerReservaTransporte } from './obtenerReservaTransporte.js';
 console.log("✅ Función obtenerReservaTransporte importada:", obtenerReservaTransporte);
 import { actualizarFolioProveedorTransporte } from './actualizarFolioProveedorTransporte.js';
+import actualizarDatosTransporte from './actualizarDatosTransporte.js';
 
 dotenv.config();
 
@@ -324,6 +325,7 @@ app.get('/tarifa-redondo', async (req, res) => {
 
 app.get('/api/obtener-reserva-transporte', obtenerReservaTransporte);
 app.post('/api/actualizar-folio-proveedor-transporte', actualizarFolioProveedorTransporte);
+app.post('/api/actualizar-datos-transporte', actualizarDatosTransporte);
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
