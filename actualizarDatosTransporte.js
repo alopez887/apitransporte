@@ -40,7 +40,7 @@ export default async function actualizarDatosTransporte(req, res) {
     values.push(token_qr);
 
     const query = `
-      UPDATE reservas_transporte
+      UPDATE reservaciones
       SET ${updates.join(', ')}
       WHERE token_qr = $${paramIndex}
     `;
