@@ -13,6 +13,7 @@ console.log("✅ Función obtenerReservaTransporte importada:", obtenerReservaTr
 import { actualizarFolioProveedorTransporte } from './actualizarFolioProveedorTransporte.js';
 import actualizarDatosTransporte from './actualizarDatosTransporte.js';
 import guardarFirma from './firmas/guardarFirmas.js';
+import validarUsuario from './validarUsuario.js';
 
 dotenv.config();
 const { Pool } = pkg;
@@ -319,6 +320,7 @@ app.get('/tarifa-redondo', async (req, res) => {
   }
 });
 
+app.post('/api/validar-usuario', validarUsuario);
 app.get('/api/obtener-reserva-transporte', obtenerReservaTransporte);
 app.post('/api/actualizar-folio-proveedor-transporte', actualizarFolioProveedorTransporte);
 app.post('/api/actualizar-datos-transporte', actualizarDatosTransporte);
