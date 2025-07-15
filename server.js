@@ -13,7 +13,7 @@ console.log("✅ Función obtenerReservaTransporte importada:", obtenerReservaTr
 import actualizarDatosTransporte from './actualizarDatosTransporte.js';
 import guardarFirma from './firmas/guardarFirmas.js';
 import loginUsuario from './loginUsuario.js'; // ✅ CAMBIADO: Login general (operadores y representantes)
-import obtenerChoferes from './obtenerChoferes.js';
+import { obtenerChoferes } from './obtenerChoferes.js';
 
 dotenv.config();
 const { Pool } = pkg;
