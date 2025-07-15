@@ -31,7 +31,7 @@ export default async function loginUsuario(req, res) {
         id: user.id,
         usuario: user.usuario,
         nombre: user.nombre,
-        rol: user.rol
+        rol: user.tipo_usuario   // 🔥 ← ← ← AQUI
       }
     });
 
