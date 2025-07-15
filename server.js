@@ -10,10 +10,10 @@ import guardarRoundtrip from './guardarRoundtrip.js';
 import { generarQRTransporte } from './generarQRTransporte.js';
 import { obtenerReservaTransporte } from './obtenerReservaTransporte.js';
 console.log("✅ Función obtenerReservaTransporte importada:", obtenerReservaTransporte);
-import { actualizarFolioProveedorTransporte } from './actualizarFolioProveedorTransporte.js';
 import actualizarDatosTransporte from './actualizarDatosTransporte.js';
 import guardarFirma from './firmas/guardarFirmas.js';
 import loginUsuario from './loginUsuario.js'; // ✅ CAMBIADO: Login general (operadores y representantes)
+import obtenerChoferes from './obtenerChoferes.js';
 
 dotenv.config();
 const { Pool } = pkg;
@@ -292,10 +292,10 @@ app.get('/tarifa-redondo', async (req, res) => {
 
 app.post('/api/login-usuario', loginUsuario); // ✅ Aquí
 app.get('/api/obtener-reserva-transporte', obtenerReservaTransporte);
-app.post('/api/actualizar-folio-proveedor-transporte', actualizarFolioProveedorTransporte);
 app.post('/api/actualizar-datos-transporte', actualizarDatosTransporte);
 app.post('/api/guardar-firma', guardarFirma);
 app.use('/firmas', express.static(path.join(process.cwd(), 'firmas')));
+app.get('/api/obtener-choferes', obtenerChoferes);
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
