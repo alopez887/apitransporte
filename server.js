@@ -13,7 +13,7 @@ console.log("✅ Función obtenerReservaTransporte importada:", obtenerReservaTr
 import { actualizarFolioProveedorTransporte } from './actualizarFolioProveedorTransporte.js';
 import actualizarDatosTransporte from './actualizarDatosTransporte.js';
 import guardarFirma from './firmas/guardarFirmas.js';
-import validarUsuario from './validarUsuario.js';
+import loginUsuario from './loginUsuario.js'; // ✅ CAMBIADO: Login general (operadores y representantes)
 
 dotenv.config();
 const { Pool } = pkg;
@@ -23,23 +23,17 @@ app.use(express.urlencoded({ extended: true }));
 
 const PORT = process.env.PORT;
 
-// ✅ Middleware CORS configurado correctamente
 app.use(cors({
-  origin: '*', // Puedes limitarlo a 'https://nkmsistemas.wixsite.com' si gustas
+  origin: '*',
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type']
 }));
 
-app.use(express.json());
-
 app.locals.pool = pool;
 
-// Ruta alternativa para mantener consistencia con guardartransporte
-// 🔹 Ruta para guardar reservación de transporte
 app.post('/reservar-transporte', guardarTransporte);
 app.post('/guardarroundtrip', guardarRoundtrip);
 
-// 🔹 Todas tus rutas existentes
 app.get('/zona-hotel', async (req, res) => {
   const { hotel } = req.query;
   if (!hotel) return res.status(400).json({ error: 'El parametro "hotel" es requerido' });
@@ -62,7 +56,6 @@ app.get('/zona-hotel', async (req, res) => {
 
 app.get('/tarifa', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
-
   if (!transporte || !zona || !pasajeros) {
     return res.status(400).json({ error: 'Faltan parametros requeridos (transporte, zona, pasajeros)' });
   }
@@ -90,7 +83,6 @@ app.get('/tarifa', async (req, res) => {
     }
 
     const result = await pool.query(query, params);
-
     if (result.rows.length > 0) {
       res.json(result.rows[0]);
     } else {
@@ -104,7 +96,6 @@ app.get('/tarifa', async (req, res) => {
 
 app.get('/tarifa-shuttle', async (req, res) => {
   const { zona, pasajeros } = req.query;
-
   if (!zona || !pasajeros) {
     return res.status(400).json({ error: 'Faltan parametros requeridos (zona, pasajeros)' });
   }
@@ -134,7 +125,6 @@ app.get('/tarifa-shuttle', async (req, res) => {
 
 app.get('/api/verificar-codigo', async (req, res) => {
   const { codigo, transporte, zona } = req.query;
-
   if (!codigo || !transporte || !zona) {
     return res.status(400).json({ error: 'Faltan parametros requeridos (codigo, transporte, zona)' });
   }
@@ -150,7 +140,6 @@ app.get('/api/verificar-codigo', async (req, res) => {
       LIMIT 1
     `;
     const values = [codigo, transporte, zona];
-
     const result = await pool.query(query, values);
 
     if (result.rows.length > 0) {
@@ -173,9 +162,6 @@ app.get('/api/verificar-codigo', async (req, res) => {
 
 app.get('/api/verificar-codigo-redondo', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
-
-  console.log("Parametros recibidos:", { codigo, transporte, zona, pasajeros });
-
   if (!codigo || !transporte || !zona || !pasajeros) {
     return res.status(400).json({ valido: false, mensaje: 'Faltan parametros requeridos' });
   }
@@ -193,13 +179,10 @@ app.get('/api/verificar-codigo-redondo', async (req, res) => {
     const descResult = await pool.query(descQuery, [codigo, transporte, zona]);
 
     if (descResult.rows.length === 0) {
-      console.log("Codigo no valido en codigos");
       return res.json({ valido: false });
     }
 
     const descuento = parseFloat(descResult.rows[0].descuento_aplicado);
-    console.log("Descuento encontrado:", descuento);
-
     let campo = '';
     if (descuento === 13) campo = 'precio_descuento_13';
     else if (descuento === 13.5) campo = 'precio_descuento_135';
@@ -216,21 +199,14 @@ app.get('/api/verificar-codigo-redondo', async (req, res) => {
     const tarifaResult = await pool.query(tarifaQuery, [transporte, zona, pasajeros.trim()]);
 
     if (tarifaResult.rows.length === 0) {
-      console.log("No se encontro precio en tarifas_transportacion");
       return res.json({ valido: false });
     }
 
     const precioDescuento = parseFloat(tarifaResult.rows[0].precio_descuento);
-
-    return res.json({
-      valido: true,
-      precio_descuento: precioDescuento.toFixed(2),
-      descuento
-    });
-
+    res.json({ valido: true, precio_descuento: precioDescuento.toFixed(2), descuento });
   } catch (error) {
     console.error("Error en /api/verificar-codigo-redondo:", error.message);
-    return res.status(500).json({ valido: false, mensaje: 'Error interno del servidor' });
+    res.status(500).json({ valido: false, mensaje: 'Error interno del servidor' });
   }
 });
 
@@ -250,9 +226,7 @@ app.get('/obtener-hoteles', async (req, res) => {
 
 app.get('/obtener-aerolineas', async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT nombre FROM aerolineas ORDER BY nombre ASC'
-    );
+    const result = await pool.query('SELECT nombre FROM aerolineas ORDER BY nombre ASC');
     res.json(result.rows);
   } catch (err) {
     console.error('Error al obtener aerolineas:', err.message);
@@ -265,15 +239,13 @@ app.get('/opciones-pasajeros', async (req, res) => {
   if (!tipo) return res.status(400).json({ error: 'Falta el parametro tipo' });
 
   try {
-    const result = await pool.query(
-      `SELECT DISTINCT rango_pasajeros
-       FROM tarifas_transportacion
-       WHERE UPPER(tipo_transporte) = UPPER($1)
-       ORDER BY rango_pasajeros`,
-      [tipo]
-    );
-    const opciones = result.rows.map(r => r.rango_pasajeros);
-    res.json(opciones);
+    const result = await pool.query(`
+      SELECT DISTINCT rango_pasajeros
+      FROM tarifas_transportacion
+      WHERE UPPER(tipo_transporte) = UPPER($1)
+      ORDER BY rango_pasajeros
+    `, [tipo]);
+    res.json(result.rows.map(r => r.rango_pasajeros));
   } catch (err) {
     console.error('Error al obtener opciones de pasajeros:', err.message);
     res.status(500).json({ error: 'Error en la base de datos' });
@@ -293,7 +265,6 @@ app.get('/hoteles-excluidos', async (req, res) => {
 
 app.get('/tarifa-redondo', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
-
   if (!transporte || !zona || !pasajeros || !campo) {
     return res.status(400).json({ error: 'Faltan parametros requeridos (transporte, zona, pasajeros, campo)' });
   }
@@ -306,7 +277,6 @@ app.get('/tarifa-redondo', async (req, res) => {
       AND zona_id = $2
       AND rango_pasajeros = $3
     `;
-
     const result = await pool.query(query, [transporte, zona, pasajeros]);
 
     if (result.rows.length > 0) {
@@ -320,15 +290,13 @@ app.get('/tarifa-redondo', async (req, res) => {
   }
 });
 
-app.post('/api/validar-usuario', validarUsuario);
+app.post('/api/login-usuario', loginUsuario); // ✅ Aquí
 app.get('/api/obtener-reserva-transporte', obtenerReservaTransporte);
 app.post('/api/actualizar-folio-proveedor-transporte', actualizarFolioProveedorTransporte);
 app.post('/api/actualizar-datos-transporte', actualizarDatosTransporte);
 app.post('/api/guardar-firma', guardarFirma);
-// ✅ Hacer pública la carpeta firmas
 app.use('/firmas', express.static(path.join(process.cwd(), 'firmas')));
 
 app.listen(PORT, () => {
-
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
 });
