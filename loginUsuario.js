@@ -1,5 +1,4 @@
 import pool from './conexion.js';
-import bcrypt from 'bcrypt'; // ✅ Si en el futuro usas hash de contraseña
 
 export default async function loginUsuario(req, res) {
   const { usuario, password } = req.body;
@@ -20,18 +19,11 @@ export default async function loginUsuario(req, res) {
 
     const user = result.rows[0];
 
-    // ✅ Si usas contraseñas en texto plano
-    if (user.password !== password) {
+    // ✅ Comparar contraseña tal cual (sin hash)
+    if (password !== user.password) {
       return res.status(401).json({ success: false, message: 'Contraseña incorrecta' });
     }
 
-    // ✅ Si más adelante usas hash
-    // const validPassword = await bcrypt.compare(password, user.password);
-    // if (!validPassword) {
-    //   return res.status(401).json({ success: false, message: 'Contraseña incorrecta' });
-    // }
-
-    // Si pasa validación
     res.json({ 
       success: true, 
       message: 'Login exitoso', 
