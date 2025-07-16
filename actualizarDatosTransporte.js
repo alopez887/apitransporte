@@ -5,7 +5,8 @@ export default async function actualizarDatosTransporte(req, res) {
   const { 
     token_qr, 
     usuario_proveedor, 
-    driver, 
+    driver,
+	chofer_nombre,  // ✅ nuevo
     unit, 
     comentarios, 
     fecha_inicioviaje, 
@@ -26,10 +27,10 @@ export default async function actualizarDatosTransporte(req, res) {
     updates.push(`usuario_proveedor = $${paramIndex++}`);
     values.push(usuario_proveedor);
 
-    if (driver) {
-      updates.push(`chofer = $${paramIndex++}`);
-      values.push(driver);
-    }
+    if (chofer_nombre) {
+	  updates.push(`chofer = $${paramIndex++}`);
+	  values.push(chofer_nombre);
+	}
 
     if (unit) {
       updates.push(`numero_unidad = $${paramIndex++}`);
