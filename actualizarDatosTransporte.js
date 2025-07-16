@@ -1,4 +1,5 @@
 import pool from './conexion.js';
+import { DateTime } from 'luxon';
 
 export default async function actualizarDatosTransporte(req, res) {
   const { 
@@ -41,14 +42,18 @@ export default async function actualizarDatosTransporte(req, res) {
     }
 
     if (fecha_inicioviaje) {
+      // 🔥 Convertir a zona horaria Mazatlán
+      const fechaMazatlan = DateTime.fromISO(fecha_inicioviaje).setZone('America/Mazatlan').toISO();
       updates.push(`fecha_inicioviaje = $${paramIndex++}`);
-      values.push(fecha_inicioviaje);
+      values.push(fechaMazatlan);
       estatus_viaje = 'asignado';
     }
 
     if (fecha_finalviaje) {
+      // 🔥 También convertir si se usa
+      const fechaMazatlanFinal = DateTime.fromISO(fecha_finalviaje).setZone('America/Mazatlan').toISO();
       updates.push(`fecha_finalviaje = $${paramIndex++}`);
-      values.push(fecha_finalviaje);
+      values.push(fechaMazatlanFinal);
       estatus_viaje = 'finalizado';
     }
 
