@@ -6,11 +6,12 @@ export default async function actualizarDatosTransporte(req, res) {
     token_qr, 
     usuario_proveedor, 
     driver,
-	chofer_nombre,  // ✅ nuevo
+    chofer_nombre,
     unit, 
     comentarios, 
     fecha_inicioviaje, 
-    fecha_finalviaje 
+    fecha_finalviaje,
+    cantidad_pasajerosok // ✅ nuevo campo recibido
   } = req.body;
 
   if (!token_qr || !usuario_proveedor) {
@@ -28,13 +29,18 @@ export default async function actualizarDatosTransporte(req, res) {
     values.push(usuario_proveedor);
 
     if (chofer_nombre) {
-	  updates.push(`chofer = $${paramIndex++}`);
-	  values.push(chofer_nombre);
-	}
+      updates.push(`chofer = $${paramIndex++}`);
+      values.push(chofer_nombre);
+    }
 
     if (unit) {
       updates.push(`numero_unidad = $${paramIndex++}`);
       values.push(unit);
+    }
+
+    if (cantidad_pasajerosok) {
+      updates.push(`cantidad_pasajerosok = $${paramIndex++}`); // ✅ nuevo campo en BD
+      values.push(cantidad_pasajerosok);
     }
 
     if (comentarios) {
@@ -43,7 +49,6 @@ export default async function actualizarDatosTransporte(req, res) {
     }
 
     if (fecha_inicioviaje) {
-      // 🔥 Convertir a zona horaria Mazatlán
       const fechaMazatlan = DateTime.fromISO(fecha_inicioviaje).setZone('America/Mazatlan').toISO();
       updates.push(`fecha_inicioviaje = $${paramIndex++}`);
       values.push(fechaMazatlan);
@@ -51,7 +56,6 @@ export default async function actualizarDatosTransporte(req, res) {
     }
 
     if (fecha_finalviaje) {
-      // 🔥 También convertir si se usa
       const fechaMazatlanFinal = DateTime.fromISO(fecha_finalviaje).setZone('America/Mazatlan').toISO();
       updates.push(`fecha_finalviaje = $${paramIndex++}`);
       values.push(fechaMazatlanFinal);
