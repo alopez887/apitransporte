@@ -16,7 +16,8 @@ export async function obtenerReservaTransporte(req, res) {
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida, tipo_servicio, 
         porcentaje_descuento, precio_servicio, fecha, estatus, proveedor, folio_proveedor, 
         usuario_proveedor, fecha_reservacion,
-        fecha_inicioviaje, fecha_finalviaje, comentarios, firma_cliente
+        fecha_inicioviaje, fecha_finalviaje, comentarios, firma_cliente,
+        chofer, estatus_viaje
       FROM reservaciones
       WHERE token_qr = $1
       LIMIT 1
@@ -33,6 +34,7 @@ export async function obtenerReservaTransporte(req, res) {
       success: true,
       reserva
     });
+
   } catch (error) {
     console.error("❌ Error al obtener reserva por token:", error);
     return res.status(500).json({ error: 'Error interno del servidor' });
