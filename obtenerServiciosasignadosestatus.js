@@ -8,15 +8,13 @@ export async function obtenerServiciosAsignadosEstatus(req, res) {
   }
 
   try {
-    const [rows] = await pool.query(
-      `SELECT folio, nombre_cliente, tipo_viaje, hotel_llegada, fecha_llegada, hora_llegada,
-              cantidad_pasajeros, total_pago, estatus
-         FROM reservas_transporte
-         WHERE usuario_chofer = ? AND estatus = ?`,
-      [usuario, estatus]
-    );
+    // 🔥 PRUEBA: solo devolver primeros 5 registros para revisar columnas
+    const result = await pool.query(`SELECT * FROM reservas_transporte LIMIT 5`);
+    console.log("✅ Datos de prueba:", result.rows);
 
-    res.json({ success: true, servicios: rows });
+    // Enviar a frontend para verificar columnas
+    res.json({ success: true, servicios: result.rows });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Error al obtener servicios' });
