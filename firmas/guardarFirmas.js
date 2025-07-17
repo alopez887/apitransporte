@@ -3,15 +3,19 @@ import path from 'path';
 import pool from '../conexion.js';
 
 export default async function guardarFirma(req, res) {
-  const { token_qr, firma_base64 } = req.body;
+  const { token_qr, folio, firma_base64 } = req.body;
 
-  if (!token_qr || !firma_base64) {
+  // ✅ Usar folio si no hay token_qr (chofer)
+  const identificador = token_qr || folio;
+  const campoIdentificador = token_qr ? 'token_qr' : 'folio';
+
+  if (!identificador || !firma_base64) {
     return res.status(400).json({ success: false, message: 'Faltan datos' });
   }
 
   try {
     // Generar nombre único
-    const nombreArchivo = `firma_${token_qr}_${Date.now()}.png`;
+    const nombreArchivo = `firma_${identificador}_${Date.now()}.png`;
     const rutaArchivo = path.join(process.cwd(), 'firmas', nombreArchivo);
 
     // Extraer solo base64 sin encabezado
@@ -25,8 +29,8 @@ export default async function guardarFirma(req, res) {
 
     // Actualizar en BD solo URL
     await pool.query(
-      `UPDATE reservaciones SET firma_cliente = $1 WHERE token_qr = $2`,
-      [urlFirma, token_qr]
+      `UPDATE reservaciones SET firma_cliente = $1 WHERE ${campoIdentificador} = $2`,
+      [urlFirma, identificador]
     );
 
     res.json({ success: true, url: urlFirma });
