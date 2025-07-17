@@ -11,7 +11,8 @@ export default async function actualizarDatosTransporte(req, res) {
     comentarios, 
     fecha_inicioviaje, 
     fecha_finalviaje,
-    cantidad_pasajerosok // ✅ nuevo campo recibido
+    cantidad_pasajerosok,
+    firma_cliente // ✅ nuevo campo para el chofer
   } = req.body;
 
   if (!token_qr || !usuario_proveedor) {
@@ -39,13 +40,18 @@ export default async function actualizarDatosTransporte(req, res) {
     }
 
     if (cantidad_pasajerosok) {
-      updates.push(`cantidad_pasajerosok = $${paramIndex++}`); // ✅ nuevo campo en BD
+      updates.push(`cantidad_pasajerosok = $${paramIndex++}`);
       values.push(cantidad_pasajerosok);
     }
 
     if (comentarios) {
       updates.push(`comentarios = $${paramIndex++}`);
       values.push(comentarios);
+    }
+
+    if (firma_cliente) {
+      updates.push(`firma_cliente = $${paramIndex++}`);
+      values.push(firma_cliente);
     }
 
     if (fecha_inicioviaje) {
