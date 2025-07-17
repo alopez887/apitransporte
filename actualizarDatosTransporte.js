@@ -2,21 +2,22 @@ import pool from './conexion.js';
 import { DateTime } from 'luxon';
 
 export default async function actualizarDatosTransporte(req, res) {
-  const { 
-    token_qr, 
-    usuario_proveedor, 
+  const {
+    token_qr,
+    folio,
+    usuario_proveedor,
     driver,
     chofer_nombre,
-    unit, 
-    comentarios, 
-    fecha_inicioviaje, 
+    unit,
+    comentarios,
+    fecha_inicioviaje,
     fecha_finalviaje,
     cantidad_pasajerosok,
-    firma_cliente // ✅ nuevo campo para el chofer
+    firma_cliente
   } = req.body;
 
-  if (!token_qr || !usuario_proveedor) {
-    return res.status(400).json({ success: false, message: 'Datos incompletos' });
+  if (!token_qr && !folio) {
+    return res.status(400).json({ success: false, message: 'Falta identificador: token_qr o folio' });
   }
 
   try {
@@ -25,9 +26,10 @@ export default async function actualizarDatosTransporte(req, res) {
     let paramIndex = 1;
     let estatus_viaje = null;
 
-    // Siempre usuario_proveedor
-    updates.push(`usuario_proveedor = $${paramIndex++}`);
-    values.push(usuario_proveedor);
+    if (usuario_proveedor) {
+      updates.push(`usuario_proveedor = $${paramIndex++}`);
+      values.push(usuario_proveedor);
+    }
 
     if (chofer_nombre) {
       updates.push(`chofer = $${paramIndex++}`);
@@ -73,13 +75,24 @@ export default async function actualizarDatosTransporte(req, res) {
       values.push(estatus_viaje);
     }
 
-    // WHERE
-    values.push(token_qr);
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, message: 'No se recibieron campos para actualizar' });
+    }
+
+    // WHERE dinámico
+    let whereClause = '';
+    if (token_qr) {
+      whereClause = `token_qr = $${paramIndex}`;
+      values.push(token_qr);
+    } else {
+      whereClause = `folio = $${paramIndex}`;
+      values.push(folio);
+    }
 
     const query = `
       UPDATE reservaciones
       SET ${updates.join(', ')}
-      WHERE token_qr = $${paramIndex}
+      WHERE ${whereClause}
     `;
 
     await pool.query(query, values);
