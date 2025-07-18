@@ -18,10 +18,10 @@ export async function obtenerServiciosAsignadosEstatus(req, res) {
           tipo_servicio, tipo_transporte, capacidad, cantidad_pasajeros,
           hotel_llegada, fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
           codigo_descuento, porcentaje_descuento, precio_servicio, zona, total_pago,
-          tipo_viaje, estatus_viaje_llegada AS estatus_viaje, comentariosllegada AS comentarios,
+          tipo_viaje, estatus_viajellegada AS estatus_viaje, comentariosllegada AS comentarios,
           choferllegada AS chofer
         FROM reservaciones
-        WHERE choferllegada = $1 AND estatus_viaje_llegada != 'finalizado'
+        WHERE choferllegada = $1 AND estatus_viajellegada != 'finalizado'
       `;
       values = [usuario];
     } else if (tipo_viaje === 'salida') {
@@ -47,11 +47,11 @@ export async function obtenerServiciosAsignadosEstatus(req, res) {
           hotel_salida, fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
           codigo_descuento, porcentaje_descuento, precio_servicio, zona, total_pago,
           tipo_viaje,
-          estatus_viaje_llegada, estatus_viajesalida,
+          estatus_viajellegada, estatus_viajesalida,
           comentariosllegada, comentariossalida,
           choferllegada, chofersalida
         FROM reservaciones
-        WHERE (choferllegada = $1 AND estatus_viaje_llegada != 'finalizado')
+        WHERE (choferllegada = $1 AND estatus_viajellegada != 'finalizado')
            OR (chofersalida = $1 AND estatus_viajesalida != 'finalizado')
       `;
       values = [usuario];
