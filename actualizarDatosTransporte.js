@@ -5,8 +5,8 @@ export default async function actualizarDatosTransporte(req, res) {
   const {
     token_qr,
     folio,
+    tipo_viaje,
     usuario_proveedor,
-    driver,
     chofer_nombre,
     unit,
     comentarios,
@@ -20,59 +20,50 @@ export default async function actualizarDatosTransporte(req, res) {
     return res.status(400).json({ success: false, message: 'Falta identificador: token_qr o folio' });
   }
 
+  if (!tipo_viaje) {
+    return res.status(400).json({ success: false, message: 'Falta el tipo de viaje' });
+  }
+
   try {
     const updates = [];
     const values = [];
     let paramIndex = 1;
-    let estatus_viaje = null;
+    let estatusViaje = null;
 
-    if (usuario_proveedor) {
-      updates.push(`usuario_proveedor = $${paramIndex++}`);
-      values.push(usuario_proveedor);
-    }
+    // Prefijo exacto según tu base de datos
+    let sufijo = '';
+    if (tipo_viaje === 'llegada') sufijo = 'llegada';
+    else if (tipo_viaje === 'salida') sufijo = 'salida';
+    else return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
 
-    if (chofer_nombre) {
-      updates.push(`chofer = $${paramIndex++}`);
-      values.push(chofer_nombre);
-    }
+    const setCampo = (campoBase, valor) => {
+      if (!valor) return;
+      const campo = `${campoBase}${sufijo}`;
+      updates.push(`${campo} = $${paramIndex++}`);
+      values.push(valor);
+    };
 
-    if (unit) {
-      updates.push(`numero_unidad = $${paramIndex++}`);
-      values.push(unit);
-    }
-
-    if (cantidad_pasajerosok) {
-      updates.push(`cantidad_pasajerosok = $${paramIndex++}`);
-      values.push(cantidad_pasajerosok);
-    }
-
-    if (comentarios) {
-      updates.push(`comentarios = $${paramIndex++}`);
-      values.push(comentarios);
-    }
-
-    if (firma_cliente) {
-      updates.push(`firma_cliente = $${paramIndex++}`);
-      values.push(firma_cliente);
-    }
+    setCampo('usuario_proveedor', usuario_proveedor);
+    setCampo('chofer', chofer_nombre);
+    setCampo('numero_unidad', unit);
+    setCampo('comentarios', comentarios);
+    setCampo('firma_cliente', firma_cliente);
+    setCampo('cantidad_pasajerosok', cantidad_pasajerosok);
 
     if (fecha_inicioviaje) {
-      const fechaMazatlan = DateTime.fromISO(fecha_inicioviaje).setZone('America/Mazatlan').toISO();
-      updates.push(`fecha_inicioviaje = $${paramIndex++}`);
-      values.push(fechaMazatlan);
-      estatus_viaje = 'asignado';
+      const fechaInicio = DateTime.fromISO(fecha_inicioviaje).setZone('America/Mazatlan').toISO();
+      setCampo('fecha_inicioviaje', fechaInicio);
+      estatusViaje = 'asignado';
     }
 
     if (fecha_finalviaje) {
-      const fechaMazatlanFinal = DateTime.fromISO(fecha_finalviaje).setZone('America/Mazatlan').toISO();
-      updates.push(`fecha_finalviaje = $${paramIndex++}`);
-      values.push(fechaMazatlanFinal);
-      estatus_viaje = 'finalizado';
+      const fechaFin = DateTime.fromISO(fecha_finalviaje).setZone('America/Mazatlan').toISO();
+      setCampo('fecha_finalviaje', fechaFin);
+      estatusViaje = 'finalizado';
     }
 
-    if (estatus_viaje) {
-      updates.push(`estatus_viaje = $${paramIndex++}`);
-      values.push(estatus_viaje);
+    if (estatusViaje) {
+      setCampo('estatus_viaje', estatusViaje);
     }
 
     if (updates.length === 0) {
