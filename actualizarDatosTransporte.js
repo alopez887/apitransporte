@@ -25,12 +25,23 @@ export default async function actualizarDatosTransporte(req, res) {
   }
 
   try {
+    // ✅ Verificar si el viaje ya fue finalizado
+    let identificador = token_qr || folio;
+    let campoIdentificador = token_qr ? 'token_qr' : 'folio';
+    const campoEstatus = `estatus_viaje${tipo_viaje}`;
+
+    const checkQuery = `SELECT ${campoEstatus} FROM reservaciones WHERE ${campoIdentificador} = $1`;
+    const checkRes = await pool.query(checkQuery, [identificador]);
+
+    if (checkRes.rows.length > 0 && checkRes.rows[0][campoEstatus] === 'finalizado') {
+      return res.status(400).json({ success: false, message: 'Este servicio ya fue finalizado y no se puede modificar.' });
+    }
+
     const updates = [];
     const values = [];
     let paramIndex = 1;
     let estatusViaje = null;
 
-    // Prefijo exacto según tu base de datos
     let sufijo = '';
     if (tipo_viaje === 'llegada') sufijo = 'llegada';
     else if (tipo_viaje === 'salida') sufijo = 'salida';
@@ -70,7 +81,6 @@ export default async function actualizarDatosTransporte(req, res) {
       return res.status(400).json({ success: false, message: 'No se recibieron campos para actualizar' });
     }
 
-    // WHERE dinámico
     let whereClause = '';
     if (token_qr) {
       whereClause = `token_qr = $${paramIndex}`;
