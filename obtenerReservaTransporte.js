@@ -39,10 +39,29 @@ export async function obtenerReservaTransporte(req, res) {
 
     const reserva = result.rows[0];
 
-    return res.json({
-      success: true,
-      reserva
-    });
+    // Verificar si el servicio ya fue finalizado según tipo de viaje
+    const tipoViaje = reserva.tipo_viaje?.toLowerCase();
+    const respuesta = { success: true, reserva };
+
+    if (tipoViaje === 'llegada' && reserva.estatus_viajellegada === 'finalizado') {
+      respuesta.finalizado = true;
+      respuesta.detalle_finalizado = {
+        representante: reserva.usuario_proveedorllegada,
+        fecha_inicio: reserva.fecha_inicioviajellegada,
+        chofer: reserva.choferllegada,
+        fecha_final: reserva.fecha_finalviajellegada
+      };
+    } else if (tipoViaje === 'salida' && reserva.estatus_viajesalida === 'finalizado') {
+      respuesta.finalizado = true;
+      respuesta.detalle_finalizado = {
+        representante: reserva.usuario_proveedorsalida,
+        fecha_inicio: reserva.fecha_inicioviajesalida,
+        chofer: reserva.chofersalida,
+        fecha_final: reserva.fecha_finalviajesalida
+      };
+    }
+
+    return res.json(respuesta);
 
   } catch (error) {
     console.error("❌ Error al obtener reserva por token:", error);
