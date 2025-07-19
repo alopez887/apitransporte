@@ -13,7 +13,10 @@ export default async function actualizarDatosTransporte(req, res) {
     fecha_inicioviaje,
     fecha_finalviaje,
     cantidad_pasajerosok,
-    firma_cliente
+    firma_cliente,
+    chofer_externonombre,
+    choferexterno_tel,
+    chofer_empresaext
   } = req.body;
 
   if (!token_qr && !folio) {
@@ -25,7 +28,6 @@ export default async function actualizarDatosTransporte(req, res) {
   }
 
   try {
-    // ✅ Verificar si el viaje ya fue finalizado
     let identificador = token_qr || folio;
     let campoIdentificador = token_qr ? 'token_qr' : 'folio';
     const campoEstatus = `estatus_viaje${tipo_viaje}`;
@@ -48,15 +50,13 @@ export default async function actualizarDatosTransporte(req, res) {
     else return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
 
     const setCampo = (campoBase, valor) => {
-      if (!valor) return;
+      if (valor === undefined) return;
       const campo = `${campoBase}${sufijo}`;
       updates.push(`${campo} = $${paramIndex++}`);
       values.push(valor);
     };
 
     setCampo('usuario_proveedor', usuario_proveedor);
-    setCampo('chofer', chofer_nombre);
-    setCampo('numero_unidad', unit);
     setCampo('comentarios', comentarios);
     setCampo('firma_cliente', firma_cliente);
     setCampo('cantidad_pasajerosok', cantidad_pasajerosok);
@@ -75,6 +75,23 @@ export default async function actualizarDatosTransporte(req, res) {
 
     if (estatusViaje) {
       setCampo('estatus_viaje', estatusViaje);
+    }
+
+    // Manejo de chofer interno / externo
+    if (chofer_externonombre && choferexterno_tel && chofer_empresaext) {
+      updates.push(`chofer_externonombre = $${paramIndex++}`);
+      updates.push(`choferexterno_tel = $${paramIndex++}`);
+      updates.push(`chofer_empresaext = $${paramIndex++}`);
+      values.push(chofer_externonombre, choferexterno_tel, chofer_empresaext);
+
+      updates.push(`chofer${sufijo} = NULL`);
+      updates.push(`numero_unidad${sufijo} = NULL`);
+    } else {
+      setCampo('chofer', chofer_nombre);
+      setCampo('numero_unidad', unit);
+      updates.push(`chofer_externonombre = NULL`);
+      updates.push(`choferexterno_tel = NULL`);
+      updates.push(`chofer_empresaext = NULL`);
     }
 
     if (updates.length === 0) {
