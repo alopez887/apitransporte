@@ -26,7 +26,10 @@ export async function obtenerReservaTransporte(req, res) {
         -- Salida
         usuario_proveedorsalida, fecha_inicioviajesalida, fecha_finalviajesalida, 
         comentariossalida, firma_clientesalida, chofersalida, numero_unidadsalida, 
-        estatus_viajesalida, cantidad_pasajerosoksalida
+        estatus_viajesalida, cantidad_pasajerosoksalida,
+
+        -- Chofer externo
+        chofer_externonombre, choferexterno_tel, chofer_empresaext
 
       FROM reservaciones
       WHERE token_qr = $1
