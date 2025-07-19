@@ -16,6 +16,8 @@ export async function obtenerReservaTransporte(req, res) {
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida, tipo_servicio, 
         porcentaje_descuento, precio_servicio, fecha, estatus, proveedor, folio_proveedor, 
 
+        hotel_llegada, hotel_salida,
+
         -- Llegada
         usuario_proveedorllegada, fecha_inicioviajellegada, fecha_finalviajellegada, 
         comentariosllegada, firma_clientellegada, choferllegada, numero_unidadllegada, 
