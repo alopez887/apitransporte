@@ -23,15 +23,21 @@ export default async function actualizarDatosTransporte(req, res) {
     return res.status(400).json({ success: false, message: 'Falta identificador: token_qr o folio' });
   }
 
-  if (!tipo_viaje || !['llegada', 'salida'].includes(tipo_viaje)) {
-    return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
-  }
+  const tipoViajeBase = (
+  tipo_viaje === 'redondo_llegada' ? 'llegada' :
+  tipo_viaje === 'redondo_salida' ? 'salida' :
+  tipo_viaje
+);
+
+if (!tipoViajeBase || !['llegada', 'salida'].includes(tipoViajeBase)) {
+  return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
+}
 
   try {
     const identificador = token_qr || folio;
     const campoIdentificador = token_qr ? 'token_qr' : 'folio';
-    const campoEstatus = `estatus_viaje${tipo_viaje}`;
-    const sufijo = tipo_viaje;
+    const campoEstatus = `estatus_viaje${tipoViajeBase}`;
+	const sufijo = tipoViajeBase;
 
     // Verificar si ya fue finalizado
     const checkQuery = `SELECT ${campoEstatus} FROM reservaciones WHERE ${campoIdentificador} = $1`;
