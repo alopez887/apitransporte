@@ -40,12 +40,31 @@ if (!tipoViajeBase || !['llegada', 'salida'].includes(tipoViajeBase)) {
 	const sufijo = tipoViajeBase;
 
     // Verificar si ya fue finalizado
-    const checkQuery = `SELECT ${campoEstatus} FROM reservaciones WHERE ${campoIdentificador} = $1`;
-    const checkRes = await pool.query(checkQuery, [identificador]);
+    const checkQuery = `
+  SELECT estatus_viajellegada, estatus_viajesalida
+  FROM reservaciones
+  WHERE ${campoIdentificador} = $1
+`;
+const checkRes = await pool.query(checkQuery, [identificador]);
 
-    if (checkRes.rows.length > 0 && checkRes.rows[0][campoEstatus] === 'finalizado') {
-      return res.status(400).json({ success: false, message: 'Este servicio ya fue finalizado y no se puede modificar.' });
-    }
+if (checkRes.rows.length === 0) {
+  return res.status(404).json({ success: false, message: 'Reservación no encontrada' });
+}
+
+const estatusLlegada = checkRes.rows[0].estatus_viajellegada;
+const estatusSalida = checkRes.rows[0].estatus_viajesalida;
+
+if (estatusLlegada === 'finalizado' && estatusSalida === 'finalizado') {
+  return res.status(400).json({ success: false, message: 'Este servicio ya fue finalizado completamente y no se puede modificar.' });
+}
+
+if ((tipo_viaje === 'llegada' || tipo_viaje === 'redondo_llegada') && estatusLlegada === 'finalizado') {
+  return res.status(400).json({ success: false, message: 'La llegada ya fue finalizada y no se puede modificar.' });
+}
+
+if ((tipo_viaje === 'salida' || tipo_viaje === 'redondo_salida') && estatusSalida === 'finalizado') {
+  return res.status(400).json({ success: false, message: 'La salida ya fue finalizada y no se puede modificar.' });
+}
 
     const updates = [];
     const values = [];
