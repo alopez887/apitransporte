@@ -30,7 +30,19 @@ export default async function actualizarDatosTransporte(req, res) {
   try {
     let identificador = token_qr || folio;
     let campoIdentificador = token_qr ? 'token_qr' : 'folio';
-    const campoEstatus = `estatus_viaje${tipo_viaje}`;
+
+    let campoEstatus = '';
+    let sufijo = '';
+
+    if (tipo_viaje === 'llegada') {
+      campoEstatus = 'estatus_viajellegada';
+      sufijo = 'llegada';
+    } else if (tipo_viaje === 'salida') {
+      campoEstatus = 'estatus_viajesalida';
+      sufijo = 'salida';
+    } else {
+      return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
+    }
 
     const checkQuery = `SELECT ${campoEstatus} FROM reservaciones WHERE ${campoIdentificador} = $1`;
     const checkRes = await pool.query(checkQuery, [identificador]);
@@ -43,11 +55,6 @@ export default async function actualizarDatosTransporte(req, res) {
     const values = [];
     let paramIndex = 1;
     let estatusViaje = null;
-
-    let sufijo = '';
-    if (tipo_viaje === 'llegada') sufijo = 'llegada';
-    else if (tipo_viaje === 'salida') sufijo = 'salida';
-    else return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
 
     const setCampo = (campoBase, valor) => {
       if (valor === undefined) return;
@@ -77,7 +84,7 @@ export default async function actualizarDatosTransporte(req, res) {
       setCampo('estatus_viaje', estatusViaje);
     }
 
-    // Manejo de chofer interno / externo
+    // Chofer externo
     if (chofer_externonombre && choferexterno_tel && chofer_empresaext) {
       updates.push(`chofer_externonombre = $${paramIndex++}`);
       updates.push(`choferexterno_tel = $${paramIndex++}`);
