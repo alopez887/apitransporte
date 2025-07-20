@@ -23,27 +23,17 @@ export default async function actualizarDatosTransporte(req, res) {
     return res.status(400).json({ success: false, message: 'Falta identificador: token_qr o folio' });
   }
 
-  if (!tipo_viaje) {
-    return res.status(400).json({ success: false, message: 'Falta el tipo de viaje' });
+  if (!tipo_viaje || !['llegada', 'salida'].includes(tipo_viaje)) {
+    return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
   }
 
   try {
-    let identificador = token_qr || folio;
-    let campoIdentificador = token_qr ? 'token_qr' : 'folio';
+    const identificador = token_qr || folio;
+    const campoIdentificador = token_qr ? 'token_qr' : 'folio';
+    const campoEstatus = `estatus_viaje${tipo_viaje}`;
+    const sufijo = tipo_viaje;
 
-    let campoEstatus = '';
-    let sufijo = '';
-
-    if (tipo_viaje === 'llegada') {
-      campoEstatus = 'estatus_viajellegada';
-      sufijo = 'llegada';
-    } else if (tipo_viaje === 'salida') {
-      campoEstatus = 'estatus_viajesalida';
-      sufijo = 'salida';
-    } else {
-      return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
-    }
-
+    // Verificar si ya fue finalizado
     const checkQuery = `SELECT ${campoEstatus} FROM reservaciones WHERE ${campoIdentificador} = $1`;
     const checkRes = await pool.query(checkQuery, [identificador]);
 
@@ -81,10 +71,10 @@ export default async function actualizarDatosTransporte(req, res) {
     }
 
     if (estatusViaje) {
-      setCampo('estatus_viaje', estatusViaje);
+      updates.push(`${campoEstatus} = $${paramIndex++}`);
+      values.push(estatusViaje);
     }
 
-    // Chofer externo
     if (chofer_externonombre && choferexterno_tel && chofer_empresaext) {
       updates.push(`chofer_externonombre = $${paramIndex++}`);
       updates.push(`choferexterno_tel = $${paramIndex++}`);
@@ -105,14 +95,8 @@ export default async function actualizarDatosTransporte(req, res) {
       return res.status(400).json({ success: false, message: 'No se recibieron campos para actualizar' });
     }
 
-    let whereClause = '';
-    if (token_qr) {
-      whereClause = `token_qr = $${paramIndex}`;
-      values.push(token_qr);
-    } else {
-      whereClause = `folio = $${paramIndex}`;
-      values.push(folio);
-    }
+    const whereClause = `${campoIdentificador} = $${paramIndex}`;
+    values.push(identificador);
 
     const query = `
       UPDATE reservaciones
@@ -125,7 +109,6 @@ export default async function actualizarDatosTransporte(req, res) {
     res.json({ success: true, message: 'Datos actualizados correctamente' });
 
   } catch (error) {
-    console.error('❌ Error actualizando transporte:', error.message);
     res.status(500).json({ success: false, message: 'Error en el servidor' });
   }
 }
