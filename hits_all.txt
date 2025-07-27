@@ -1,0 +1,10 @@
+actualizarFolioProveedorTransporte.js:4:  const { token_qr, usuario_proveedor, folio_proveedor, fecha_reservacion } = req.body;
+actualizarFolioProveedorTransporte.js:6:  if (!token_qr || !usuario_proveedor || !folio_proveedor || !fecha_reservacion) {
+actualizarFolioProveedorTransporte.js:25:           usuario_proveedor = $2,
+actualizarFolioProveedorTransporte.js:28:      [folio_proveedor, usuario_proveedor, fecha_reservacion, token_qr]
+actualizarDatosTransporte.js:9:    usuario_proveedor,
+actualizarDatosTransporte.js:81:    setCampo('usuario_proveedor', usuario_proveedor);
+obtenerReservaTransporte.js:22:        usuario_proveedorllegada, fecha_inicioviajellegada, fecha_finalviajellegada, 
+obtenerReservaTransporte.js:27:        usuario_proveedorsalida, fecha_inicioviajesalida, fecha_finalviajesalida, 
+obtenerReservaTransporte.js:54:        representante: reserva.usuario_proveedorllegada,
+obtenerReservaTransporte.js:62:        representante: reserva.usuario_proveedorsalida,

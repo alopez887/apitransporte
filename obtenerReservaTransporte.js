@@ -19,12 +19,12 @@ export async function obtenerReservaTransporte(req, res) {
         hotel_llegada, hotel_salida,
 
         -- Llegada
-        usuario_proveedorllegada, fecha_inicioviajellegada, fecha_finalviajellegada, 
+        representante_llegada, fecha_inicioviajellegada, fecha_finalviajellegada, 
         comentariosllegada, firma_clientellegada, choferllegada, numero_unidadllegada, 
         estatus_viajellegada, cantidad_pasajerosokllegada,
 
         -- Salida
-        usuario_proveedorsalida, fecha_inicioviajesalida, fecha_finalviajesalida, 
+        representante_salida, fecha_inicioviajesalida, fecha_finalviajesalida, 
         comentariossalida, firma_clientesalida, chofersalida, numero_unidadsalida, 
         estatus_viajesalida, cantidad_pasajerosoksalida,
 
@@ -51,7 +51,7 @@ export async function obtenerReservaTransporte(req, res) {
     if (tipoViaje === 'llegada' && reserva.estatus_viajellegada === 'finalizado') {
       respuesta.finalizado = true;
       respuesta.detalle_finalizado = {
-        representante: reserva.usuario_proveedorllegada,
+        representante: reserva.representante_llegada,
         fecha_inicio: reserva.fecha_inicioviajellegada,
         chofer: reserva.choferllegada,
         fecha_final: reserva.fecha_finalviajellegada
@@ -59,7 +59,7 @@ export async function obtenerReservaTransporte(req, res) {
     } else if (tipoViaje === 'salida' && reserva.estatus_viajesalida === 'finalizado') {
       respuesta.finalizado = true;
       respuesta.detalle_finalizado = {
-        representante: reserva.usuario_proveedorsalida,
+        representante: reserva.representante_salida,
         fecha_inicio: reserva.fecha_inicioviajesalida,
         chofer: reserva.chofersalida,
         fecha_final: reserva.fecha_finalviajesalida
