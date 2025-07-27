@@ -2,6 +2,7 @@ import pool from './conexion.js';
 import { DateTime } from 'luxon';
 
 export default async function actualizarDatosTransporte(req, res) {
+  // console.log('BODY -->', req.body); // <- descomenta para debug
   const {
     token_qr,
     folio,
@@ -78,7 +79,7 @@ export default async function actualizarDatosTransporte(req, res) {
       values.push(valor);
     };
 
-    // NUEVO: representante
+    // Representante (sin sufijo)
     if (tipoViajeBase === 'llegada' && representante_llegada !== undefined) {
       updates.push(`representante_llegada = $${paramIndex++}`);
       values.push(representante_llegada);
