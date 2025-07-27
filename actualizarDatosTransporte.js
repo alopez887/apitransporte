@@ -113,16 +113,27 @@ export default async function actualizarDatosTransporte(req, res) {
 
     // Chofer interno / externo
     if (chofer_externonombre && choferexterno_tel && chofer_empresaext) {
+      // Guardar datos del chofer externo
       updates.push(`chofer_externonombre = $${paramIndex++}`);
       updates.push(`choferexterno_tel   = $${paramIndex++}`);
       updates.push(`chofer_empresaext   = $${paramIndex++}`);
       values.push(chofer_externonombre, choferexterno_tel, chofer_empresaext);
 
+      // Limpiar chofer interno
       updates.push(`chofer${sufijo} = NULL`);
-      updates.push(`numero_unidad${sufijo} = NULL`);
+
+      // Unidad: solo la borras si NO te enviaron 'unit'
+      if (unit !== undefined && unit !== null && unit !== '') {
+        setCampo('numero_unidad', unit);
+      } else {
+        updates.push(`numero_unidad${sufijo} = NULL`);
+      }
     } else {
+      // Chofer interno
       setCampo('chofer', chofer_nombre);
       setCampo('numero_unidad', unit);
+
+      // Limpiar campos externos
       updates.push(`chofer_externonombre = NULL`);
       updates.push(`choferexterno_tel    = NULL`);
       updates.push(`chofer_empresaext    = NULL`);
