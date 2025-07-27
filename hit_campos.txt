@@ -1,0 +1,8 @@
+hits_all.txt:7:obtenerReservaTransporte.js:22:        usuario_proveedorllegada, fecha_inicioviajellegada, fecha_finalviajellegada, 
+hits_all.txt:8:obtenerReservaTransporte.js:27:        usuario_proveedorsalida, fecha_inicioviajesalida, fecha_finalviajesalida, 
+hits_all.txt:9:obtenerReservaTransporte.js:54:        representante: reserva.usuario_proveedorllegada,
+hits_all.txt:10:obtenerReservaTransporte.js:62:        representante: reserva.usuario_proveedorsalida,
+hits_campos.txt:1:hits_all.txt:7:obtenerReservaTransporte.js:22:        usuario_proveedorllegada, fecha_inicioviajellegada, fecha_finalviajellegada, 
+hits_campos.txt:2:hits_all.txt:8:obtenerReservaTransporte.js:27:        usuario_proveedorsalida, fecha_inicioviajesalida, fecha_finalviajesalida, 
+hits_campos.txt:3:hits_all.txt:9:obtenerReservaTransporte.js:54:        representante: reserva.usuario_proveedorllegada,
+hits_campos.txt:4:hits_all.txt:10:obtenerReservaTransporte.js:62:        representante: reserva.usuario_proveedorsalida,

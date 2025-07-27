@@ -6,7 +6,8 @@ export default async function actualizarDatosTransporte(req, res) {
     token_qr,
     folio,
     tipo_viaje,
-    usuario_proveedor,
+    representante_llegada,
+    representante_salida,
     chofer_nombre,
     unit,
     comentarios,
@@ -23,51 +24,50 @@ export default async function actualizarDatosTransporte(req, res) {
     return res.status(400).json({ success: false, message: 'Falta identificador: token_qr o folio' });
   }
 
-  const tipoViajeBase = (
-  tipo_viaje === 'redondo_llegada' ? 'llegada' :
-  tipo_viaje === 'redondo_salida' ? 'salida' :
-  tipo_viaje
-);
+  const tipoViajeBase =
+    tipo_viaje === 'redondo_llegada' ? 'llegada' :
+    tipo_viaje === 'redondo_salida'  ? 'salida'  :
+    tipo_viaje;
 
-if (!tipoViajeBase || !['llegada', 'salida'].includes(tipoViajeBase)) {
-  return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
-}
+  if (!tipoViajeBase || !['llegada', 'salida'].includes(tipoViajeBase)) {
+    return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
+  }
 
   try {
-    const identificador = token_qr || folio;
+    const identificador      = token_qr || folio;
     const campoIdentificador = token_qr ? 'token_qr' : 'folio';
-    const campoEstatus = `estatus_viaje${tipoViajeBase}`;
-	const sufijo = tipoViajeBase;
+    const campoEstatus       = `estatus_viaje${tipoViajeBase}`;
+    const sufijo             = tipoViajeBase;
 
     // Verificar si ya fue finalizado
     const checkQuery = `
-  SELECT estatus_viajellegada, estatus_viajesalida
-  FROM reservaciones
-  WHERE ${campoIdentificador} = $1
-`;
-const checkRes = await pool.query(checkQuery, [identificador]);
+      SELECT estatus_viajellegada, estatus_viajesalida
+      FROM reservaciones
+      WHERE ${campoIdentificador} = $1
+    `;
+    const checkRes = await pool.query(checkQuery, [identificador]);
 
-if (checkRes.rows.length === 0) {
-  return res.status(404).json({ success: false, message: 'Reservación no encontrada' });
-}
+    if (checkRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Reservación no encontrada' });
+    }
 
-const estatusLlegada = checkRes.rows[0].estatus_viajellegada;
-const estatusSalida = checkRes.rows[0].estatus_viajesalida;
+    const estatusLlegada = checkRes.rows[0].estatus_viajellegada;
+    const estatusSalida  = checkRes.rows[0].estatus_viajesalida;
 
-if (estatusLlegada === 'finalizado' && estatusSalida === 'finalizado') {
-  return res.status(400).json({ success: false, message: 'Este servicio ya fue finalizado completamente y no se puede modificar.' });
-}
+    if (estatusLlegada === 'finalizado' && estatusSalida === 'finalizado') {
+      return res.status(400).json({ success: false, message: 'Este servicio ya fue finalizado completamente y no se puede modificar.' });
+    }
 
-if ((tipo_viaje === 'llegada' || tipo_viaje === 'redondo_llegada') && estatusLlegada === 'finalizado') {
-  return res.status(400).json({ success: false, message: 'La llegada ya fue finalizada y no se puede modificar.' });
-}
+    if ((tipo_viaje === 'llegada' || tipo_viaje === 'redondo_llegada') && estatusLlegada === 'finalizado') {
+      return res.status(400).json({ success: false, message: 'La llegada ya fue finalizada y no se puede modificar.' });
+    }
 
-if ((tipo_viaje === 'salida' || tipo_viaje === 'redondo_salida') && estatusSalida === 'finalizado') {
-  return res.status(400).json({ success: false, message: 'La salida ya fue finalizada y no se puede modificar.' });
-}
+    if ((tipo_viaje === 'salida' || tipo_viaje === 'redondo_salida') && estatusSalida === 'finalizado') {
+      return res.status(400).json({ success: false, message: 'La salida ya fue finalizada y no se puede modificar.' });
+    }
 
     const updates = [];
-    const values = [];
+    const values  = [];
     let paramIndex = 1;
     let estatusViaje = null;
 
@@ -78,7 +78,17 @@ if ((tipo_viaje === 'salida' || tipo_viaje === 'redondo_salida') && estatusSalid
       values.push(valor);
     };
 
-    setCampo('usuario_proveedor', usuario_proveedor);
+    // NUEVO: representante
+    if (tipoViajeBase === 'llegada' && representante_llegada !== undefined) {
+      updates.push(`representante_llegada = $${paramIndex++}`);
+      values.push(representante_llegada);
+    }
+    if (tipoViajeBase === 'salida' && representante_salida !== undefined) {
+      updates.push(`representante_salida = $${paramIndex++}`);
+      values.push(representante_salida);
+    }
+
+    // Campos con sufijo
     setCampo('comentarios', comentarios);
     setCampo('firma_cliente', firma_cliente);
     setCampo('cantidad_pasajerosok', cantidad_pasajerosok);
@@ -100,10 +110,11 @@ if ((tipo_viaje === 'salida' || tipo_viaje === 'redondo_salida') && estatusSalid
       values.push(estatusViaje);
     }
 
+    // Chofer interno / externo
     if (chofer_externonombre && choferexterno_tel && chofer_empresaext) {
       updates.push(`chofer_externonombre = $${paramIndex++}`);
-      updates.push(`choferexterno_tel = $${paramIndex++}`);
-      updates.push(`chofer_empresaext = $${paramIndex++}`);
+      updates.push(`choferexterno_tel   = $${paramIndex++}`);
+      updates.push(`chofer_empresaext   = $${paramIndex++}`);
       values.push(chofer_externonombre, choferexterno_tel, chofer_empresaext);
 
       updates.push(`chofer${sufijo} = NULL`);
@@ -112,8 +123,8 @@ if ((tipo_viaje === 'salida' || tipo_viaje === 'redondo_salida') && estatusSalid
       setCampo('chofer', chofer_nombre);
       setCampo('numero_unidad', unit);
       updates.push(`chofer_externonombre = NULL`);
-      updates.push(`choferexterno_tel = NULL`);
-      updates.push(`chofer_empresaext = NULL`);
+      updates.push(`choferexterno_tel    = NULL`);
+      updates.push(`chofer_empresaext    = NULL`);
     }
 
     if (updates.length === 0) {
@@ -134,6 +145,7 @@ if ((tipo_viaje === 'salida' || tipo_viaje === 'redondo_salida') && estatusSalid
     res.json({ success: true, message: 'Datos actualizados correctamente' });
 
   } catch (error) {
+    console.error('❌ Error en actualizarDatosTransporte:', error);
     res.status(500).json({ success: false, message: 'Error en el servidor' });
   }
 }
