@@ -14,7 +14,8 @@ export async function obtenerReservaTransporte(req, res) {
         cantidad_pasajeros, codigo_descuento, total_pago, nombre_cliente, correo_cliente, 
         telefono_cliente, nota, fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida, tipo_servicio, 
-        porcentaje_descuento, precio_servicio, fecha, estatus, proveedor, folio_proveedor, 
+        porcentaje_descuento, precio_servicio, fecha, estatus, proveedor,
+        -- folio_proveedor eliminado
 
         hotel_llegada, hotel_salida,
 
@@ -44,7 +45,6 @@ export async function obtenerReservaTransporte(req, res) {
 
     const reserva = result.rows[0];
 
-    // Verificar si el servicio ya fue finalizado según tipo de viaje
     const tipoViaje = reserva.tipo_viaje?.toLowerCase();
     const respuesta = { success: true, reserva };
 
