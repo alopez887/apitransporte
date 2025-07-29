@@ -15,28 +15,29 @@ export async function obtenerServiciosRepresentante(req, res) {
     let valores = [];
     let ix = 1;
 
-    // Filtro por representante
+    // Filtro por representante (en llegada o salida)
     if (representante) {
       filtros.push(`(
         representante_llegada = $${ix}
         OR representante_salida = $${ix}
-        OR representante = $${ix}
       )`);
       valores.push(representante);
       ix++;
     }
 
-    // Filtro por fechas
+    // Filtro por fechas (en cualquiera de los inicios/finales)
     if (desde) {
       filtros.push(`(
-        (fecha_inicioviaje >= $${ix} OR fecha_inicioviajellegada >= $${ix} OR fecha_inicioviajesalida >= $${ix})
+        (fecha_inicioviajellegada >= $${ix} OR fecha_inicioviajesalida >= $${ix}
+        OR fecha_finalviajellegada >= $${ix} OR fecha_finalviajesalida >= $${ix})
       )`);
       valores.push(desde);
       ix++;
     }
     if (hasta) {
       filtros.push(`(
-        (fecha_inicioviaje <= $${ix} OR fecha_inicioviajellegada <= $${ix} OR fecha_inicioviajesalida <= $${ix})
+        (fecha_inicioviajellegada <= $${ix} OR fecha_inicioviajesalida <= $${ix}
+        OR fecha_finalviajellegada <= $${ix} OR fecha_finalviajesalida <= $${ix})
       )`);
       valores.push(hasta);
       ix++;
@@ -53,14 +54,12 @@ export async function obtenerServiciosRepresentante(req, res) {
       ix++;
     }
 
-    // Solo servicios asignados o finalizados
+    // Solo servicios asignados o finalizados (en cualquier tramo)
     filtros.push(`(
       estatus_viajellegada = 'asignado'
       OR estatus_viajesalida = 'asignado'
-      OR estatus = 'asignado'
       OR estatus_viajellegada = 'finalizado'
       OR estatus_viajesalida = 'finalizado'
-      OR estatus = 'finalizado'
     )`);
 
     let where = filtros.length ? 'WHERE ' + filtros.join(' AND ') : '';
@@ -69,7 +68,8 @@ export async function obtenerServiciosRepresentante(req, res) {
       SELECT *
       FROM reservaciones
       ${where}
-      ORDER BY fecha_inicioviaje DESC NULLS LAST, fecha_inicioviajellegada DESC NULLS LAST, fecha_inicioviajesalida DESC NULLS LAST
+      ORDER BY
+        COALESCE(fecha_inicioviajesalida, fecha_inicioviajellegada, fecha_finalviajellegada, fecha_finalviajesalida) DESC NULLS LAST
       LIMIT 200
     `;
 
