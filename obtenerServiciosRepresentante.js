@@ -1,6 +1,7 @@
+// obtenerServiciosRepresentante.js
 import pool from './conexion.js';
 
-// Este endpoint filtra por representante, fechas y estatus
+// Endpoint para filtrar por representante, fechas, búsqueda y estatus
 export async function obtenerServiciosRepresentante(req, res) {
   try {
     const {
@@ -25,14 +26,18 @@ export async function obtenerServiciosRepresentante(req, res) {
       ix++;
     }
 
-    // Filtro por fechas (puedes personalizar los campos según tu modelo)
+    // Filtro por fechas
     if (desde) {
-      filtros.push(`(fecha_inicioviaje >= $${ix} OR fecha_inicioviajellegada >= $${ix} OR fecha_inicioviajesalida >= $${ix})`);
+      filtros.push(`(
+        (fecha_inicioviaje >= $${ix} OR fecha_inicioviajellegada >= $${ix} OR fecha_inicioviajesalida >= $${ix})
+      )`);
       valores.push(desde);
       ix++;
     }
     if (hasta) {
-      filtros.push(`(fecha_inicioviaje <= $${ix} OR fecha_inicioviajellegada <= $${ix} OR fecha_inicioviajesalida <= $${ix})`);
+      filtros.push(`(
+        (fecha_inicioviaje <= $${ix} OR fecha_inicioviajellegada <= $${ix} OR fecha_inicioviajesalida <= $${ix})
+      )`);
       valores.push(hasta);
       ix++;
     }
@@ -48,7 +53,7 @@ export async function obtenerServiciosRepresentante(req, res) {
       ix++;
     }
 
-    // Solo servicios asignados: ajusta estos campos según tu modelo
+    // Solo servicios asignados o finalizados
     filtros.push(`(
       estatus_viajellegada = 'asignado'
       OR estatus_viajesalida = 'asignado'
@@ -60,10 +65,9 @@ export async function obtenerServiciosRepresentante(req, res) {
 
     let where = filtros.length ? 'WHERE ' + filtros.join(' AND ') : '';
 
-    // Ajusta los campos del SELECT según tu base
     const query = `
       SELECT *
-      FROM reservaciones_transporte
+      FROM reservaciones
       ${where}
       ORDER BY fecha_inicioviaje DESC NULLS LAST, fecha_inicioviajellegada DESC NULLS LAST, fecha_inicioviajesalida DESC NULLS LAST
       LIMIT 200
