@@ -4,8 +4,9 @@ import pool from './conexion.js';
 export async function listarRepresentantes(req, res) {
   try {
     const result = await pool.query(
-      `SELECT usuario, nombre, rol FROM usuarios 
-       WHERE rol = 'representante' AND activo = true
+      `SELECT usuario, nombre, proveedor 
+       FROM usuarios_proveedor
+       WHERE tipo_usuario = 'representante' AND activo = true
        ORDER BY nombre ASC`
     );
     res.json({ success: true, representantes: result.rows });
