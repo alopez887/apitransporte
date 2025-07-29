@@ -15,6 +15,7 @@ import guardarFirma from './firmas/guardarFirmas.js';
 import loginUsuario from './loginUsuario.js'; // ✅ CAMBIADO: Login general (operadores y representantes)
 import { obtenerChoferes } from './obtenerChoferes.js';
 import { obtenerServiciosAsignadosEstatus } from './obtenerServiciosasignadosestatus.js';
+import { obtenerServiciosRepresentante } from './obtenerServiciosRepresentante.js';
 
 dotenv.config();
 const { Pool } = pkg;
@@ -298,6 +299,7 @@ app.post('/api/guardar-firma', guardarFirma);
 app.use('/firmas', express.static(path.join(process.cwd(), 'firmas')));
 app.get('/api/obtener-choferes', obtenerChoferes);
 app.get('/api/obtener-servicios-chofer', obtenerServiciosAsignadosEstatus);
+app.get('/api/obtener-servicios-representante', obtenerServiciosRepresentante);
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
