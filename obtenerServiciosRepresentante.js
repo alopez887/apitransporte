@@ -43,12 +43,11 @@ export async function obtenerServiciosRepresentante(req, res) {
       ix++;
     }
 
-    // Filtro por búsqueda de texto (folio o nombre de cliente)
+    // Filtro por búsqueda de texto (folio o nombre_cliente)
     if (busqueda) {
       filtros.push(`(
         folio ILIKE $${ix} OR
-        nombre_cliente ILIKE $${ix} OR
-        nombre ILIKE $${ix}
+        nombre_cliente ILIKE $${ix}
       )`);
       valores.push(`%${busqueda}%`);
       ix++;
