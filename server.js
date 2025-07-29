@@ -16,6 +16,8 @@ import loginUsuario from './loginUsuario.js'; // ✅ CAMBIADO: Login general (op
 import { obtenerChoferes } from './obtenerChoferes.js';
 import { obtenerServiciosAsignadosEstatus } from './obtenerServiciosasignadosestatus.js';
 import { obtenerServiciosRepresentante } from './obtenerServiciosRepresentante.js';
+import { listarRepresentantes } from './listarRepresentantes.js';
+
 
 dotenv.config();
 const { Pool } = pkg;
@@ -300,6 +302,7 @@ app.use('/firmas', express.static(path.join(process.cwd(), 'firmas')));
 app.get('/api/obtener-choferes', obtenerChoferes);
 app.get('/api/obtener-servicios-chofer', obtenerServiciosAsignadosEstatus);
 app.get('/api/obtener-servicios-representante', obtenerServiciosRepresentante);
+app.get('/api/listar-representantes', listarRepresentantes);
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
