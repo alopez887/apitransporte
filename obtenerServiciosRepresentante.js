@@ -1,96 +1,78 @@
-// obtenerServiciosRepresentante.js
-import pool from './conexion.js'; // Ajusta el import según tu estructura
+import pool from './conexion.js';
 
+// Este endpoint filtra por representante, fechas y estatus
 export async function obtenerServiciosRepresentante(req, res) {
   try {
     const {
-      usuario = '',
-      fecha_inicio = '',
-      fecha_fin = '',
-      estatus = '',
-      pagina = 1,
-      por_pagina = 10,
+      representante = '',
+      desde = '',
+      hasta = '',
       busqueda = ''
     } = req.query;
 
-    // Construcción de filtros dinámicos
     let filtros = [];
     let valores = [];
-    let idx = 1;
+    let ix = 1;
 
-    // Filtro por representante (puede ser llegada o salida)
-    if (usuario) {
-      filtros.push(`(representante_llegada = $${idx} OR representante_salida = $${idx})`);
-      valores.push(usuario);
-      idx++;
+    // Filtro por representante
+    if (representante) {
+      filtros.push(`(
+        representante_llegada = $${ix}
+        OR representante_salida = $${ix}
+        OR representante = $${ix}
+      )`);
+      valores.push(representante);
+      ix++;
     }
-    // Filtro por fecha (puedes afinar si solo aplica a llegada/salida)
-    if (fecha_inicio) {
-      filtros.push(`(fecha_llegada >= $${idx} OR fecha_salida >= $${idx})`);
-      valores.push(fecha_inicio);
-      idx++;
+
+    // Filtro por fechas (puedes personalizar los campos según tu modelo)
+    if (desde) {
+      filtros.push(`(fecha_inicioviaje >= $${ix} OR fecha_inicioviajellegada >= $${ix} OR fecha_inicioviajesalida >= $${ix})`);
+      valores.push(desde);
+      ix++;
     }
-    if (fecha_fin) {
-      filtros.push(`(fecha_llegada <= $${idx} OR fecha_salida <= $${idx})`);
-      valores.push(fecha_fin);
-      idx++;
+    if (hasta) {
+      filtros.push(`(fecha_inicioviaje <= $${ix} OR fecha_inicioviajellegada <= $${ix} OR fecha_inicioviajesalida <= $${ix})`);
+      valores.push(hasta);
+      ix++;
     }
-    // Filtro por estatus
-    if (estatus) {
-      filtros.push(`(estatus_viajellegada = $${idx} OR estatus_viajesalida = $${idx})`);
-      valores.push(estatus);
-      idx++;
-    }
-    // Búsqueda por folio o nombre cliente
+
+    // Filtro por búsqueda de texto (folio o nombre de cliente)
     if (busqueda) {
       filtros.push(`(
-        folio ILIKE $${idx} OR
-        nombre_cliente ILIKE $${idx} OR
-        hotel_llegada ILIKE $${idx} OR
-        hotel_salida ILIKE $${idx}
+        folio ILIKE $${ix} OR
+        nombre_cliente ILIKE $${ix} OR
+        nombre ILIKE $${ix}
       )`);
       valores.push(`%${busqueda}%`);
-      idx++;
+      ix++;
     }
 
-    // WHERE final
-    let where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
-    let offset = (parseInt(pagina, 10) - 1) * parseInt(por_pagina, 10);
+    // Solo servicios asignados: ajusta estos campos según tu modelo
+    filtros.push(`(
+      estatus_viajellegada = 'asignado'
+      OR estatus_viajesalida = 'asignado'
+      OR estatus = 'asignado'
+      OR estatus_viajellegada = 'finalizado'
+      OR estatus_viajesalida = 'finalizado'
+      OR estatus = 'finalizado'
+    )`);
 
-    // Query principal
+    let where = filtros.length ? 'WHERE ' + filtros.join(' AND ') : '';
+
+    // Ajusta los campos del SELECT según tu base
     const query = `
-      SELECT
-        folio, tipo_viaje, nombre_cliente, hotel_llegada, hotel_salida,
-        fecha_llegada, fecha_salida, estatus_viajellegada, estatus_viajesalida,
-        representante_llegada, representante_salida, choferllegada, chofersalida,
-        chofer_externonombre, choferexterno_tel, chofer_empresaext, total_pago
-      FROM reservaciones
+      SELECT *
+      FROM reservaciones_transporte
       ${where}
-      ORDER BY fecha_llegada DESC NULLS LAST, fecha_salida DESC NULLS LAST
-      LIMIT $${idx} OFFSET $${idx + 1}
-    `;
-    valores.push(parseInt(por_pagina, 10), offset);
-
-    // Query para el total
-    const queryTotal = `
-      SELECT COUNT(*) AS total
-      FROM reservaciones
-      ${where}
+      ORDER BY fecha_inicioviaje DESC NULLS LAST, fecha_inicioviajellegada DESC NULLS LAST, fecha_inicioviajesalida DESC NULLS LAST
+      LIMIT 200
     `;
 
-    // Ejecuta ambas consultas
-    const [result, totalResult] = await Promise.all([
-      pool.query(query, valores),
-      pool.query(queryTotal, valores.slice(0, idx-1))
-    ]);
-
-    res.json({
-      success: true,
-      servicios: result.rows,
-      total: parseInt(totalResult.rows[0].total, 10)
-    });
+    const result = await pool.query(query, valores);
+    res.json({ success: true, servicios: result.rows });
   } catch (err) {
-    console.error("❌ Error al obtener servicios:", err);
-    res.status(500).json({ success: false, message: "Error interno" });
+    console.error("❌ Error en obtenerServiciosRepresentante:", err.message);
+    res.status(500).json({ success: false, error: "DB error" });
   }
 }
