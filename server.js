@@ -17,6 +17,7 @@ import { obtenerChoferes } from './obtenerChoferes.js';
 import { obtenerServiciosAsignadosEstatus } from './obtenerServiciosasignadosestatus.js';
 import { obtenerServiciosRepresentante } from './obtenerServiciosRepresentante.js';
 import { listarRepresentantes } from './listarRepresentantes.js';
+import exportarExcelRouter from './exportarExcel.js';
 
 
 dotenv.config();
@@ -303,6 +304,7 @@ app.get('/api/obtener-choferes', obtenerChoferes);
 app.get('/api/obtener-servicios-chofer', obtenerServiciosAsignadosEstatus);
 app.get('/api/obtener-servicios-representante', obtenerServiciosRepresentante);
 app.get('/api/listar-representantes', listarRepresentantes);
+app.use('/api', exportarExcelRouter);
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
