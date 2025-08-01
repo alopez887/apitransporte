@@ -1,6 +1,6 @@
 // exportarExcel.js
 import express from 'express';
-import pool from './conexion.js';      // tu pool existente
+import pool from './conexion.js';    // tu conexión existente
 import XLSX from 'xlsx';
 
 const router = express.Router();
@@ -11,67 +11,89 @@ router.get('/exportar-excel', async (req, res) => {
     const condiciones = [];
     const valores = [];
 
-    // 1) Rango de fechas
-    condiciones.push(`(fecha_inicioviaje >= $1 AND fecha_inicioviaje <= $2)`);
+    // 1) Filtrar por rango sobre la columna "fecha"
+    condiciones.push(`fecha >= $1 AND fecha <= $2`);
     valores.push(desde, hasta);
 
-    // 2) Búsqueda folio/cliente
+    // 2) Filtro de búsqueda (folio o nombre_cliente)
     if (busqueda) {
       valores.push(`%${busqueda}%`);
       condiciones.push(`(folio ILIKE $${valores.length} OR nombre_cliente ILIKE $${valores.length})`);
     }
 
-    // 3) Filtro representante
+    // 3) Filtro de representante (llegada o salida)
     if (representante) {
       valores.push(`%${representante}%`);
       condiciones.push(`(
-        representante_salida   ILIKE $${valores.length} OR
-        representante_llegada  ILIKE $${valores.length} OR
-        representante          ILIKE $${valores.length}
+        representante_llegada ILIKE $${valores.length} OR
+        representante_salida  ILIKE $${valores.length}
       )`);
     }
 
+    // 4) Consulta SELECT con todas las columnas que necesitas
     const sql = `
       SELECT
         folio,
-        COALESCE(nombre_cliente, nombre)                                        AS cliente,
+        nombre_cliente,
+        correo_cliente,
+        telefono_cliente,
+        nota,
+        fecha,
+        tipo_servicio,
+        tipo_transporte,
+        proveedor,
+        estatus,
+        capacidad,
+        cantidad_pasajeros,
+        hotel_llegada,
+        hotel_salida,
+        fecha_llegada,
+        hora_llegada,
+        aerolinea_llegada,
+        vuelo_llegada,
+        fecha_salida,
+        hora_salida,
+        aerolinea_salida,
+        vuelo_salida,
+        zona,
         tipo_viaje,
-        COALESCE(numero_unidadsalida, numero_unidadllegada, numero_unidad)      AS unidad,
-        COALESCE(cantidad_pasajerosoksalida,
-                 cantidad_pasajerosokllegada,
-                 cantidad_pasajeros)                                            AS pasajeros,
-        TO_CHAR(fecha_inicioviaje, 'YYYY-MM-DD')                                 AS fecha_inicio,
-        COALESCE(representante_salida,
-                 representante_llegada,
-                 representante)                                                  AS representante,
-        COALESCE(comentariossalida,
-                 comentariosllegada,
-                 comentarios)                                                    AS comentario,
-        CASE
-          WHEN estatus_viajesalida = 'finalizado'
-            OR estatus_viajellegada = 'finalizado' THEN 'Finalizado'
-          WHEN estatus_viajesalida = 'asignado'
-            OR estatus_viajellegada = 'asignado'   THEN 'Asignado'
-          ELSE ''
-        END                                                                     AS estatus
-      FROM reservaciones   -- tu tabla REAL se llama "reservaciones"
+        representante_llegada,
+        fecha_inicioviajellegada,
+        fecha_finalviajellegada,
+        choferllegada,
+        numero_unidadllegada,
+        estatus_viajellegada,
+        cantidad_pasajerosokllegada,
+        representante_salida,
+        fecha_inicioviajesalida,
+        fecha_finalviajesalida,
+        comentariossalida,
+        firma_clientesalida,
+        chofersalida,
+        numero_unidadsalida,
+        estatus_viajesalida,
+        cantidad_pasajerosoksalida,
+        chofer_externonombre,
+        choferexterno_tel,
+        chofer_empresaext
+      FROM reservaciones
       WHERE ${condiciones.join(' AND ')}
-      ORDER BY fecha_inicio;
+      ORDER BY fecha;
     `;
 
-    // 4) Ejecutamos la consulta sobre tu tabla "reservaciones"
+    // 5) Ejecutar la consulta
     const { rows } = await pool.query(sql, valores);
 
-    // 5) Armar el Excel con SheetJS
+    // 6) Generar libro de Excel con SheetJS
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(rows);
-    XLSX.utils.book_append_sheet(wb, ws, 'Servicios');
+    XLSX.utils.book_append_sheet(wb, ws, 'Reservaciones');
     const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
 
-    // 6) Devolvemos el buffer como descarga
+    // 7) Enviar como descarga .xlsx
     res
       .setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-      .setHeader('Content-Disposition', 'attachment; filename="reservaciones-asignadas.xlsx"')
+      .setHeader('Content-Disposition', 'attachment; filename="reservaciones.xlsx"')
       .send(buffer);
 
   } catch (err) {
