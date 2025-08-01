@@ -9,25 +9,35 @@ router.get('/exportar-excel', async (req, res) => {
   try {
     const { desde, hasta, busqueda, representante } = req.query;
     const condiciones = [];
-    const valores = [];
+    const valores     = [];
 
-    // 1) FILTRO POR CAMPO 'fecha'
-    condiciones.push(`fecha BETWEEN $1 AND $2`);
+    // 1) Rango de fechas: igual que tu endpoint de listing
+    condiciones.push(`
+      (
+        fecha_inicioviajesalida  BETWEEN $1 AND $2 OR
+        fecha_inicioviajellegada BETWEEN $1 AND $2 OR
+        fecha_finalviajesalida    BETWEEN $1 AND $2 OR
+        fecha_finalviajellegada   BETWEEN $1 AND $2
+      )
+    `);
     valores.push(desde, hasta);
 
-    // 2) BÚSQUEDA (folio / nombre_cliente)
+    // 2) búsqueda folio/nombre_cliente
     if (busqueda) {
       valores.push(`%${busqueda}%`);
-      condiciones.push(`(folio ILIKE $${valores.length} OR nombre_cliente ILIKE $${valores.length})`);
+      condiciones.push(`
+        folio ILIKE $${valores.length}
+        OR nombre_cliente ILIKE $${valores.length}
+      `);
     }
 
-    // 3) REPRESENTANTE
+    // 3) filtro representante (llegada o salida)
     if (representante) {
       valores.push(`%${representante}%`);
-      condiciones.push(`(
+      condiciones.push(`
         representante_llegada ILIKE $${valores.length}
-        OR representante_salida ILIKE $${valores.length}
-      )`);
+        OR representante_salida  ILIKE $${valores.length}
+      `);
     }
 
     const sql = `
@@ -77,16 +87,23 @@ router.get('/exportar-excel', async (req, res) => {
         chofer_empresaext
       FROM reservaciones
       WHERE ${condiciones.join(' AND ')}
-      ORDER BY fecha;
+      ORDER BY
+        COALESCE(
+          fecha_inicioviajesalida,
+          fecha_inicioviajellegada,
+          fecha_finalviajesalida,
+          fecha_finalviajellegada
+        ) DESC NULLS LAST
+      LIMIT 200;
     `;
 
-    console.log('🔍 exportarExcel SQL:', sql);
+    console.log('🔍 exportarExcel SQL:', sql.trim());
     console.log('🔢 Valores:', valores);
 
     const { rows } = await pool.query(sql, valores);
-    console.log('🏷️ exportarExcel rows:', rows.length, rows);
+    console.log('🏷️ Filas obtenidas:', rows.length);
 
-    // Generar Excel
+    // Generar el Excel
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, 'Reservaciones');
