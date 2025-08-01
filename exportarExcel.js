@@ -12,7 +12,7 @@ router.get('/exportar-excel', async (req, res) => {
     const condiciones = [];
     const valores = [];
 
-    // 1) Fechas
+    // 1) Rango de fechas idéntico al endpoint de listing
     condiciones.push(`
       (
         fecha_inicioviajesalida  BETWEEN $1 AND $2 OR
@@ -23,7 +23,7 @@ router.get('/exportar-excel', async (req, res) => {
     `);
     valores.push(desde, hasta);
 
-    // 2) Busqueda
+    // 2) Búsqueda folio/nombre_cliente
     if (busqueda) {
       valores.push(`%${busqueda}%`);
       condiciones.push(`
@@ -32,7 +32,7 @@ router.get('/exportar-excel', async (req, res) => {
       `);
     }
 
-    // 3) Representante
+    // 3) Representante llegada/salida
     if (representante) {
       valores.push(`%${representante}%`);
       condiciones.push(`
@@ -66,29 +66,27 @@ router.get('/exportar-excel', async (req, res) => {
           fecha_inicioviajellegada,
           fecha_finalviajesalida,
           fecha_finalviajellegada
-        ) DESC
+        ) DESC NULLS LAST
       LIMIT 200;
     `;
 
     const { rows } = await pool.query(sql, valores);
 
-    // --- Generar Excel con exceljs ---
+    // --- Empieza la creación del Excel ---
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Reservaciones');
 
-    // 1) Insertar logo (debe existir en /public/logo.png)
-    const logoPath = path.resolve('public/logo.png');
-    const imgId = wb.addImage({
-      filename: logoPath,
+    // 1) Inserta el logo en filas 1-4
+    const logoId = wb.addImage({
+      filename: path.resolve('public/logo.png'),
       extension: 'png',
     });
-    // posicionar el logo (col A - B, row 1 - 4)
-    ws.addImage(imgId, {
+    ws.addImage(logoId, {
       tl: { col: 0, row: 0 },
-      br: { col: 2, row: 4 },
+      br: { col: 2, row: 4 }
     });
 
-    // 2) Definir encabezados y anchos de columna
+    // 2) Define los encabezados y anchos de columna
     const headers = [
       { header: 'Folio', key: 'folio', width: 15 },
       { header: 'Cliente', key: 'nombre_cliente', width: 25 },
@@ -96,33 +94,42 @@ router.get('/exportar-excel', async (req, res) => {
       { header: 'Teléfono', key: 'telefono_cliente', width: 15 },
       { header: 'Nota', key: 'nota', width: 25 },
       { header: 'Fecha', key: 'fecha', width: 15 },
-      /* … añade el resto igual … */
+      { header: 'Tipo servicio', key: 'tipo_servicio', width: 20 },
+      { header: 'Tipo transporte', key: 'tipo_transporte', width: 20 },
+      { header: 'Proveedor', key: 'proveedor', width: 20 },
+      { header: 'Estatus', key: 'estatus', width: 15 },
+      // … agrega el resto de columnas según tu lista …
     ];
-    ws.columns = headers;
 
-    // 3) Styling de la fila de encabezados
-    ws.getRow(6).font = { bold: true };     // suponiendo que el header esté en la fila 6
-    ws.getRow(6).alignment = { horizontal: 'center' };
-    ws.getRow(6).height = 20;
-
-    // 4) Escribir datos (comienza en la fila 7)
-    rows.forEach((r, i) => {
-      const rowIndex = i + 7;
-      ws.addRow(r);
+    // 3) Agrega la fila de encabezados en la fila 6 (justo debajo del logo)
+    ws.getRow(6).values = headers.map(h => h.header);
+    headers.forEach((h, idx) => {
+      ws.getColumn(idx + 1).width = h.width;
     });
 
-    // 5) Generar buffer y responder
-    const buf = await wb.xlsx.writeBuffer();
+    // 4) Aplica negrita y centrar a esa fila
+    ws.getRow(6).eachCell(cell => {
+      cell.font = { bold: true };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    // 5) Escribe los datos comenzando en la fila 7
+    rows.forEach((r, i) => {
+      const row = ws.getRow(i + 7);
+      headers.forEach((h, colIdx) => {
+        row.getCell(colIdx + 1).value = r[h.key];
+      });
+      row.commit();
+    });
+
+    // 6) Envía el buffer al cliente
+    const buffer = await wb.xlsx.writeBuffer();
     res
-      .setHeader(
-        'Content-Type',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      )
-      .setHeader(
-        'Content-Disposition',
-        'attachment; filename="reservaciones.xlsx"'
-      )
-      .send(buf);
+      .setHeader('Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .setHeader('Content-Disposition',
+        'attachment; filename="reservaciones.xlsx"')
+      .send(buffer);
 
   } catch (err) {
     console.error('Error al generar Excel:', err);
