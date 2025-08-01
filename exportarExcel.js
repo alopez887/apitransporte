@@ -101,21 +101,27 @@ router.get('/exportar-excel', async (req, res) => {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Reservaciones');
 
-    // Logo en A1:B4
+    // 1) Logo en A1:B4
     const logoId = wb.addImage({
       filename: path.resolve('public/logo.png'),
       extension: 'png'
     });
     ws.addImage(logoId, { tl: { col: 0, row: 0 }, br: { col: 2, row: 4 } });
 
-    // Título en C1:H4
+    // 2) Combinar A1:B4 para ocultar líneas bajo el logo
+    ws.mergeCells('A1:B4');
+    const blank = ws.getCell('A1');
+    blank.value = '';
+    blank.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // 3) Título en C1:H4
     ws.mergeCells('C1:H4');
     const titleCell = ws.getCell('C1');
     titleCell.value = 'REPORTE DE SERVICIOS ASIGNADOS CABO TRAVELS SOLUTIONS';
     titleCell.font = { bold: true, size: 16 };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // Encabezados y anchos
+    // 4) Encabezados y anchos
     const headers = [
       { header: 'Cliente', key: 'nombre_cliente', width: 20 },
       { header: 'Correo', key: 'correo_cliente', width: 25 },
@@ -160,7 +166,7 @@ router.get('/exportar-excel', async (req, res) => {
     ];
     headers.forEach((h, i) => ws.getColumn(i + 1).width = h.width);
 
-    // Fila de encabezados (6)
+    // 5) Fila de encabezados (6)
     const headerRow = ws.getRow(6);
     headers.forEach((h, i) => {
       const cell = headerRow.getCell(i + 1);
@@ -176,7 +182,7 @@ router.get('/exportar-excel', async (req, res) => {
     });
     headerRow.height = 20;
 
-    // Datos (fila 7+), celdas vacías si null/undefined
+    // 6) Datos (fila 7+), vacíos si null/undefined
     rows.forEach((r, idx) => {
       const row = ws.getRow(7 + idx);
       headers.forEach((h, i) => {
@@ -193,7 +199,7 @@ router.get('/exportar-excel', async (req, res) => {
       row.commit();
     });
 
-    // Enviar
+    // 7) Enviar archivo
     const buffer = await wb.xlsx.writeBuffer();
     res
       .setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
