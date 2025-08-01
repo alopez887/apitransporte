@@ -1,48 +1,42 @@
 // exportarExcel.js
 import { Router } from 'express';
-import { getServicios } from './serviciosModel.js'; // tu función de acceso a datos
+import { getServicios } from './serviciosModel.js';
+import XLSX from 'xlsx';
 
 const router = Router();
 
-router.get('/exportar-servicios', async (req, res) => {
+router.get('/exportar-excel', async (req, res) => {
   try {
-    // 1) Leer filtros desde query params
     const { desde, hasta, busqueda, representante } = req.query;
+    const servicios = await getServicios(desde, hasta, busqueda, representante);
 
-    // 2) Traer los servicios según esos filtros
-    const servicios = await getServicios({ desde, hasta, busqueda, representante });
+    const rows = servicios.map(s => ({
+      Folio: s.folio,
+      Cliente: s.nombre_cliente,
+      'Tipo viaje': s.tipo_viaje,
+      Unidad: s.numero_unidadsalida || s.numero_unidadllegada,
+      Pasajeros: s.cantidad_pasajerosoksalida
+                 || s.cantidad_pasajerosokllegada
+                 || s.cantidad_pasajeros,
+      'Fecha inicio': s.fecha_inicioviaje.split('T')[0],
+      Representante: s.representante_salida || s.representante_llegada || s.representante,
+      Comentario: s.comentariossalida || s.comentariosllegada,
+      Estatus: ['finalizado','Finalizado'].includes(s.estatus) ||
+               ['finalizado','Finalizado'].includes(s.estatus_viajesalida) ||
+               ['finalizado','Finalizado'].includes(s.estatus_viajellegada)
+               ? 'Finalizado' : 'Asignado'
+    }));
 
-    // 3) Construir el CSV
-    const encabezados = ['Folio','Cliente','Tipo viaje','Unidad','Pasajeros','Fecha inicio','Representante'];
-    const filas = servicios.map(s => {
-      const unidad    = s.numero_unidadsalida || s.numero_unidadllegada || '';
-      const pasajeros = s.cantidad_pasajerosoksalida || s.cantidad_pasajerosokllegada || s.cantidad_pasajeros || '';
-      const fecha     = (s.fecha_inicioviaje||s.fecha_inicioviajellegada||'').split('T')[0] || '';
-      const rep       = s.representante_salida || s.representante_llegada || s.representante || '';
-      return [
-        s.folio || '',
-        s.nombre_cliente || s.nombre || '',
-        s.tipo_viaje || '',
-        unidad,
-        pasajeros,
-        fecha,
-        rep
-      ].map(c => `"${String(c).replace(/"/g,'""')}"`).join(',');
-    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Servicios');
 
-    const csv = [
-      encabezados.join(','),
-      ...filas
-    ].join('\r\n');
-
-    // 4) Forzar descarga con headers apropiados
-    res.setHeader('Content-Type', 'text/csv; charset=UTF-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="servicios-asignados.csv"');
-    // BOM para que Excel reconozca UTF-8
-    res.send('\uFEFF' + csv);
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', 'attachment; filename="servicios-asignados.xlsx"');
+    res.type('application/octet-stream').send(buf);
   } catch (err) {
-    console.error('Error exportando CSV:', err);
-    res.status(500).send('Error generando el CSV');
+    console.error(err);
+    res.status(500).send('Error al generar Excel');
   }
 });
 
