@@ -54,24 +54,24 @@ router.get('/exportar-excel', async (req, res) => {
             OR estatus_viajellegada = 'asignado'   THEN 'Asignado'
           ELSE ''
         END                                                                     AS estatus
-      FROM servicios_transporte
+      FROM reservaciones   -- tu tabla REAL se llama "reservaciones"
       WHERE ${condiciones.join(' AND ')}
       ORDER BY fecha_inicio;
     `;
 
-    // 4) Usamos el pool de conexion.js
+    // 4) Ejecutamos la consulta sobre tu tabla "reservaciones"
     const { rows } = await pool.query(sql, valores);
 
-    // 5) Armar Excel con SheetJS
+    // 5) Armar el Excel con SheetJS
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, 'Servicios');
     const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
 
-    // 6) Enviar como descarga
+    // 6) Devolvemos el buffer como descarga
     res
       .setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-      .setHeader('Content-Disposition', 'attachment; filename="servicios-asignados.xlsx"')
+      .setHeader('Content-Disposition', 'attachment; filename="reservaciones-asignadas.xlsx"')
       .send(buffer);
 
   } catch (err) {
