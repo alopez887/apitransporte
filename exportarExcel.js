@@ -1,7 +1,8 @@
 // exportarExcel.js
 import express from 'express';
 import pool from './conexion.js';
-import XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import path from 'path';
 
 const router = express.Router();
 
@@ -9,9 +10,9 @@ router.get('/exportar-excel', async (req, res) => {
   try {
     const { desde, hasta, busqueda, representante } = req.query;
     const condiciones = [];
-    const valores     = [];
+    const valores = [];
 
-    // 1) Rango de fechas: igual que tu endpoint de listing
+    // 1) Fechas
     condiciones.push(`
       (
         fecha_inicioviajesalida  BETWEEN $1 AND $2 OR
@@ -22,7 +23,7 @@ router.get('/exportar-excel', async (req, res) => {
     `);
     valores.push(desde, hasta);
 
-    // 2) búsqueda folio/nombre_cliente
+    // 2) Busqueda
     if (busqueda) {
       valores.push(`%${busqueda}%`);
       condiciones.push(`
@@ -31,7 +32,7 @@ router.get('/exportar-excel', async (req, res) => {
       `);
     }
 
-    // 3) filtro representante (llegada o salida)
+    // 3) Representante
     if (representante) {
       valores.push(`%${representante}%`);
       condiciones.push(`
@@ -42,49 +43,21 @@ router.get('/exportar-excel', async (req, res) => {
 
     const sql = `
       SELECT
-        folio,
-        nombre_cliente,
-        correo_cliente,
-        telefono_cliente,
-        nota,
-        fecha,
-        tipo_servicio,
-        tipo_transporte,
-        proveedor,
-        estatus,
-        capacidad,
-        cantidad_pasajeros,
-        hotel_llegada,
-        hotel_salida,
-        fecha_llegada,
-        hora_llegada,
-        aerolinea_llegada,
-        vuelo_llegada,
-        fecha_salida,
-        hora_salida,
-        aerolinea_salida,
-        vuelo_salida,
-        zona,
-        tipo_viaje,
-        representante_llegada,
-        fecha_inicioviajellegada,
-        fecha_finalviajellegada,
-        choferllegada,
-        numero_unidadllegada,
-        estatus_viajellegada,
-        cantidad_pasajerosokllegada,
-        representante_salida,
-        fecha_inicioviajesalida,
-        fecha_finalviajesalida,
-        comentariossalida,
-        firma_clientesalida,
-        chofersalida,
-        numero_unidadsalida,
-        estatus_viajesalida,
-        cantidad_pasajerosoksalida,
-        chofer_externonombre,
-        choferexterno_tel,
-        chofer_empresaext
+        folio, nombre_cliente, correo_cliente, telefono_cliente,
+        nota, fecha, tipo_servicio, tipo_transporte, proveedor,
+        estatus, capacidad, cantidad_pasajeros,
+        hotel_llegada, hotel_salida,
+        fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
+        fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
+        zona, tipo_viaje,
+        representante_llegada, fecha_inicioviajellegada,
+        fecha_finalviajellegada, choferllegada, numero_unidadllegada,
+        estatus_viajellegada, cantidad_pasajerosokllegada,
+        representante_salida, fecha_inicioviajesalida,
+        fecha_finalviajesalida, comentariossalida, firma_clientesalida,
+        chofersalida, numero_unidadsalida, estatus_viajesalida,
+        cantidad_pasajerosoksalida, chofer_externonombre,
+        choferexterno_tel, chofer_empresaext
       FROM reservaciones
       WHERE ${condiciones.join(' AND ')}
       ORDER BY
@@ -93,28 +66,63 @@ router.get('/exportar-excel', async (req, res) => {
           fecha_inicioviajellegada,
           fecha_finalviajesalida,
           fecha_finalviajellegada
-        ) DESC NULLS LAST
+        ) DESC
       LIMIT 200;
     `;
 
-    console.log('🔍 exportarExcel SQL:', sql.trim());
-    console.log('🔢 Valores:', valores);
-
     const { rows } = await pool.query(sql, valores);
-    console.log('🏷️ Filas obtenidas:', rows.length);
 
-    // Generar el Excel
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows);
-    XLSX.utils.book_append_sheet(wb, ws, 'Reservaciones');
-    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    // --- Generar Excel con exceljs ---
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Reservaciones');
 
+    // 1) Insertar logo (debe existir en /public/logo.png)
+    const logoPath = path.resolve('public/logo.png');
+    const imgId = wb.addImage({
+      filename: logoPath,
+      extension: 'png',
+    });
+    // posicionar el logo (col A - B, row 1 - 4)
+    ws.addImage(imgId, {
+      tl: { col: 0, row: 0 },
+      br: { col: 2, row: 4 },
+    });
+
+    // 2) Definir encabezados y anchos de columna
+    const headers = [
+      { header: 'Folio', key: 'folio', width: 15 },
+      { header: 'Cliente', key: 'nombre_cliente', width: 25 },
+      { header: 'Correo', key: 'correo_cliente', width: 30 },
+      { header: 'Teléfono', key: 'telefono_cliente', width: 15 },
+      { header: 'Nota', key: 'nota', width: 25 },
+      { header: 'Fecha', key: 'fecha', width: 15 },
+      /* … añade el resto igual … */
+    ];
+    ws.columns = headers;
+
+    // 3) Styling de la fila de encabezados
+    ws.getRow(6).font = { bold: true };     // suponiendo que el header esté en la fila 6
+    ws.getRow(6).alignment = { horizontal: 'center' };
+    ws.getRow(6).height = 20;
+
+    // 4) Escribir datos (comienza en la fila 7)
+    rows.forEach((r, i) => {
+      const rowIndex = i + 7;
+      ws.addRow(r);
+    });
+
+    // 5) Generar buffer y responder
+    const buf = await wb.xlsx.writeBuffer();
     res
-      .setHeader('Content-Type',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-      .setHeader('Content-Disposition',
-        'attachment; filename="reservaciones.xlsx"')
-      .send(buffer);
+      .setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
+      .setHeader(
+        'Content-Disposition',
+        'attachment; filename="reservaciones.xlsx"'
+      )
+      .send(buf);
 
   } catch (err) {
     console.error('Error al generar Excel:', err);
