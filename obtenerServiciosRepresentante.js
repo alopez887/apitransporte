@@ -15,11 +15,12 @@ export async function obtenerServiciosRepresentante(req, res) {
     let valores = [];
     let ix = 1;
 
-    // Filtro por representante (en llegada o salida)
+    // Filtro por representante (en llegada, salida o general)
     if (representante) {
       filtrosAND.push(`(
         representante_llegada = $${ix}
         OR representante_salida = $${ix}
+        OR representante = $${ix}
       )`);
       valores.push(representante);
       ix++;
