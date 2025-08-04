@@ -1,4 +1,3 @@
-// exportarExcel.js
 import express from 'express';
 import pool from './conexion.js';
 import ExcelJS from 'exceljs';
@@ -12,18 +11,16 @@ router.get('/exportar-excel', async (req, res) => {
     const condiciones = [];
     const valores = [];
 
-    // Filtro de fechas
     condiciones.push(`
       (
         fecha_inicioviajesalida  BETWEEN $1 AND $2 OR
         fecha_inicioviajellegada BETWEEN $1 AND $2 OR
-        fecha_finalviajesalida    BETWEEN $1 AND $2 OR
-        fecha_finalviajellegada   BETWEEN $1 AND $2
+        fecha_finalviajesalida   BETWEEN $1 AND $2 OR
+        fecha_finalviajellegada  BETWEEN $1 AND $2
       )
     `);
     valores.push(desde, hasta);
 
-    // Filtro búsqueda
     if (busqueda) {
       valores.push(`%${busqueda}%`);
       condiciones.push(`
@@ -32,7 +29,6 @@ router.get('/exportar-excel', async (req, res) => {
       `);
     }
 
-    // Filtro representante
     if (representante) {
       valores.push(`%${representante}%`);
       condiciones.push(`
@@ -41,9 +37,9 @@ router.get('/exportar-excel', async (req, res) => {
       `);
     }
 
-    // Consulta con los campos exactos
     const sql = `
       SELECT
+        folio,
         nombre_cliente,
         correo_cliente,
         telefono_cliente,
@@ -96,32 +92,28 @@ router.get('/exportar-excel', async (req, res) => {
     `;
     const { rows } = await pool.query(sql, valores);
 
-    // Crear libro y hoja
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Reservaciones');
 
-    // 1) Logo en A1:B4
     const logoId = wb.addImage({
       filename: path.resolve('public/logo.png'),
       extension: 'png'
     });
     ws.addImage(logoId, { tl: { col: 0, row: 0 }, br: { col: 2, row: 4 } });
 
-    // 2) Combinar A1:B4 para ocultar líneas bajo el logo
     ws.mergeCells('A1:B4');
     const blank = ws.getCell('A1');
     blank.value = '';
     blank.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // 3) Título en C1:H4
     ws.mergeCells('C1:H4');
     const titleCell = ws.getCell('C1');
     titleCell.value = 'REPORTE DE SERVICIOS ASIGNADOS CABO TRAVELS SOLUTIONS';
     titleCell.font = { bold: true, size: 16 };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // 4) Encabezados y anchos
     const headers = [
+      { header: 'Folio', key: 'folio', width: 18 },
       { header: 'Cliente', key: 'nombre_cliente', width: 20 },
       { header: 'Correo', key: 'correo_cliente', width: 25 },
       { header: 'Teléfono', key: 'telefono_cliente', width: 15 },
@@ -164,7 +156,6 @@ router.get('/exportar-excel', async (req, res) => {
     ];
     headers.forEach((h, i) => ws.getColumn(i + 1).width = h.width);
 
-    // 5) Fila de encabezados (6)
     const headerRow = ws.getRow(6);
     headers.forEach((h, i) => {
       const cell = headerRow.getCell(i + 1);
@@ -180,7 +171,6 @@ router.get('/exportar-excel', async (req, res) => {
     });
     headerRow.height = 20;
 
-    // 6) Datos (fila 7+), vacíos si null/undefined
     rows.forEach((r, idx) => {
       const row = ws.getRow(7 + idx);
       headers.forEach((h, i) => {
@@ -197,7 +187,6 @@ router.get('/exportar-excel', async (req, res) => {
       row.commit();
     });
 
-    // 7) Enviar archivo
     const buffer = await wb.xlsx.writeBuffer();
     res
       .setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
