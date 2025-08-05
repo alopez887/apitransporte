@@ -1,31 +1,23 @@
 // obtenerServiciosRepresentante.js
 import pool from './conexion.js';
 
-// Endpoint para filtrar por representante, fechas, búsqueda y estatus
 export async function obtenerServiciosRepresentante(req, res) {
   try {
-    const {
-      representante = '',
-      desde = '',
-      hasta = '',
-      busqueda = ''
-    } = req.query;
-
+    const { representante = '', desde = '', hasta = '', busqueda = '' } = req.query;
     let filtrosAND = [];
     let valores = [];
     let ix = 1;
 
-    // Filtro por representante (en llegada o salida)
     if (representante) {
       filtrosAND.push(`(
         representante_llegada = $${ix}
-        OR representante_salida  = $${ix}
+        OR representante_salida = $${ix}
+        OR representante = $${ix}
       )`);
       valores.push(representante);
       ix++;
     }
 
-    // Filtro por búsqueda (folio o nombre de cliente)
     if (busqueda) {
       filtrosAND.push(`(
         folio ILIKE $${ix}
@@ -35,49 +27,45 @@ export async function obtenerServiciosRepresentante(req, res) {
       ix++;
     }
 
-    // Filtro por fecha: busca cualquier servicio donde CUALQUIERA de las fechas caiga en el rango
     if (desde && hasta) {
       filtrosAND.push(`(
-        (fecha_inicioviajellegada BETWEEN $${ix} AND $${ix+1}) OR
-        (fecha_inicioviajesalida BETWEEN $${ix} AND $${ix+1}) OR
-        (fecha_finalviajellegada BETWEEN $${ix} AND $${ix+1}) OR
-        (fecha_finalviajesalida BETWEEN $${ix} AND $${ix+1})
+        fecha_inicioviajellegada BETWEEN $${ix} AND $${ix+1}
+        OR fecha_inicioviajesalida  BETWEEN $${ix} AND $${ix+1}
+        OR fecha_finalviajellegada   BETWEEN $${ix} AND $${ix+1}
+        OR fecha_finalviajesalida    BETWEEN $${ix} AND $${ix+1}
       )`);
       valores.push(desde, hasta);
       ix += 2;
     } else if (desde) {
       filtrosAND.push(`(
-        (fecha_inicioviajellegada >= $${ix}) OR
-        (fecha_inicioviajesalida >= $${ix}) OR
-        (fecha_finalviajellegada >= $${ix}) OR
-        (fecha_finalviajesalida >= $${ix})
+        fecha_inicioviajellegada >= $${ix}
+        OR fecha_inicioviajesalida  >= $${ix}
+        OR fecha_finalviajellegada   >= $${ix}
+        OR fecha_finalviajesalida    >= $${ix}
       )`);
       valores.push(desde);
       ix++;
     } else if (hasta) {
       filtrosAND.push(`(
-        (fecha_inicioviajellegada <= $${ix}) OR
-        (fecha_inicioviajesalida <= $${ix}) OR
-        (fecha_finalviajellegada <= $${ix}) OR
-        (fecha_finalviajesalida <= $${ix})
+        fecha_inicioviajellegada <= $${ix}
+        OR fecha_inicioviajesalida  <= $${ix}
+        OR fecha_finalviajellegada   <= $${ix}
+        OR fecha_finalviajesalida    <= $${ix}
       )`);
       valores.push(hasta);
       ix++;
     }
 
-    // Solo servicios asignados o finalizados (en cualquier tramo)
     filtrosAND.push(`(
       estatus_viajellegada = 'asignado'
       OR estatus_viajesalida  = 'asignado'
-      OR estatus_viaje        = 'asignado'      /* ← añadido */
+      OR estatus_viaje        = 'asignado'
       OR estatus_viajellegada = 'finalizado'
       OR estatus_viajesalida  = 'finalizado'
-      OR estatus_viaje        = 'finalizado'    /* ← añadido */
+      OR estatus_viaje        = 'finalizado'
     )`);
 
-    let where = filtrosAND.length
-      ? 'WHERE ' + filtrosAND.join(' AND ')
-      : '';
+    const where = filtrosAND.length ? 'WHERE ' + filtrosAND.join(' AND ') : '';
 
     const query = `
       SELECT *
@@ -93,7 +81,6 @@ export async function obtenerServiciosRepresentante(req, res) {
       LIMIT 200
     `;
 
-    // Log para debug en Railway
     console.log("🔎 Query:", query);
     console.log("🔎 Valores:", valores);
 
