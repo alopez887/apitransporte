@@ -2,7 +2,6 @@ import pool from './conexion.js';
 import { DateTime } from 'luxon';
 
 export default async function actualizarDatosTransporte(req, res) {
-  // console.log('BODY -->', req.body); // <- descomenta para debug
   const {
     token_qr,
     folio,
@@ -28,9 +27,11 @@ export default async function actualizarDatosTransporte(req, res) {
   const tipoViajeBase =
     tipo_viaje === 'redondo_llegada' ? 'llegada' :
     tipo_viaje === 'redondo_salida'  ? 'salida'  :
+    tipo_viaje === 'shuttle'         ? 'llegada' :
     tipo_viaje;
 
-  if (!tipoViajeBase || !['llegada', 'salida'].includes(tipoViajeBase)) {
+  const tiposValidos = ['llegada', 'salida', 'shuttle'];
+  if (!tipoViajeBase || !tiposValidos.includes(tipo_viaje)) {
     return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
   }
 
@@ -40,7 +41,6 @@ export default async function actualizarDatosTransporte(req, res) {
     const campoEstatus       = `estatus_viaje${tipoViajeBase}`;
     const sufijo             = tipoViajeBase;
 
-    // Verificar si ya fue finalizado
     const checkQuery = `
       SELECT estatus_viajellegada, estatus_viajesalida
       FROM reservaciones
@@ -59,7 +59,7 @@ export default async function actualizarDatosTransporte(req, res) {
       return res.status(400).json({ success: false, message: 'Este servicio ya fue finalizado completamente y no se puede modificar.' });
     }
 
-    if ((tipo_viaje === 'llegada' || tipo_viaje === 'redondo_llegada') && estatusLlegada === 'finalizado') {
+    if ((tipo_viaje === 'llegada' || tipo_viaje === 'redondo_llegada' || tipo_viaje === 'shuttle') && estatusLlegada === 'finalizado') {
       return res.status(400).json({ success: false, message: 'La llegada ya fue finalizada y no se puede modificar.' });
     }
 
@@ -79,7 +79,6 @@ export default async function actualizarDatosTransporte(req, res) {
       values.push(valor);
     };
 
-    // Representante (sin sufijo)
     if (tipoViajeBase === 'llegada' && representante_llegada !== undefined) {
       updates.push(`representante_llegada = $${paramIndex++}`);
       values.push(representante_llegada);
@@ -89,7 +88,6 @@ export default async function actualizarDatosTransporte(req, res) {
       values.push(representante_salida);
     }
 
-    // Campos con sufijo
     setCampo('comentarios', comentarios);
     setCampo('firma_cliente', firma_cliente);
     setCampo('cantidad_pasajerosok', cantidad_pasajerosok);
@@ -111,29 +109,23 @@ export default async function actualizarDatosTransporte(req, res) {
       values.push(estatusViaje);
     }
 
-    // Chofer interno / externo
     if (chofer_externonombre && choferexterno_tel && chofer_empresaext) {
-      // Guardar datos del chofer externo
       updates.push(`chofer_externonombre = $${paramIndex++}`);
       updates.push(`choferexterno_tel   = $${paramIndex++}`);
       updates.push(`chofer_empresaext   = $${paramIndex++}`);
       values.push(chofer_externonombre, choferexterno_tel, chofer_empresaext);
 
-      // Limpiar chofer interno
       updates.push(`chofer${sufijo} = NULL`);
 
-      // Unidad: solo la borras si NO te enviaron 'unit'
       if (unit !== undefined && unit !== null && unit !== '') {
         setCampo('numero_unidad', unit);
       } else {
         updates.push(`numero_unidad${sufijo} = NULL`);
       }
     } else {
-      // Chofer interno
       setCampo('chofer', chofer_nombre);
       setCampo('numero_unidad', unit);
 
-      // Limpiar campos externos
       updates.push(`chofer_externonombre = NULL`);
       updates.push(`choferexterno_tel    = NULL`);
       updates.push(`chofer_empresaext    = NULL`);
