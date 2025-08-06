@@ -21,12 +21,12 @@ export default async function guardarFirma(req, res) {
 
     const urlFirma = `${req.protocol}://${req.get('host')}/firmas/${nombreArchivo}`;
 
-    // ✅ CORRECTO: shuttle tratado como llegada
+    // ✅ TRATAMIENTO CORRECTO Y SEPARADO
     let campoFirma = '';
     if (
       tipo_viaje === 'llegada' ||
       tipo_viaje === 'redondo_llegada' ||
-      tipo_viaje === 'shuttle'
+      tipo_viaje === 'shuttle' // ✅ Shuttle va aquí, tratado como llegada
     ) {
       campoFirma = 'firma_clientellegada';
     } else if (
