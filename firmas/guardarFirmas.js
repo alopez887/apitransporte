@@ -24,12 +24,16 @@ export default async function guardarFirma(req, res) {
     // Determinar campo a actualizar según tipo de viaje
     let campoFirma = '';
     if (tipo_viaje === 'llegada' || tipo_viaje === 'redondo_llegada') {
-  campoFirma = 'firma_clientellegada';
-} else if (tipo_viaje === 'salida' || tipo_viaje === 'redondo_salida') {
-  campoFirma = 'firma_clientesalida';
-} else {
-  return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
-}
+      campoFirma = 'firma_clientellegada';
+    } else if (
+      tipo_viaje === 'salida' ||
+      tipo_viaje === 'redondo_salida' ||
+      tipo_viaje === 'shuttle' // ✅ Se agrega soporte explícito para shuttle
+    ) {
+      campoFirma = 'firma_clientesalida';
+    } else {
+      return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
+    }
 
     const query = `UPDATE reservaciones SET ${campoFirma} = $1 WHERE ${campoIdentificador} = $2`;
     await pool.query(query, [urlFirma, identificador]);
