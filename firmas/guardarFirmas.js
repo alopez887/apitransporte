@@ -21,14 +21,17 @@ export default async function guardarFirma(req, res) {
 
     const urlFirma = `${req.protocol}://${req.get('host')}/firmas/${nombreArchivo}`;
 
-    // Determinar campo a actualizar según tipo de viaje
+    // ✅ CORRECTO: shuttle tratado como llegada
     let campoFirma = '';
-    if (tipo_viaje === 'llegada' || tipo_viaje === 'redondo_llegada') {
+    if (
+      tipo_viaje === 'llegada' ||
+      tipo_viaje === 'redondo_llegada' ||
+      tipo_viaje === 'shuttle'
+    ) {
       campoFirma = 'firma_clientellegada';
     } else if (
       tipo_viaje === 'salida' ||
-      tipo_viaje === 'redondo_salida' ||
-      tipo_viaje === 'shuttle' // ✅ Se agrega soporte explícito para shuttle
+      tipo_viaje === 'redondo_salida'
     ) {
       campoFirma = 'firma_clientesalida';
     } else {
