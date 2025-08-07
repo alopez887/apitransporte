@@ -24,6 +24,7 @@ const consultarLlegadas = async (req, res) => {
       WHERE (
         tipo_viaje ILIKE 'llegada'
         OR (tipo_viaje ILIKE 'redondo' AND fecha_llegada IS NOT NULL)
+        OR tipo_viaje ILIKE 'shuttle'
       )
     `;
     const values = [];
