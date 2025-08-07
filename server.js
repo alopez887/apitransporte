@@ -20,6 +20,7 @@ import { listarRepresentantes } from './listarRepresentantes.js';
 import exportarExcelRouter from './exportarExcel.js';
 import consultarLlegadas from './consultarLlegadas.js';
 import exportarExcelLlegada from './exportarExcelLlegada.js';
+import consultarSalidas from './consultarSalidas.js';
 
 
 dotenv.config();
@@ -309,6 +310,7 @@ app.get('/api/listar-representantes', listarRepresentantes);
 app.get('/api/llegadas', consultarLlegadas);
 app.use('/api', exportarExcelRouter);
 app.get('/api/exportarExcelLlegadas', exportarExcelLlegada);
+app.get('/api/salidas', consultarSalidas);
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
