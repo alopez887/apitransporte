@@ -116,11 +116,11 @@ const exportarExcelLlegada = async (req, res) => {
     });
 
     // 📦 Enviar Excel
-    const buffer = await wb.xlsx.writeBuffer();
-    res
-      .setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-      .setHeader('Content-Disposition', `attachment; filename="llegadas_${desde}_a_${hasta}.xlsx"`)
-      .send(buffer);
+	res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+	res.setHeader('Content-Disposition', `attachment; filename="llegadas_${desde}_a_${hasta}.xlsx"`);
+
+	await wb.xlsx.write(res);  // escribe directamente sobre la respuesta
+	res.end();                 // finaliza el stream
 
   } catch (err) {
     console.error('❌ Error al generar Excel de llegadas:', err.message);
