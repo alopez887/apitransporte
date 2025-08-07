@@ -2,7 +2,7 @@ import pool from './conexion.js';
 
 const consultarLlegadas = async (req, res) => {
   try {
-    const { desde, hasta } = req.query;
+    const { fecha, desde, hasta } = req.query;
 
     let query = `
       SELECT 
@@ -20,14 +20,18 @@ const consultarLlegadas = async (req, res) => {
         aerolinea_llegada,
         vuelo_llegada
       FROM reservaciones
+      WHERE tipo_viaje ILIKE 'llegada'
     `;
     const values = [];
 
-    if (desde && hasta) {
-      query += ` WHERE fecha_llegada BETWEEN $1 AND $2 ORDER BY fecha_llegada ASC, hora_llegada ASC`;
+    if (fecha) {
+      query += ` AND fecha_llegada = $1 ORDER BY hora_llegada ASC`;
+      values.push(fecha);
+    } else if (desde && hasta) {
+      query += ` AND fecha_llegada BETWEEN $1 AND $2 ORDER BY fecha_llegada ASC, hora_llegada ASC`;
       values.push(desde, hasta);
     } else {
-      query += ` WHERE fecha_llegada = CURRENT_DATE ORDER BY hora_llegada ASC`;
+      query += ` AND fecha_llegada = CURRENT_DATE ORDER BY hora_llegada ASC`;
     }
 
     const result = await pool.query(query, values);
