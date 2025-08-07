@@ -308,7 +308,7 @@ app.get('/api/obtener-servicios-representante', obtenerServiciosRepresentante);
 app.get('/api/listar-representantes', listarRepresentantes);
 app.get('/api/llegadas', consultarLlegadas);
 app.use('/api', exportarExcelRouter);
-app.get('/_functions/exportarExcelLlegada', exportarExcelLlegada);
+app.get('/api/exportarExcelLlegada', exportarExcelLlegada);
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
