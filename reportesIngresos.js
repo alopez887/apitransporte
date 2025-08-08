@@ -14,9 +14,33 @@ function fechaExpr(base) {
   }
 }
 
-// Columna de ingreso: total_pago es texto -> convertir a número
-// (trim para quitar espacios; si viene vacío => 0)
-const COL_IMPORTE = `COALESCE(NULLIF(TRIM(total_pago), '')::numeric, 0)`;
+/**
+ * total_pago es texto: limpiamos todo lo que no sea dígito o punto
+ * para evitar fallos si viene con $, comas, espacios, etc.
+ */
+const COL_IMPORTE = `
+  COALESCE(
+    NULLIF(
+      REGEXP_REPLACE(TRIM(total_pago::text), '[^0-9\\.]', '', 'g'),
+      ''
+    )::numeric,
+    0
+  )
+`;
+
+/**
+ * descuento_aplicado también puede venir como texto con % u otros símbolos.
+ * Lo normalizamos a número de la misma forma.
+ */
+const EXPR_DESCUENTO = `
+  COALESCE(
+    NULLIF(
+      REGEXP_REPLACE(COALESCE(descuento_aplicado::text, ''), '[^0-9\\.]', '', 'g'),
+      ''
+    )::numeric,
+    0
+  )
+`;
 
 // GET /api/reportes-ingresos?tipo=...&desde=YYYY-MM-DD&hasta=YYYY-MM-DD&base=fecha|llegada|salida
 export default async function reportesIngresos(req, res) {
@@ -79,7 +103,7 @@ export default async function reportesIngresos(req, res) {
 
       case 'con-sin-descuento':
         sql = `
-          SELECT CASE WHEN COALESCE(descuento_aplicado, 0) > 0
+          SELECT CASE WHEN ${EXPR_DESCUENTO} > 0
                       THEN 'Con descuento'
                       ELSE 'Sin descuento'
                  END AS etiqueta,
