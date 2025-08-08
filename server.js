@@ -23,6 +23,8 @@ import exportarExcelLlegada from './exportarExcelLlegada.js';
 import consultarSalidas from './consultarSalidas.js';
 import exportarExcelSalidas from './exportarExcelSalidas.js';
 import buscarReservas from './buscarReservas.js';
+import exportarExcelReservas from './exportarExcelReservas.js';
+import reportesIngresos from './reportesIngresos.js';
 
 dotenv.config();
 const { Pool } = pkg;
@@ -323,6 +325,8 @@ app.use('/api', exportarExcelRouter);
 app.get('/api/exportarExcelLlegadas', exportarExcelLlegada);
 app.get('/api/exportarExcelSalidas', exportarExcelSalidas);
 app.get('/api/buscarreservas', buscarReservas);
+app.get('/api/exportarExcelReservas', exportarExcelReservas);
+app.get('/api/reportes-ingresos', reportesIngresos);
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
