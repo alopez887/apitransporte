@@ -20,6 +20,7 @@ import { listarRepresentantes } from './listarRepresentantes.js';
 import exportarExcelRouter from './exportarExcel.js';
 import consultarLlegadas from './consultarLlegadas.js';
 import exportarExcelLlegada from './exportarExcelLlegada.js';
+import consultarSalidas from './consultarSalidas.js';
 import exportarExcelSalidas from './exportarExcelSalidas.js';
 
 
@@ -308,9 +309,10 @@ app.get('/api/obtener-servicios-chofer', obtenerServiciosAsignadosEstatus);
 app.get('/api/obtener-servicios-representante', obtenerServiciosRepresentante);
 app.get('/api/listar-representantes', listarRepresentantes);
 app.get('/api/llegadas', consultarLlegadas);
+app.get('/api/salidas', consultarSalidas);
 app.use('/api', exportarExcelRouter);
 app.get('/api/exportarExcelLlegadas', exportarExcelLlegada);
-app.get('/api/exportarExcelsalidas', exportarExcelSalidas);
+app.get('/api/exportarExcelSalidas', exportarExcelSalidas);
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
