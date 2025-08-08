@@ -5,7 +5,7 @@ import pool from './conexion.js';
 const isYMD = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-// Escoge la columna de fecha según “base”
+// Columna de fecha según “base”
 function fechaExpr(base) {
   switch ((base || 'fecha').toLowerCase()) {
     case 'llegada': return 'fecha_llegada';
@@ -15,8 +15,8 @@ function fechaExpr(base) {
 }
 
 /**
- * total_pago es texto: limpiamos todo lo que no sea dígito o punto
- * para evitar fallos si viene con $, comas, espacios, etc.
+ * total_pago y precio_servicio vienen como texto.
+ * Limpiamos todo lo que no sea dígito o punto (por si traen $, comas, espacios, etc.)
  */
 const COL_IMPORTE = `
   COALESCE(
@@ -28,14 +28,10 @@ const COL_IMPORTE = `
   )
 `;
 
-/**
- * descuento_aplicado también puede venir como texto con % u otros símbolos.
- * Lo normalizamos a número de la misma forma.
- */
-const EXPR_DESCUENTO = `
+const VAL_LISTA = `
   COALESCE(
     NULLIF(
-      REGEXP_REPLACE(COALESCE(descuento_aplicado::text, ''), '[^0-9\\.]', '', 'g'),
+      REGEXP_REPLACE(TRIM(precio_servicio::text), '[^0-9\\.]', '', 'g'),
       ''
     )::numeric,
     0
@@ -102,10 +98,11 @@ export default async function reportesIngresos(req, res) {
         break;
 
       case 'con-sin-descuento':
+        // Inferimos descuento: total_pago < precio_servicio  -> "Con descuento"
         sql = `
-          SELECT CASE WHEN ${EXPR_DESCUENTO} > 0
-                      THEN 'Con descuento'
-                      ELSE 'Sin descuento'
+          SELECT CASE
+                   WHEN ${COL_IMPORTE} < ${VAL_LISTA} THEN 'Con descuento'
+                   ELSE 'Sin descuento'
                  END AS etiqueta,
                  SUM(${COL_IMPORTE})::numeric(12,2) AS total
           FROM reservaciones
