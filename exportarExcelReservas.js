@@ -37,7 +37,7 @@ const exportarExcelReservas = async (req, res) => {
         cantidad_pasajeros,
         tipo_transporte,
         zona,
-        COALESCE(hotel_llegada, hotel_salida) AS hotel
+        COALESCE(NULLIF(hotel_llegada,''), NULLIF(hotel_salida,'')) AS hotel
       FROM reservaciones
       WHERE ${columna}::date BETWEEN $1 AND $2
       ORDER BY ${columna} ASC, folio ASC
