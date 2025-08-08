@@ -62,7 +62,7 @@ const exportarExcelReservas = async (req, res) => {
     }
 
     // 🟦 Título centrado (mismo estilo)
-    ws.mergeCells('C1:H4');
+    ws.mergeCells('C1:J4');
     const titleCell = ws.getCell('C1');
     titleCell.value = `REPORTE DE RESERVAS CABO TRAVELS SOLUTIONS (${por.toUpperCase()}) ${desde} a ${hasta}`;
     titleCell.font = { bold: true, size: 16 };
