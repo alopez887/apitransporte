@@ -32,6 +32,15 @@ app.use(express.urlencoded({ extended: true }));
 
 const PORT = process.env.PORT;
 
+app.use((req, res, next) => {
+  if (req.url.includes('/api/obtener-reservas')) {
+    console.log('🚨 Llamada a /api/obtener-reservas');
+    console.log('🔹 Query:', req.query);
+    console.log('🔹 Referer:', req.headers.referer || 'SIN REFERER');
+  }
+  next();
+});
+
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST'],
