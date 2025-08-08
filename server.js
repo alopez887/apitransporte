@@ -20,7 +20,7 @@ import { listarRepresentantes } from './listarRepresentantes.js';
 import exportarExcelRouter from './exportarExcel.js';
 import consultarLlegadas from './consultarLlegadas.js';
 import exportarExcelLlegada from './exportarExcelLlegada.js';
-import consultarSalidas from './consultarSalidas.js';
+import exportarExcelSalidas from './exportarExcelSalidas.js';
 
 
 dotenv.config();
