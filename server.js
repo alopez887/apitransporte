@@ -26,6 +26,8 @@ import buscarReservas from './buscarReservas.js';
 import exportarExcelReservas from './exportarExcelReservas.js';
 import reportesIngresos from './reportesIngresos.js';
 import ventasComparativa from './ventasComparativa.js';
+import exportarCsvReportesIngresos from './exportarCsvReportesIngresos.js';
+import exportarCsvVentasComparativa from './exportarCsvVentasComparativa.js';
 
 dotenv.config();
 const { Pool } = pkg;
@@ -329,6 +331,8 @@ app.get('/api/buscarreservas', buscarReservas);
 app.get('/api/exportarExcelReservas', exportarExcelReservas);
 app.get('/api/reportes-ingresos', reportesIngresos);
 app.get('/api/ventas-comparativa', ventasComparativa);
+app.get('/api/reportes-ingresos-csv', exportarCsvReportesIngresos);
+app.get('/api/ventas-comparativa-csv', exportarCsvVentasComparativa);
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
