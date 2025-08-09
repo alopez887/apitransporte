@@ -1,27 +1,30 @@
 // exportarCsvVentasComparativa.js
 import ventasComparativa from './ventasComparativa.js';
 
-const bom = (s) => '\ufeff' + s;
+const bom = s => '\ufeff' + s;
 
-// Fecha segura en UTC -> 'YYYY-MM-DD'
-function ymdUTC(d){
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth()+1).padStart(2,'0');
-  const day = String(d.getUTCDate()).padStart(2,'0');
-  return `${y}-${m}-${day}`;
+// Intenta extraer 'YYYY-MM-DD' desde lo que venga (Date, ISO, 'Fri Aug...', etc.)
+function isoFromAny(v){
+  if (v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
+  const s = String(v||'');
+  const m = s.match(/\d{4}-\d{2}-\d{2}/);
+  if (m) return m[0];
+  const d = new Date(s);
+  if (!isNaN(d)) return d.toISOString().slice(0,10);
+  return null;
 }
 // 'YYYY-MM-DD' -> 'DD/MM/YYYY'
 function ddmmyyyy(iso){
-  const [y,m,d] = String(iso).slice(0,10).split('-');
+  const [y,m,d] = (iso||'').split('-');
   return `${d}/${m}/${y}`;
 }
-// Rango de fechas en UTC usando desde/hasta en ISO
+// Rango en UTC para evitar desfases
 function rangoFechasUTC(desdeISO, hastaISO){
   const out = [];
   const d = new Date(desdeISO + 'T00:00:00Z');
   const end = new Date(hastaISO + 'T00:00:00Z');
   while (d.getTime() <= end.getTime()){
-    out.push(ymdUTC(d));
+    out.push(d.toISOString().slice(0,10));
     d.setUTCDate(d.getUTCDate()+1);
   }
   return out;
@@ -49,25 +52,35 @@ export default async function exportarCsvVentasComparativa(req, res) {
       return res.status(500).json({ ok:false, error:'No se pudo obtener la comparativa' });
     }
 
-    const rp = body.rango_pasado  || {};
-    const ra = body.rango_actual  || {};
+    const rp = body.rango_pasado || {};
+    const ra = body.rango_actual || {};
 
-    // Mapear totales por día usando llave ISO 'YYYY-MM-DD' segura
-    const mapAnt = Object.fromEntries((rp.dias || []).map(r => [String(r.dia).slice(0,10), Number(r.total||0)]));
-    const mapAct = Object.fromEntries((ra.dias || []).map(r => [String(r.dia).slice(0,10), Number(r.total||0)]));
+    // Normaliza claves de días a ISO
+    const mapAnt = Object.fromEntries((rp.dias || []).map(r => {
+      const iso = isoFromAny(r.dia);
+      return [iso, Number(r.total||0)];
+    }).filter(([k]) => !!k));
 
-    // Labels con función UTC (evita desfases por zona)
-    const labelsAnt = (rp.desde && rp.hasta) ? rangoFechasUTC(rp.desde.slice(0,10), rp.hasta.slice(0,10)) : [];
-    const labelsAct = (ra.desde && ra.hasta) ? rangoFechasUTC(ra.desde.slice(0,10), ra.hasta.slice(0,10)) : [];
+    const mapAct = Object.fromEntries((ra.dias || []).map(r => {
+      const iso = isoFromAny(r.dia);
+      return [iso, Number(r.total||0)];
+    }).filter(([k]) => !!k));
+
+    // Labels con UTC
+    const desdeAnt = isoFromAny(rp.desde);
+    const hastaAnt = isoFromAny(rp.hasta);
+    const desdeAct = isoFromAny(ra.desde);
+    const hastaAct = isoFromAny(ra.hasta);
+
+    const labelsAnt = (desdeAnt && hastaAnt) ? rangoFechasUTC(desdeAnt, hastaAnt) : [];
+    const labelsAct = (desdeAct && hastaAct) ? rangoFechasUTC(desdeAct, hastaAct) : [];
     const labels = labelsAct.length >= labelsAnt.length ? labelsAct : labelsAnt;
 
-    // Nombres de mes para encabezado
     const mes = iso => new Intl.DateTimeFormat('es-MX',{ month:'long' })
-      .format(new Date(iso.slice(0,10)+'T00:00:00Z'));
-    const nombreMesAnt = rp.desde ? mes(rp.desde) : 'Mes pasado';
-    const nombreMesAct = ra.desde ? mes(ra.desde) : 'Mes actual';
+      .format(new Date(iso+'T00:00:00Z'));
+    const nombreMesAnt = desdeAnt ? mes(desdeAnt) : 'Mes pasado';
+    const nombreMesAct = desdeAct ? mes(desdeAct) : 'Mes actual';
 
-    // CSV
     let csv = `dia,${nombreMesAnt} (USD),${nombreMesAct} (USD)\n`;
     for (const iso of labels){
       const ant = (mapAnt[iso] ?? 0);
