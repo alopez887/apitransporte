@@ -3,32 +3,35 @@ import ventasComparativa from './ventasComparativa.js';
 
 const bom = s => '\ufeff' + s;
 
-// Intenta extraer 'YYYY-MM-DD' desde lo que venga (Date, ISO, 'Fri Aug...', etc.)
+// Extrae un ISO 'YYYY-MM-DD' de (Date | ISO | 'Fri Aug...' | 'YYYY-MM-DD hh:mm:ss' | etc.)
 function isoFromAny(v){
   if (v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
-  const s = String(v||'');
+  const s = String(v ?? '');
   const m = s.match(/\d{4}-\d{2}-\d{2}/);
   if (m) return m[0];
   const d = new Date(s);
   if (!isNaN(d)) return d.toISOString().slice(0,10);
   return null;
 }
-// 'YYYY-MM-DD' -> 'DD/MM/YYYY'
-function ddmmyyyy(iso){
-  const [y,m,d] = (iso||'').split('-');
-  return `${d}/${m}/${y}`;
+
+// Día del mes (1..31) con tolerancia de campo
+function dayOfAny(row){
+  const val = row?.dia ?? row?.fecha ?? row?.day ?? row?.date ?? row;
+  const iso = isoFromAny(val);
+  if (!iso) return null;
+  const d = new Date(iso + 'T00:00:00Z');
+  return d.getUTCDate();
 }
-// Rango en UTC para evitar desfases
-function rangoFechasUTC(desdeISO, hastaISO){
-  const out = [];
-  const d = new Date(desdeISO + 'T00:00:00Z');
-  const end = new Date(hastaISO + 'T00:00:00Z');
-  while (d.getTime() <= end.getTime()){
-    out.push(d.toISOString().slice(0,10));
-    d.setUTCDate(d.getUTCDate()+1);
-  }
-  return out;
-}
+
+const lastDay = (anyDate) => {
+  const iso = isoFromAny(anyDate);
+  if (!iso) return 31;
+  const d = new Date(iso + 'T00:00:00Z');
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 0)).getUTCDate();
+};
+
+const ddmmyyyyFromYMDDay = (y, m, d) =>
+  `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`;
 
 async function invokeToJson(handler, reqLike) {
   return await new Promise((resolve, reject) => {
@@ -55,37 +58,46 @@ export default async function exportarCsvVentasComparativa(req, res) {
     const rp = body.rango_pasado || {};
     const ra = body.rango_actual || {};
 
-    // Normaliza claves de días a ISO
-    const mapAnt = Object.fromEntries((rp.dias || []).map(r => {
-      const iso = isoFromAny(r.dia);
-      return [iso, Number(r.total||0)];
-    }).filter(([k]) => !!k));
+    // Mapear por DÍA (1..31). Usa r.total (o 0 si no).
+    const mapAntDia = {};
+    for (const r of (rp.dias || [])) {
+      const day = dayOfAny(r);
+      if (day != null) mapAntDia[day] = Number(r.total ?? 0);
+    }
+    const mapActDia = {};
+    for (const r of (ra.dias || [])) {
+      const day = dayOfAny(r);
+      if (day != null) mapActDia[day] = Number(r.total ?? 0);
+    }
 
-    const mapAct = Object.fromEntries((ra.dias || []).map(r => {
-      const iso = isoFromAny(r.dia);
-      return [iso, Number(r.total||0)];
-    }).filter(([k]) => !!k));
+    // Si por alguna razón no pescamos nada, log muy breve (no rompe CSV)
+    if (Object.keys(mapAntDia).length === 0) console.warn('comparativa CSV: rango_pasado sin días interpretables');
+    if (Object.keys(mapActDia).length === 0) console.warn('comparativa CSV: rango_actual sin días interpretables');
 
-    // Labels con UTC
-    const desdeAnt = isoFromAny(rp.desde);
-    const hastaAnt = isoFromAny(rp.hasta);
-    const desdeAct = isoFromAny(ra.desde);
-    const hastaAct = isoFromAny(ra.hasta);
+    // Determinar número de días a listar
+    const maxDays = Math.max(
+      lastDay(rp.desde || rp.hasta),
+      lastDay(ra.desde || ra.hasta),
+      31
+    );
 
-    const labelsAnt = (desdeAnt && hastaAnt) ? rangoFechasUTC(desdeAnt, hastaAnt) : [];
-    const labelsAct = (desdeAct && hastaAct) ? rangoFechasUTC(desdeAct, hastaAct) : [];
-    const labels = labelsAct.length >= labelsAnt.length ? labelsAct : labelsAnt;
+    // Para la 1ª columna (fecha dd/mm/yyyy) uso mes/año del rango ACTUAL; si no hay, uso el PASADO; si no, hoy.
+    const baseIso = isoFromAny(ra.desde || rp.desde || new Date());
+    const base = new Date(baseIso + 'T00:00:00Z');
+    const year  = base.getUTCFullYear();
+    const month = base.getUTCMonth() + 1;
 
     const mes = iso => new Intl.DateTimeFormat('es-MX',{ month:'long' })
-      .format(new Date(iso+'T00:00:00Z'));
-    const nombreMesAnt = desdeAnt ? mes(desdeAnt) : 'Mes pasado';
-    const nombreMesAct = desdeAct ? mes(desdeAct) : 'Mes actual';
+      .format(new Date((isoFromAny(iso) || baseIso) + 'T00:00:00Z'));
+    const nombreMesAnt = mes(rp.desde);
+    const nombreMesAct = mes(ra.desde);
 
+    // CSV
     let csv = `dia,${nombreMesAnt} (USD),${nombreMesAct} (USD)\n`;
-    for (const iso of labels){
-      const ant = (mapAnt[iso] ?? 0);
-      const act = (mapAct[iso] ?? 0);
-      csv += `${ddmmyyyy(iso)},${ant.toFixed(2)},${act.toFixed(2)}\n`;
+    for (let d = 1; d <= maxDays; d++){
+      const ant = mapAntDia[d] ?? 0;
+      const act = mapActDia[d] ?? 0;
+      csv += `${ddmmyyyyFromYMDDay(year, month, d)},${ant.toFixed(2)},${act.toFixed(2)}\n`;
     }
 
     res.setHeader('Content-Type','text/csv; charset=utf-8');
