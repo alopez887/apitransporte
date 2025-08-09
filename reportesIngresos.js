@@ -51,15 +51,26 @@ export default async function reportesIngresos(req, res) {
 
     switch (tipo) {
       case 'por-fecha':
-        sql = `
-          SELECT ${fcol}::date AS etiqueta,
-                 SUM(${COL_IMPORTE})::numeric(12,2) AS total
-          FROM reservaciones
-          WHERE ${fcol}::date BETWEEN $1 AND $2
-          GROUP BY 1
-          ORDER BY 1 ASC
-        `;
-        break;
+  // Un importe por folio. Tomamos una única fecha de referencia por folio (MIN),
+  // y el importe del folio (MAX por seguridad si hubiera variaciones).
+  sql = `
+    WITH folios AS (
+      SELECT
+        folio,
+        MIN(${fcol}::date) AS fecha_ref,
+        MAX(${COL_IMPORTE}) AS importe_folio
+      FROM reservaciones
+      WHERE ${fcol}::date BETWEEN $1 AND $2
+      GROUP BY folio
+    )
+    SELECT
+      fecha_ref AS etiqueta,
+      SUM(importe_folio)::numeric(12,2) AS total
+    FROM folios
+    GROUP BY 1
+    ORDER BY 1 ASC
+  `;
+  break;
 
       case 'por-tipo-viaje':
         sql = `
