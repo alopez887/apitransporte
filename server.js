@@ -12,7 +12,7 @@ import { obtenerReservaTransporte } from './obtenerReservaTransporte.js';
 console.log("✅ Función obtenerReservaTransporte importada:", obtenerReservaTransporte);
 import actualizarDatosTransporte from './actualizarDatosTransporte.js';
 import guardarFirma from './firmas/guardarFirmas.js';
-import loginUsuario from './loginUsuario.js'; // ✅ CAMBIADO: Login general (operadores y representantes)
+import loginUsuario from './loginUsuario.js';
 import { obtenerChoferes } from './obtenerChoferes.js';
 import { obtenerServiciosAsignadosEstatus } from './obtenerServiciosasignadosestatus.js';
 import { obtenerServiciosRepresentante } from './obtenerServiciosRepresentante.js';
@@ -29,11 +29,16 @@ import ventasComparativa from './ventasComparativa.js';
 import exportarCsvReportesIngresos from './exportarCsvReportesIngresos.js';
 import exportarCsvVentasComparativa from './exportarCsvVentasComparativa.js';
 
+// ⬇️ NUEVO: import como función registradora
+import registerCanvasCache from './canvasCache.js';
+
 dotenv.config();
 const { Pool } = pkg;
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// ⬇️ SUBE EL LÍMITE para dataURL grandes
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 const PORT = process.env.PORT;
 
@@ -313,7 +318,7 @@ app.get('/tarifa-redondo', async (req, res) => {
   }
 });
 
-app.post('/api/login-usuario', loginUsuario); // ✅ Aquí
+app.post('/api/login-usuario', loginUsuario);
 app.get('/api/obtener-reserva-transporte', obtenerReservaTransporte);
 app.post('/api/actualizar-datos-transporte', actualizarDatosTransporte);
 app.post('/api/guardar-firma', guardarFirma);
@@ -333,6 +338,9 @@ app.get('/api/reportes-ingresos', reportesIngresos);
 app.get('/api/ventas-comparativa', ventasComparativa);
 app.get('/api/reportes-ingresos-csv', exportarCsvReportesIngresos);
 app.get('/api/ventas-comparativa-csv', exportarCsvVentasComparativa);
+
+// ⬇️ NUEVO: registra rutas de cache/descarga PNG
+registerCanvasCache(app);
 
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
