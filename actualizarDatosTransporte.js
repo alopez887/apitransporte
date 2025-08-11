@@ -31,7 +31,8 @@ export default async function actualizarDatosTransporte(req, res) {
     tipo_viaje;
 
   const tiposValidos = ['llegada', 'salida', 'shuttle'];
-  if (!tipoViajeBase || !tiposValidos.includes(tipo_viaje)) {
+  // 🔧 FIX: validar contra tipoViajeBase (normalizado)
+  if (!tipoViajeBase || !tiposValidos.includes(tipoViajeBase)) {
     return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
   }
 
