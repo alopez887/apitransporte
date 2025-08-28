@@ -1,7 +1,65 @@
-// enviarCorreo.js — Transporte (diseño alineado con Tours, Outlook-safe)
-import nodemailer from 'nodemailer';
-import axios from 'axios';
+// enviarCorreoTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP), SIN QR
+import dotenv from 'dotenv';
+dotenv.config();
 
+const GAS_URL = process.env.GAS_URL;                 // https://script.google.com/macros/s/XXXX/exec
+const GAS_TOKEN = process.env.GAS_TOKEN;             // SECRET en Script Properties
+const GAS_TIMEOUT_MS = Number(process.env.GAS_TIMEOUT_MS || 15000);
+const MAIL_FAST_MODE = /^(1|true|yes)$/i.test(process.env.MAIL_FAST_MODE || '');
+const EMAIL_DEBUG = /^(1|true|yes)$/i.test(process.env.EMAIL_DEBUG || '');
+const EMAIL_FROMNAME = process.env.EMAIL_FROMNAME || 'Cabo Travel Solutions';
+const EMAIL_BCC = process.env.EMAIL_BCC || 'nkmsistemas@gmail.com';
+const DBG = (...a) => { if (EMAIL_DEBUG) console.log('[MAIL]', ...a); };
+
+// ---------- Utilidades ----------
+function sanitizeUrl(u = '') {
+  try {
+    let s = String(u || '').trim();
+    if (!s) return '';
+    if (s.startsWith('//')) s = 'https:' + s;
+    if (s.startsWith('http://')) s = s.replace(/^http:\/\//i, 'https://');
+    return s;
+  } catch { return ''; }
+}
+// Forzar JPG en Wix para evitar WEBP en clientes (Outlook, etc.)
+function forceJpgIfWix(url='') {
+  try {
+    const u = new URL(url);
+    if (/wixstatic\.com$/i.test(u.hostname)) {
+      if (!u.searchParams.has('format')) u.searchParams.set('format','jpg');
+      if (!u.searchParams.has('width'))  u.searchParams.set('width','1200');
+      return u.toString();
+    }
+  } catch {}
+  return url;
+}
+// POST JSON con timeout
+async function postJSON(url, body, timeoutMs) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal
+    });
+    const json = await res.json().catch(() => ({}));
+    return { status: res.status, json };
+  } finally { clearTimeout(id); }
+}
+
+// ---------- Formateos ----------
+const traduccionTripType = { "Llegada":"Arrival","Salida":"Departure","Redondo":"Round Trip","Shuttle":"Shuttle" };
+const safeToFixed = (v)=>{ const n=Number(v); return isNaN(n)?'0.00':n.toFixed(2); };
+function formatoHora12(hora){
+  if(!hora) return '';
+  const [h,m] = String(hora).split(':');
+  const H = parseInt(h,10); const suf = H>=12?'p.m.':'a.m.'; const h12 = (H%12)||12;
+  return `${h12}:${m} ${suf}`;
+}
+
+// ---------- Bloques de texto ----------
 const politicasHTML = `
   <div style="margin-top:30px;padding-top:15px;border-top:1px solid #ccc;font-size:13px;color:#555;">
     <strong>📌 Cancellation Policy:</strong><br>
@@ -10,83 +68,25 @@ const politicasHTML = `
   </div>
 `;
 
-export async function enviarCorreoTransporte(datos) {
-  try {
-    console.log("📥 Datos recibidos para el correo:", datos);
-
-    let imagenAdjunta = null;
-    let qrAdjunto = null;
-
-    // Imagen principal (opcional)
-    if (datos.imagen && datos.imagen.startsWith('http')) {
-      try {
-        const imagenRes = await axios.get(datos.imagen, { responseType: 'arraybuffer' });
-        imagenAdjunta = {
-          filename: 'transporte.jpg',
-          content: imagenRes.data,
-          cid: 'imagenTransporte',
-          contentType: 'image/jpeg'
-        };
-      } catch (err) {
-        console.warn('⚠️ No se pudo descargar la imagen:', err.message);
-      }
+// ======================================================
+//                ENVÍO DE CORREO (SIN QR)
+// ======================================================
+async function enviarCorreoTransporte(datos){
+  try{
+    if (!GAS_URL || !/^https:\/\/script\.google\.com\/macros\/s\//.test(GAS_URL)) {
+      throw new Error('GAS_URL no configurado o inválido');
     }
+    if (!GAS_TOKEN) throw new Error('GAS_TOKEN no configurado');
 
-    // QR opcional (data URL)
-    if (datos.qr && datos.qr.startsWith('data:image')) {
-      const qrBase64 = datos.qr.split(',')[1];
-      qrAdjunto = {
-        filename: 'qr.png',
-        content: Buffer.from(qrBase64, 'base64'),
-        cid: 'qrReserva',
-        contentType: 'image/png'
-      };
-    }
+    const logoUrl = 'https://static.wixstatic.com/media/f81ced_636e76aeb741411b87c4fa8aa9219410~mv2.png';
+    const img0 = sanitizeUrl(datos.imagen);
+    const imgUrl = img0 ? forceJpgIfWix(img0) : '';
 
-    // Logo
-    const logoBuffer = await axios.get(
-      'https://static.wixstatic.com/media/f81ced_636e76aeb741411b87c4fa8aa9219410~mv2.png',
-      { responseType: 'arraybuffer' }
-    );
-    const logoAdjunto = {
-      filename: 'logo.png',
-      content: logoBuffer.data,
-      cid: 'logoEmpresa',
-      contentType: 'image/png'
-    };
-
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-    });
-
-    const safeToFixed = (valor) => {
-      const num = Number(valor);
-      return isNaN(num) ? '0.00' : num.toFixed(2);
-    };
-
-    const formatoHora12 = (hora) => {
-      if (!hora) return '';
-      const [h, m] = hora.split(':');
-      const horaNum = parseInt(h, 10);
-      const sufijo = horaNum >= 12 ? 'p.m.' : 'a.m.';
-      const hora12 = (horaNum % 12) || 12;
-      return `${hora12}:${m} ${sufijo}`;
-    };
-
-    const traduccionTripType = {
-      "Llegada": "Arrival",
-      "Salida": "Departure",
-      "Redondo": "Round Trip",
-      "Shuttle": "Shuttle"
-    };
-
-    const tripTypeIngles = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
+    const tripType = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
     const nota = datos.nota || datos.cliente?.nota || '';
-    const esShuttle = datos.tipo_viaje === "Shuttle";
+    const esShuttle = datos.tipo_viaje === 'Shuttle';
 
-    // ====== PLANTILLA OUTLOOK-SAFE (igual que Tours) ======
-    // Header (h2 izquierda + logo derecha), 600px, border 2px, radius 10, padding 24/26/32
+    // Header (h2 izq + logo der) — 600px wrapper se arma más abajo
     const headerHTML = `
       <table style="width:100%;margin-bottom:10px;border-collapse:collapse;" role="presentation" cellspacing="0" cellpadding="0">
         <tr>
@@ -100,18 +100,13 @@ export async function enviarCorreoTransporte(datos) {
       </table>
     `.trim();
 
-    // Bloque “clave: valor” (p con margin 2px 0; inline styles)
     const p = (label, value) => {
       if (value === undefined || value === null || String(value).trim() === '') return '';
-      return `<p style="margin:2px 0;font-family:Arial,Helvetica,sans-serif;line-height:1.4;">
-        <strong>${label}:</strong> ${value}
-      </p>`;
+      return `<p style="margin:2px 0;font-family:Arial,Helvetica,sans-serif;line-height:1.4;"><strong>${label}:</strong> ${value}</p>`;
     };
 
-    // Sección cliente y totales (lado a lado para Redondo; lineal para otros)
     let cuerpoHTML = '';
-
-    if (datos.tipo_viaje === "Redondo") {
+    if (datos.tipo_viaje === 'Redondo') {
       cuerpoHTML += `
         <table style="width:100%;margin-bottom:10px;border-collapse:collapse;" role="presentation" cellspacing="0" cellpadding="0">
           <tr>
@@ -126,7 +121,7 @@ export async function enviarCorreoTransporte(datos) {
               ${p('Folio', datos.folio)}
               ${!esShuttle ? p('Transport', datos.tipo_transporte) : ''}
               ${!esShuttle ? p('Capacity', datos.capacidad) : ''}
-              ${p('Trip Type', tripTypeIngles)}
+              ${p('Trip Type', tripType)}
               ${p('Total', `$${safeToFixed(datos.total_pago)} USD`)}
             </td>
           </tr>
@@ -169,25 +164,24 @@ export async function enviarCorreoTransporte(datos) {
         ${datos.hora_llegada ? p('Time', formatoHora12(datos.hora_llegada)) : ''}
         ${datos.aerolinea_llegada ? p('Airline', datos.aerolinea_llegada) : ''}
         ${datos.vuelo_llegada ? p('Flight', datos.vuelo_llegada) : ''}
-        ${p('Trip Type', tripTypeIngles)}
+        ${p('Trip Type', tripType)}
         ${p('Total', `$${safeToFixed(datos.total_pago)} USD`)}
         ${nota && nota.trim() !== '' ? p('Note', nota) : ''}
       `.trim();
     }
 
-    // Imagen principal (igual que Tours: tabla + img CID width=400, responsive)
-    const imagenHTML = imagenAdjunta ? `
+    const imagenHTML = imgUrl ? `
+      <!-- Imagen principal: wrapper en tabla + CID width=400 (igual Tours) -->
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:10px;border-collapse:collapse;">
         <tr>
           <td>
-            <img src="cid:imagenTransporte" width="400" alt="Transport Image"
+            <img src="cid:imagenTransporte" width="400" alt="Transport image"
                  style="display:block;width:100%;height:auto;max-width:100%;border-radius:8px;" />
           </td>
         </tr>
       </table>
     ` : '';
 
-    // Bloque recomendaciones (amarillo) — mismos colores y estilos
     const recomendacionesHTML = `
       <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:8px 12px;margin-top:14px;border-radius:5px;line-height:1.3;">
         <strong style="color:#b00000;">⚠ Recommendations:</strong>
@@ -195,7 +189,6 @@ export async function enviarCorreoTransporte(datos) {
       </div>
     `;
 
-    // Línea de destinatario
     const destinatarioHTML = `
       <p style="margin-top:14px;font-size:14px;color:#555;line-height:1.3;font-family:Arial,Helvetica,sans-serif;">
         &#128231; This confirmation was sent to:
@@ -203,15 +196,6 @@ export async function enviarCorreoTransporte(datos) {
       </p>
     `;
 
-    // QR opcional
-    const qrHTML = qrAdjunto ? `
-      <div style="text-align:center;margin-top:30px;">
-        <p style="font-weight:bold;font-family:Arial,Helvetica,sans-serif;margin:0 0 8px 0;">Show this QR code to your provider:</p>
-        <img src="cid:qrReserva" alt="QR Code" style="width:180px;height:auto;display:inline-block;" />
-      </div>
-    ` : '';
-
-    // Mensaje Inner (header + cuerpo + imagen + bloques)
     const mensajeInner = `
       ${headerHTML}
       <div style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;line-height:1.4;">
@@ -219,12 +203,11 @@ export async function enviarCorreoTransporte(datos) {
         ${imagenHTML}
         ${recomendacionesHTML}
         ${destinatarioHTML}
-        ${qrHTML}
         ${politicasHTML}
       </div>
     `.trim();
 
-    // Wrapper 600px en tabla (idéntico a Tours)
+    // Wrapper 600px centrado (tabla), borde 2px, radius 10, padding 24/26/32 (calcado)
     const mensajeHTML = `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
         <tr>
@@ -242,21 +225,44 @@ export async function enviarCorreoTransporte(datos) {
       </table>
     `.trim();
 
-    await transporter.sendMail({
-      from: `Cabo Travels Solutions - Transport <${process.env.EMAIL_USER}>`,
+    // Adjuntos (inline por CID) — GAS los descarga por URL
+    const attachments = [
+      { url: logoUrl, filename: 'logo.png', inline: true, cid: 'logoEmpresa' }
+    ];
+    if (imgUrl) {
+      attachments.push({ url: imgUrl, filename: 'transporte.jpg', inline: true, cid: 'imagenTransporte' });
+    }
+
+    const payload = {
+      token: GAS_TOKEN,
+      ts: Date.now(),
       to: datos.correo_cliente,
-      bcc: 'nkmsistemas@gmail.com',
+      bcc: EMAIL_BCC,
       subject: `Transport Reservation - Folio ${datos.folio}`,
       html: mensajeHTML,
-      attachments: [
-        ...(imagenAdjunta ? [imagenAdjunta] : []),
-        logoAdjunto,
-        ...(qrAdjunto ? [qrAdjunto] : [])
-      ]
-    });
+      fromName: EMAIL_FROMNAME,
+      attachments
+    };
 
-    console.log('📧 Correo de transportación enviado correctamente');
+    DBG('POST → GAS', { to: datos.correo_cliente, subject: payload.subject });
+
+    if (MAIL_FAST_MODE) {
+      postJSON(GAS_URL, payload, GAS_TIMEOUT_MS).catch(err => console.error('Error envío async GAS:', err.message));
+      return true;
+    }
+
+    const { status, json } = await postJSON(GAS_URL, payload, GAS_TIMEOUT_MS);
+    if (!json || json.ok !== true) {
+      throw new Error(`Error al enviar correo: ${(json && json.error) || status}`);
+    }
+
+    DBG('✔ GAS ok:', json);
+    return true;
   } catch (err) {
-    console.error('❌ Error al enviar correo de transporte:', err.message);
+    console.error('❌ Error al enviar correo de transporte (GAS):', err.message);
+    throw err;
   }
 }
+
+export { enviarCorreoTransporte };
+export default enviarCorreoTransporte;
