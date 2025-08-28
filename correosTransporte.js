@@ -1,3 +1,4 @@
+// enviarCorreo.js — Transporte (diseño alineado con Tours, Outlook-safe)
 import nodemailer from 'nodemailer';
 import axios from 'axios';
 
@@ -16,6 +17,7 @@ export async function enviarCorreoTransporte(datos) {
     let imagenAdjunta = null;
     let qrAdjunto = null;
 
+    // Imagen principal (opcional)
     if (datos.imagen && datos.imagen.startsWith('http')) {
       try {
         const imagenRes = await axios.get(datos.imagen, { responseType: 'arraybuffer' });
@@ -30,6 +32,7 @@ export async function enviarCorreoTransporte(datos) {
       }
     }
 
+    // QR opcional (data URL)
     if (datos.qr && datos.qr.startsWith('data:image')) {
       const qrBase64 = datos.qr.split(',')[1];
       qrAdjunto = {
@@ -40,11 +43,11 @@ export async function enviarCorreoTransporte(datos) {
       };
     }
 
+    // Logo
     const logoBuffer = await axios.get(
       'https://static.wixstatic.com/media/f81ced_636e76aeb741411b87c4fa8aa9219410~mv2.png',
       { responseType: 'arraybuffer' }
     );
-
     const logoAdjunto = {
       filename: 'logo.png',
       content: logoBuffer.data,
@@ -54,10 +57,7 @@ export async function enviarCorreoTransporte(datos) {
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
     });
 
     const safeToFixed = (valor) => {
@@ -85,126 +85,162 @@ export async function enviarCorreoTransporte(datos) {
     const nota = datos.nota || datos.cliente?.nota || '';
     const esShuttle = datos.tipo_viaje === "Shuttle";
 
-    let mensajeHTML = `
-      <style>
-        div.linea { margin: 0; padding: 2px 0; line-height: 1.4; }
-      </style>
-    `;
+    // ====== PLANTILLA OUTLOOK-SAFE (igual que Tours) ======
+    // Header (h2 izquierda + logo derecha), 600px, border 2px, radius 10, padding 24/26/32
+    const headerHTML = `
+      <table style="width:100%;margin-bottom:10px;border-collapse:collapse;" role="presentation" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="text-align:left;vertical-align:middle;">
+            <h2 style="color:green;margin:0;font-family:Arial,Helvetica,sans-serif;">✅ Transport Reservation Confirmed</h2>
+          </td>
+          <td style="text-align:right;vertical-align:middle;">
+            <img src="cid:logoEmpresa" alt="Logo" style="height:45px;display:block;" />
+          </td>
+        </tr>
+      </table>
+    `.trim();
+
+    // Bloque “clave: valor” (p con margin 2px 0; inline styles)
+    const p = (label, value) => {
+      if (value === undefined || value === null || String(value).trim() === '') return '';
+      return `<p style="margin:2px 0;font-family:Arial,Helvetica,sans-serif;line-height:1.4;">
+        <strong>${label}:</strong> ${value}
+      </p>`;
+    };
+
+    // Sección cliente y totales (lado a lado para Redondo; lineal para otros)
+    let cuerpoHTML = '';
 
     if (datos.tipo_viaje === "Redondo") {
-      mensajeHTML += `
-      <div style="max-width:600px;margin:0 auto;padding:20px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
-        <table style="width:100%;margin-bottom:5px;">
+      cuerpoHTML += `
+        <table style="width:100%;margin-bottom:10px;border-collapse:collapse;" role="presentation" cellspacing="0" cellpadding="0">
           <tr>
-            <td style="text-align:right;">
-              <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
+            <td style="vertical-align:top;width:48%;padding-right:10px;">
+              ${p('Name', datos.nombre_cliente)}
+              ${p('Email', datos.correo_cliente)}
+              ${p('Phone', datos.telefono_cliente)}
+              ${p('Passengers', datos.cantidad_pasajeros)}
+              ${nota && nota.trim() !== '' ? p('Note', nota) : ''}
             </td>
-          </tr>
-          <tr>
-            <td style="text-align:left;">
-              <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
+            <td style="vertical-align:top;width:48%;">
+              ${p('Folio', datos.folio)}
+              ${!esShuttle ? p('Transport', datos.tipo_transporte) : ''}
+              ${!esShuttle ? p('Capacity', datos.capacidad) : ''}
+              ${p('Trip Type', tripTypeIngles)}
+              ${p('Total', `$${safeToFixed(datos.total_pago)} USD`)}
             </td>
           </tr>
         </table>
 
-        <table style="width:100%;margin-bottom:10px;">
+        <table style="width:100%;border-collapse:collapse;margin-top:6px;" role="presentation" cellspacing="0" cellpadding="0">
           <tr>
-            <td style="vertical-align:top;width:48%;">
-              <div class="linea"><strong>Name:</strong> ${datos.nombre_cliente}</div>
-              <div class="linea"><strong>Email:</strong> ${datos.correo_cliente}</div>
-              <div class="linea"><strong>Phone:</strong> ${datos.telefono_cliente}</div>
-              <div class="linea"><strong>Passengers:</strong> ${datos.cantidad_pasajeros}</div>
-              ${nota && nota.trim() !== '' ? `<div class="linea"><strong>Note:</strong> ${nota}</div>` : ''}
-            </td>
-            <td style="vertical-align:top;width:48%;">
-              <div class="linea"><strong>Folio:</strong> ${datos.folio}</div>
-              ${!esShuttle ? `<div class="linea"><strong>Transport:</strong> ${datos.tipo_transporte}</div>` : ''}
-              ${!esShuttle ? `<div class="linea"><strong>Capacity:</strong> ${datos.capacidad}</div>` : ''}
-              <div class="linea"><strong>Trip Type:</strong> ${tripTypeIngles}</div>
-              <div class="linea"><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</div>
-            </td>
-          </tr>
-        </table>
-
-        <hr style="margin:20px 0;">
-
-        <table style="width:100%;border-collapse:collapse;">
-          <tr>
-            <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;width:48%;">Arrival Information</th>
-            <th style="text-align:left;border-bottom:1px solid #ddd;padding-bottom:5px;width:48%;">Departure Information</th>
+            <th style="text-align:left;border-bottom:1px solid #ddd;padding:0 0 5px 0;width:48%;font-family:Arial,Helvetica,sans-serif;">Arrival Information</th>
+            <th style="text-align:left;border-bottom:1px solid #ddd;padding:0 0 5px 0;width:48%;font-family:Arial,Helvetica,sans-serif;">Departure Information</th>
           </tr>
           <tr>
             <td style="vertical-align:top;padding-right:15px;width:48%;">
-              <div class="linea"><strong>Hotel:</strong> ${datos.hotel_llegada}</div>
-              <div class="linea"><strong>Date:</strong> ${datos.fecha_llegada}</div>
-              <div class="linea"><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</div>
-              <div class="linea"><strong>Airline:</strong> ${datos.aerolinea_llegada}</div>
-              <div class="linea"><strong>Flight:</strong> ${datos.vuelo_llegada}</div>
+              ${p('Hotel', datos.hotel_llegada)}
+              ${p('Date', datos.fecha_llegada)}
+              ${p('Time', formatoHora12(datos.hora_llegada))}
+              ${p('Airline', datos.aerolinea_llegada)}
+              ${p('Flight', datos.vuelo_llegada)}
             </td>
             <td style="vertical-align:top;width:48%;">
-              <div class="linea"><strong>Hotel:</strong> ${datos.hotel_salida}</div>
-              <div class="linea"><strong>Date:</strong> ${datos.fecha_salida}</div>
-              <div class="linea"><strong>Time:</strong> ${formatoHora12(datos.hora_salida)}</div>
-              <div class="linea"><strong>Airline:</strong> ${datos.aerolinea_salida}</div>
-              <div class="linea"><strong>Flight:</strong> ${datos.vuelo_salida}</div>
+              ${p('Hotel', datos.hotel_salida)}
+              ${p('Date', datos.fecha_salida)}
+              ${p('Time', formatoHora12(datos.hora_salida))}
+              ${p('Airline', datos.aerolinea_salida)}
+              ${p('Flight', datos.vuelo_salida)}
             </td>
           </tr>
         </table>
-      `;
+      `.trim();
     } else {
-      mensajeHTML += `
-      <div style="max-width:600px;margin:0 auto;padding:20px;border:2px solid #ccc;border-radius:10px;font-family:Arial,sans-serif;">
-        <table style="width:100%;margin-bottom:5px;">
-          <tr>
-            <td style="text-align:right;">
-              <img src="cid:logoEmpresa" alt="Logo" style="height:45px;" />
-            </td>
-          </tr>
-          <tr>
-            <td style="text-align:left;">
-              <h2 style="color:green;margin:0;">✅ Transport Reservation Confirmed</h2>
-            </td>
-          </tr>
-        </table>
-
-        <div class="linea"><strong>Folio:</strong> ${datos.folio}</div>
-        <div class="linea"><strong>Name:</strong> ${datos.nombre_cliente}</div>
-        <div class="linea"><strong>Email:</strong> ${datos.correo_cliente}</div>
-        <div class="linea"><strong>Phone:</strong> ${datos.telefono_cliente}</div>
-        ${!esShuttle ? `<div class="linea"><strong>Transport:</strong> ${datos.tipo_transporte}</div>` : ''}
-        ${!esShuttle ? `<div class="linea"><strong>Capacity:</strong> ${datos.capacidad}</div>` : ''}
-        <div class="linea"><strong>Trip Type:</strong> ${tripTypeIngles}</div>
-        ${(datos.cantidad_pasajeros || datos.pasajeros) ? `<div class="linea"><strong>Passengers:</strong> ${datos.cantidad_pasajeros || datos.pasajeros}</div>` : ''}
-        ${datos.hotel_llegada ? `<div class="linea"><strong>Hotel:</strong> ${datos.hotel_llegada}</div>` : ''}
-        ${datos.fecha_llegada ? `<div class="linea"><strong>Date:</strong> ${datos.fecha_llegada}</div>` : ''}
-        ${datos.hora_llegada ? `<div class="linea"><strong>Time:</strong> ${formatoHora12(datos.hora_llegada)}</div>` : ''}
-        ${datos.aerolinea_llegada ? `<div class="linea"><strong>Airline:</strong> ${datos.aerolinea_llegada}</div>` : ''}
-        ${datos.vuelo_llegada ? `<div class="linea"><strong>Flight:</strong> ${datos.vuelo_llegada}</div>` : ''}
-      `;
+      cuerpoHTML += `
+        ${p('Folio', datos.folio)}
+        ${p('Name', datos.nombre_cliente)}
+        ${p('Email', datos.correo_cliente)}
+        ${p('Phone', datos.telefono_cliente)}
+        ${!esShuttle ? p('Transport', datos.tipo_transporte) : ''}
+        ${!esShuttle ? p('Capacity', datos.capacidad) : ''}
+        ${(datos.cantidad_pasajeros || datos.pasajeros) ? p('Passengers', (datos.cantidad_pasajeros || datos.pasajeros)) : ''}
+        ${datos.hotel_llegada ? p('Hotel', datos.hotel_llegada) : ''}
+        ${datos.fecha_llegada ? p('Date', datos.fecha_llegada) : ''}
+        ${datos.hora_llegada ? p('Time', formatoHora12(datos.hora_llegada)) : ''}
+        ${datos.aerolinea_llegada ? p('Airline', datos.aerolinea_llegada) : ''}
+        ${datos.vuelo_llegada ? p('Flight', datos.vuelo_llegada) : ''}
+        ${p('Trip Type', tripTypeIngles)}
+        ${p('Total', `$${safeToFixed(datos.total_pago)} USD`)}
+        ${nota && nota.trim() !== '' ? p('Note', nota) : ''}
+      `.trim();
     }
 
-    mensajeHTML += `
-        <div class="linea"><strong>Total:</strong> $${safeToFixed(datos.total_pago)} USD</div>
-        ${nota && nota.trim() !== '' ? `<div class="linea"><strong>Note:</strong> ${nota}</div>` : ''}
-        ${imagenAdjunta ? `<div><img src="cid:imagenTransporte" width="400" alt="Transport Image" style="border-radius:8px;max-width:100%;margin-top:20px;" /></div>` : ''}
+    // Imagen principal (igual que Tours: tabla + img CID width=400, responsive)
+    const imagenHTML = imagenAdjunta ? `
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:10px;border-collapse:collapse;">
+        <tr>
+          <td>
+            <img src="cid:imagenTransporte" width="400" alt="Transport Image"
+                 style="display:block;width:100%;height:auto;max-width:100%;border-radius:8px;" />
+          </td>
+        </tr>
+      </table>
+    ` : '';
 
-        <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:10px 15px;margin-top:20px;border-radius:5px;">
-          <strong style="color:#b00000;">⚠ Recommendations:</strong>
-          <span style="color:#333;"> Please confirm your reservation at least 24 hours in advance to avoid any inconvenience.</span>
-        </div>
-
-        <div style="margin-top:20px;font-size:14px;color:#555;">
-          📩 Confirmation sent to: <a href="mailto:${datos.correo_cliente}">${datos.correo_cliente}</a>
-        </div>
-
-        ${qrAdjunto ? `<div style="text-align:center;margin-top:30px;">
-          <p style="font-weight:bold;">Show this QR code to your provider:</p>
-          <img src="cid:qrReserva" alt="QR Code" style="width:180px;"/>
-        </div>` : ''}
-
-        ${politicasHTML}
+    // Bloque recomendaciones (amarillo) — mismos colores y estilos
+    const recomendacionesHTML = `
+      <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:8px 12px;margin-top:14px;border-radius:5px;line-height:1.3;">
+        <strong style="color:#b00000;">⚠ Recommendations:</strong>
+        <span style="color:#333;"> Please confirm your reservation at least 24 hours in advance to avoid any inconvenience.</span>
       </div>
     `;
+
+    // Línea de destinatario
+    const destinatarioHTML = `
+      <p style="margin-top:14px;font-size:14px;color:#555;line-height:1.3;font-family:Arial,Helvetica,sans-serif;">
+        &#128231; This confirmation was sent to:
+        <a href="mailto:${datos.correo_cliente}" style="color:#1b6ef3;text-decoration:none;">${datos.correo_cliente}</a>
+      </p>
+    `;
+
+    // QR opcional
+    const qrHTML = qrAdjunto ? `
+      <div style="text-align:center;margin-top:30px;">
+        <p style="font-weight:bold;font-family:Arial,Helvetica,sans-serif;margin:0 0 8px 0;">Show this QR code to your provider:</p>
+        <img src="cid:qrReserva" alt="QR Code" style="width:180px;height:auto;display:inline-block;" />
+      </div>
+    ` : '';
+
+    // Mensaje Inner (header + cuerpo + imagen + bloques)
+    const mensajeInner = `
+      ${headerHTML}
+      <div style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;line-height:1.4;">
+        ${cuerpoHTML}
+        ${imagenHTML}
+        ${recomendacionesHTML}
+        ${destinatarioHTML}
+        ${qrHTML}
+        ${politicasHTML}
+      </div>
+    `.trim();
+
+    // Wrapper 600px en tabla (idéntico a Tours)
+    const mensajeHTML = `
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+        <tr>
+          <td align="center" style="padding:0;margin:0;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0"
+                   style="width:600px;max-width:600px;border:2px solid #ccc;border-radius:10px;border-collapse:separate;">
+              <tr>
+                <td style="padding:24px 26px 32px;border-radius:10px;">
+                  ${mensajeInner}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `.trim();
 
     await transporter.sendMail({
       from: `Cabo Travels Solutions - Transport <${process.env.EMAIL_USER}>`,
