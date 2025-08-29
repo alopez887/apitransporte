@@ -4,17 +4,14 @@ import pool from "./conexion.js"; // tu pool existente
 // Valida YYYY-MM-DD
 const isYMD = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 
-// Utilidad para "hoy" en zona del servidor (formato YYYY-MM-DD)
+// Utilidad para "hoy" (YYYY-MM-DD)
 const hoyYMD = () => {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-// Filtro por servicio (mismo criterio que usamos en otros endpoints)
-// - actividades:    tipo_servicio ILIKE 'Actividad%'
-// - transporte:     todo lo que NO sea Actividad (incluye nulos/vacío)
-// - ambos:          sin filtro
+// Filtro por servicio (igual criterio que en otros endpoints)
 function filtroServicioSQL(servicio) {
   const col = "COALESCE(TRIM(tipo_servicio), '')";
   if (servicio === "actividades") return `AND ${col} ILIKE 'Actividad%'`;
@@ -25,7 +22,6 @@ function filtroServicioSQL(servicio) {
 // GET /api/buscarreservas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&servicio=transporte|actividades|ambos
 export default async function buscarReservas(req, res) {
   try {
-    // Si no vienen fechas, usar HOY
     const hoy = hoyYMD();
     let { desde, hasta, servicio = "transporte" } = req.query;
 
@@ -33,19 +29,35 @@ export default async function buscarReservas(req, res) {
     hasta = isYMD(hasta) ? hasta : hoy;
     servicio = String(servicio || "transporte").toLowerCase();
 
-    // ⚠️ Filtramos por la columna `fecha` (fecha de registro)
     const filtro = filtroServicioSQL(servicio);
 
     const sql = `
       SELECT
         folio,
-        tipo_servicio,     -- para distinguir Transporte vs Actividad en el front
+        -- servicio
+        tipo_servicio,                -- 'Transporte' o 'Actividad'
+
+        -- transporte
         tipo_viaje,
-        nombre_cliente,
-        fecha,             -- fecha de registro
+        tipo_transporte,
         fecha_llegada,
         fecha_salida,
-        cantidad_pasajeros
+        cantidad_pasajeros,
+        hotel_llegada,
+        hotel_salida,
+        zona,
+
+        -- actividades (💡 NUEVO)
+        nombre_tour,                  -- <- para columna "Actividad"
+        proveedor,                    -- <- para columna "Operador"
+        cantidad_adulto,              -- <- para Pax
+        cantidad_nino,                -- <- para Pax
+        tipo_actividad,               -- (compat)
+        operador_actividad,           -- (compat)
+
+        -- comunes
+        nombre_cliente,
+        fecha                          -- fecha de registro (Usada como fecha en Actividades)
       FROM reservaciones
       WHERE fecha::date BETWEEN $1 AND $2
         ${filtro}
