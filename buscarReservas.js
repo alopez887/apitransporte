@@ -12,8 +12,9 @@ const hoyYMD = () => {
 };
 
 // GET /api/buscarreservas
-// Soporta ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&servicio=transporte|actividades|ambos
+// ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&servicio=transporte|actividades|ambos
 export default async function buscarReservas(req, res) {
+  const t0 = Date.now();
   try {
     const hoy = hoyYMD();
     let { desde, hasta, servicio } = req.query;
@@ -23,6 +24,8 @@ export default async function buscarReservas(req, res) {
 
     // Default robusto: transporte
     const svc = (servicio || "transporte").toString().trim().toLowerCase();
+
+    console.log(`[buscarReservas] params => desde=${desde} hasta=${hasta} servicio=${svc}`);
 
     // === ACTIVIDADES ===
     if (svc === "actividades" || svc === "actividad") {
@@ -37,14 +40,15 @@ export default async function buscarReservas(req, res) {
           COALESCE(cantidad_nino,   0) AS cantidad_nino
         FROM reservaciones
         WHERE fecha::date BETWEEN $1 AND $2
-          AND LOWER(tipo_servicio) = 'actividad'
+          AND LOWER(TRIM(tipo_servicio)) = 'actividad'
         ORDER BY fecha DESC, folio DESC
       `;
-      const { rows } = await pool.query(sqlA, [desde, hasta]);
+      const { rows, rowCount } = await pool.query(sqlA, [desde, hasta]);
+      console.log(`[buscarReservas][ACTIVIDADES] rowCount=${rowCount} t=${Date.now() - t0}ms`);
       return res.json({ ok: true, reservas: rows });
     }
 
-    // === TRANSPORTE (igual que siempre) ===
+    // === TRANSPORTE ===
     if (svc === "transporte") {
       const sqlT = `
         SELECT
@@ -58,16 +62,17 @@ export default async function buscarReservas(req, res) {
         WHERE fecha::date BETWEEN $1 AND $2
           AND (
             tipo_servicio IS NULL
-            OR tipo_servicio = ''
-            OR LOWER(tipo_servicio) = 'transporte'
+            OR TRIM(tipo_servicio) = ''
+            OR LOWER(TRIM(tipo_servicio)) = 'transporte'
           )
         ORDER BY fecha DESC, folio DESC
       `;
-      const { rows } = await pool.query(sqlT, [desde, hasta]);
+      const { rows, rowCount } = await pool.query(sqlT, [desde, hasta]);
+      console.log(`[buscarReservas][TRANSPORTE] rowCount=${rowCount} t=${Date.now() - t0}ms`);
       return res.json({ ok: true, reservas: rows });
     }
 
-    // === AMBOS (opcional; el front hoy hace 2 llamadas separadas) ===
+    // === AMBOS (opcional) ===
     if (svc === "ambos") {
       const sqlT = `
         SELECT folio, tipo_viaje, nombre_cliente, fecha_llegada, fecha_salida, cantidad_pasajeros
@@ -75,8 +80,8 @@ export default async function buscarReservas(req, res) {
         WHERE fecha::date BETWEEN $1 AND $2
           AND (
             tipo_servicio IS NULL
-            OR tipo_servicio = ''
-            OR LOWER(tipo_servicio) = 'transporte'
+            OR TRIM(tipo_servicio) = ''
+            OR LOWER(TRIM(tipo_servicio)) = 'transporte'
           )
         ORDER BY fecha DESC, folio DESC
       `;
@@ -87,13 +92,14 @@ export default async function buscarReservas(req, res) {
           COALESCE(cantidad_nino,0)   AS cantidad_nino
         FROM reservaciones
         WHERE fecha::date BETWEEN $1 AND $2
-          AND LOWER(tipo_servicio) = 'actividad'
+          AND LOWER(TRIM(tipo_servicio)) = 'actividad'
         ORDER BY fecha DESC, folio DESC
       `;
       const [rt, ra] = await Promise.all([
         pool.query(sqlT, [desde, hasta]),
         pool.query(sqlA, [desde, hasta]),
       ]);
+      console.log(`[buscarReservas][AMBOS] T=${rt.rowCount} A=${ra.rowCount} t=${Date.now() - t0}ms`);
       return res.json({
         ok: true,
         reservas_transporte: rt.rows,
@@ -101,10 +107,12 @@ export default async function buscarReservas(req, res) {
       });
     }
 
-    // Si llega algo raro en 'servicio'
+    console.log(`[buscarReservas] servicio desconocido="${svc}" -> []`);
     return res.json({ ok: true, reservas: [] });
   } catch (err) {
-    console.error("❌ /api/buscarreservas:", err);
-    res.status(500).json({ ok: false, msg: "Error al consultar reservaciones" });
+    console.error("❌ /api/buscarreservas ERROR:", err);
+    return res
+      .status(500)
+      .json({ ok: false, where: "buscarReservas", message: err?.message || "Error al consultar reservaciones" });
   }
 }
