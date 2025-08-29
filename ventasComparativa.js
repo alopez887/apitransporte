@@ -1,5 +1,6 @@
 import pool from './conexion.js';
 
+// === helpers existentes / extendidos ===
 function fechaExpr(base) {
   switch ((base || 'fecha').toLowerCase()) {
     case 'llegada': return 'fecha_llegada';
@@ -8,7 +9,16 @@ function fechaExpr(base) {
   }
 }
 
-const COL_IMPORTE = `COALESCE(NULLIF(total_pago, '')::numeric, 0)`;
+// Limpieza robusta de total_pago por si viene con símbolos ($, comas, espacios)
+const COL_IMPORTE = (col = 'total_pago') => `
+  COALESCE(
+    NULLIF(
+      REGEXP_REPLACE(TRIM(${col}::text), '[^0-9\\.]', '', 'g'),
+      ''
+    )::numeric,
+    0
+  )
+`;
 
 function rangoMesActualPasado() {
   const now = new Date();
@@ -23,15 +33,26 @@ function rangoMesActualPasado() {
   };
 }
 
+// por compat: nombre de tabla según servicio
+function tablaPorServicio(servicio) {
+  return (servicio === 'actividades') ? 'actividades' : 'reservaciones';
+}
+
 export default async function ventasComparativa(req, res) {
   try {
-    const baseCol = fechaExpr(req.query.base);
+    // servicio: transporte|actividades (default transporte)
+    const servicio = String(req.query.servicio || 'transporte').toLowerCase();
+    const tabla = tablaPorServicio(servicio);
+
+    // base solo aplica a transporte; en actividades forzamos 'fecha'
+    const baseCol = (servicio === 'actividades') ? 'fecha' : fechaExpr(req.query.base);
+
     const { actual, pasado } = rangoMesActualPasado();
 
     const q = (desde, hasta) => `
       SELECT ${baseCol}::date AS dia,
-             SUM(${COL_IMPORTE})::numeric(12,2) AS total
-      FROM reservaciones
+             SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
+      FROM ${tabla}
       WHERE ${baseCol}::date BETWEEN $1 AND $2
       GROUP BY 1
       ORDER BY 1
