@@ -11,28 +11,44 @@ const hoyYMD = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-// GET /api/buscarreservas
+// Filtro por servicio (mismo criterio que usamos en otros endpoints)
+// - actividades:    tipo_servicio ILIKE 'Actividad%'
+// - transporte:     todo lo que NO sea Actividad (incluye nulos/vacío)
+// - ambos:          sin filtro
+function filtroServicioSQL(servicio) {
+  const col = "COALESCE(TRIM(tipo_servicio), '')";
+  if (servicio === "actividades") return `AND ${col} ILIKE 'Actividad%'`;
+  if (servicio === "transporte")  return `AND (${col} = '' OR ${col} NOT ILIKE 'Actividad%')`;
+  return ""; // ambos
+}
+
+// GET /api/buscarreservas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&servicio=transporte|actividades|ambos
 export default async function buscarReservas(req, res) {
   try {
-    // Si no vienen, usar HOY
+    // Si no vienen fechas, usar HOY
     const hoy = hoyYMD();
-    let { desde, hasta } = req.query;
+    let { desde, hasta, servicio = "transporte" } = req.query;
 
     desde = isYMD(desde) ? desde : hoy;
     hasta = isYMD(hasta) ? hasta : hoy;
+    servicio = String(servicio || "transporte").toLowerCase();
 
-    // ⚠️ Filtramos por la columna `fecha` (NO por fecha_llegada/fecha_salida)
+    // ⚠️ Filtramos por la columna `fecha` (fecha de registro)
+    const filtro = filtroServicioSQL(servicio);
+
     const sql = `
       SELECT
         folio,
+        tipo_servicio,     -- para distinguir Transporte vs Actividad en el front
         tipo_viaje,
         nombre_cliente,
-        fecha,            -- por si quieres mostrarla/llevar trazabilidad
+        fecha,             -- fecha de registro
         fecha_llegada,
         fecha_salida,
         cantidad_pasajeros
       FROM reservaciones
       WHERE fecha::date BETWEEN $1 AND $2
+        ${filtro}
       ORDER BY fecha DESC, folio DESC
     `;
 
