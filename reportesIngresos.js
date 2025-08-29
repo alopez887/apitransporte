@@ -5,7 +5,7 @@ import pool from './conexion.js';
 const isYMD = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-// Columna de fecha según “base”
+// Columna de fecha según “base” (solo transporte/ambos)
 function fechaExpr(base) {
   switch ((base || 'fecha').toLowerCase()) {
     case 'llegada': return 'fecha_llegada';
@@ -14,10 +14,7 @@ function fechaExpr(base) {
   }
 }
 
-/**
- * Limpieza robusta: total_pago y precio_servicio suelen venir como texto.
- * Quitamos símbolos ($, comas, espacios, etc.)
- */
+// Limpieza de importe/valor de lista
 const COL_IMPORTE = (col = 'total_pago') => `
   COALESCE(
     NULLIF(
@@ -27,7 +24,6 @@ const COL_IMPORTE = (col = 'total_pago') => `
     0
   )
 `;
-
 const VAL_LISTA = (col = 'precio_servicio') => `
   COALESCE(
     NULLIF(
@@ -38,9 +34,16 @@ const VAL_LISTA = (col = 'precio_servicio') => `
   )
 `;
 
-// Por compat: nombre de tabla según servicio
-function tablaPorServicio(servicio) {
-  return (servicio === 'actividades') ? 'actividades' : 'reservaciones';
+// Filtro por servicio (mismo criterio que comparativa)
+function filtroServicioSQL(servicio) {
+  const col = "COALESCE(TRIM(tipo_servicio), '')";
+  if (servicio === 'actividades') {
+    return `AND ${col} ILIKE 'Actividad%'`;
+  }
+  if (servicio === 'transporte') {
+    return `AND (${col} = '' OR ${col} NOT ILIKE 'Actividad%')`;
+  }
+  return ''; // ambos
 }
 
 // GET /api/reportes-ingresos?tipo=...&desde=YYYY-MM-DD&hasta=YYYY-MM-DD&base=fecha|llegada|salida&servicio=transporte|actividades|ambos
@@ -59,29 +62,32 @@ export default async function reportesIngresos(req, res) {
     if (!isYMD(desde)) desde = hoy();
     if (!isYMD(hasta)) hasta = hoy();
 
-    // en actividades ignoramos base y usamos 'fecha'
-    const fcol = (servicio === 'actividades') ? 'fecha' : fechaExpr(base);
-    const params = [desde, hasta];
+    // Columna de fecha efectiva:
+    // - actividades usa 'fecha' sí o sí
+    // - transporte/ambos usan la seleccionada para transporte
+    const fcolTrans = fechaExpr(base);
+    const fcolAct   = 'fecha';
+    const params    = [desde, hasta];
     let sql = '';
 
-    // ===== Servicio = TRANSPORTE (compat total con lo que ya tenías) =====
+    // ====== TRANSPORTE ======
     if (servicio === 'transporte') {
+      const filtro = filtroServicioSQL('transporte');
       switch (tipo) {
         case 'por-fecha':
-          // Un importe por folio; usamos MIN(fecha_ref) y MAX(importe_folio) por folio
           sql = `
             WITH folios AS (
               SELECT
                 folio,
-                MIN(${fcol}::date) AS fecha_ref,
+                MIN(${fcolTrans}::date) AS fecha_ref,
                 MAX(${COL_IMPORTE('total_pago')}) AS importe_folio
               FROM reservaciones
-              WHERE ${fcol}::date BETWEEN $1 AND $2
+              WHERE ${fcolTrans}::date BETWEEN $1 AND $2
+                ${filtro}
               GROUP BY folio
             )
-            SELECT
-              fecha_ref AS etiqueta,
-              SUM(importe_folio)::numeric(12,2) AS total
+            SELECT fecha_ref AS etiqueta,
+                   SUM(importe_folio)::numeric(12,2) AS total
             FROM folios
             GROUP BY 1
             ORDER BY 1 ASC
@@ -93,7 +99,8 @@ export default async function reportesIngresos(req, res) {
             SELECT COALESCE(NULLIF(TRIM(tipo_viaje), ''), '(Sin tipo)') AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
             FROM reservaciones
-            WHERE ${fcol}::date BETWEEN $1 AND $2
+            WHERE ${fcolTrans}::date BETWEEN $1 AND $2
+              ${filtro}
             GROUP BY 1
             ORDER BY 2 DESC
           `;
@@ -104,7 +111,8 @@ export default async function reportesIngresos(req, res) {
             SELECT COALESCE(NULLIF(TRIM(tipo_transporte), ''), '(Sin transporte)') AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
             FROM reservaciones
-            WHERE ${fcol}::date BETWEEN $1 AND $2
+            WHERE ${fcolTrans}::date BETWEEN $1 AND $2
+              ${filtro}
             GROUP BY 1
             ORDER BY 2 DESC
           `;
@@ -118,7 +126,8 @@ export default async function reportesIngresos(req, res) {
                    ) AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
             FROM reservaciones
-            WHERE ${fcol}::date BETWEEN $1 AND $2
+            WHERE ${fcolTrans}::date BETWEEN $1 AND $2
+              ${filtro}
             GROUP BY 1
             ORDER BY 2 DESC
           `;
@@ -132,7 +141,8 @@ export default async function reportesIngresos(req, res) {
                    END AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
             FROM reservaciones
-            WHERE ${fcol}::date BETWEEN $1 AND $2
+            WHERE ${fcolTrans}::date BETWEEN $1 AND $2
+              ${filtro}
             GROUP BY 1
             ORDER BY 2 DESC
           `;
@@ -146,41 +156,49 @@ export default async function reportesIngresos(req, res) {
       return res.json({ ok: true, datos: rows });
     }
 
-    // ===== Servicio = ACTIVIDADES =====
+    // ====== ACTIVIDADES ======
     if (servicio === 'actividades') {
-      // En actividades forzamos columna de fecha = 'fecha'
-      const fcolAct = 'fecha';
+      const filtro = filtroServicioSQL('actividades');
       switch (tipo) {
         case 'por-fecha':
           sql = `
-            SELECT ${fcolAct}::date AS etiqueta,
-                   SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
-            FROM actividades
-            WHERE ${fcolAct}::date BETWEEN $1 AND $2
+            WITH folios AS (
+              SELECT
+                folio,
+                MIN(${fcolAct}::date) AS fecha_ref,
+                MAX(${COL_IMPORTE('total_pago')}) AS importe_folio
+              FROM reservaciones
+              WHERE ${fcolAct}::date BETWEEN $1 AND $2
+                ${filtro}
+              GROUP BY folio
+            )
+            SELECT fecha_ref AS etiqueta,
+                   SUM(importe_folio)::numeric(12,2) AS total
+            FROM folios
             GROUP BY 1
             ORDER BY 1 ASC
           `;
           break;
 
         case 'por-tipo-actividad':
-          // Ajusta el nombre de columna si en tu tabla se llama distinto
           sql = `
             SELECT COALESCE(NULLIF(TRIM(tipo_actividad), ''), '(Sin tipo)') AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
-            FROM actividades
+            FROM reservaciones
             WHERE ${fcolAct}::date BETWEEN $1 AND $2
+              ${filtro}
             GROUP BY 1
             ORDER BY 2 DESC
           `;
           break;
 
         case 'por-operador-actividad':
-          // Ajusta el nombre de columna si en tu tabla se llama distinto
           sql = `
             SELECT COALESCE(NULLIF(TRIM(operador_actividad), ''), '(Sin operador)') AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
-            FROM actividades
+            FROM reservaciones
             WHERE ${fcolAct}::date BETWEEN $1 AND $2
+              ${filtro}
             GROUP BY 1
             ORDER BY 2 DESC
           `;
@@ -193,8 +211,9 @@ export default async function reportesIngresos(req, res) {
                      ELSE 'Sin descuento'
                    END AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
-            FROM actividades
+            FROM reservaciones
             WHERE ${fcolAct}::date BETWEEN $1 AND $2
+              ${filtro}
             GROUP BY 1
             ORDER BY 2 DESC
           `;
@@ -208,49 +227,59 @@ export default async function reportesIngresos(req, res) {
       return res.json({ ok: true, datos: rows });
     }
 
-    // ===== Servicio = AMBOS =====
-    // Para "ambos" limitamos los tipos a los que definiste en el front:
-    // por-fecha, por-servicio, con-sin-descuento
+    // ====== AMBOS ======
+    // Permitimos: por-fecha (sumado), por-servicio (T vs A), con-sin-descuento (sumado)
     if (servicio === 'ambos') {
       switch (tipo) {
         case 'por-servicio':
-          // Totales por servicio en el rango
           sql = `
             SELECT 'Transporte' AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
             FROM reservaciones
-            WHERE ${fechaExpr(base)}::date BETWEEN $1 AND $2
+            WHERE ${fcolTrans}::date BETWEEN $1 AND $2
+              ${filtroServicioSQL('transporte')}
             UNION ALL
             SELECT 'Actividades' AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
-            FROM actividades
-            WHERE fecha::date BETWEEN $1 AND $2
+            FROM reservaciones
+            WHERE ${fcolAct}::date BETWEEN $1 AND $2
+              ${filtroServicioSQL('actividades')}
             ORDER BY 1
           `;
           break;
 
         case 'por-fecha':
-          // Suma por día combinando ambas tablas
+          // Unificamos día: transporte usa base elegida; actividades siempre 'fecha'
           sql = `
-            WITH t AS (
-              SELECT ${fechaExpr(base)}::date AS dia, ${COL_IMPORTE('total_pago')} AS imp
+            WITH folios AS (
+              SELECT
+                folio,
+                -- día por folio, escogiendo la fecha adecuada según el servicio
+                MIN(
+                  CASE
+                    WHEN COALESCE(TRIM(tipo_servicio), '') ILIKE 'Actividad%' THEN ${fcolAct}::date
+                    ELSE ${fcolTrans}::date
+                  END
+                ) AS fecha_ref,
+                MAX(${COL_IMPORTE('total_pago')}) AS importe_folio
               FROM reservaciones
-              WHERE ${fechaExpr(base)}::date BETWEEN $1 AND $2
-              UNION ALL
-              SELECT fecha::date AS dia, ${COL_IMPORTE('total_pago')} AS imp
-              FROM actividades
-              WHERE fecha::date BETWEEN $1 AND $2
+              WHERE (
+                (COALESCE(TRIM(tipo_servicio), '') ILIKE 'Actividad%' AND ${fcolAct}::date BETWEEN $1 AND $2)
+                OR
+                ((COALESCE(TRIM(tipo_servicio), '') = '' OR COALESCE(TRIM(tipo_servicio), '') NOT ILIKE 'Actividad%')
+                  AND ${fcolTrans}::date BETWEEN $1 AND $2)
+              )
+              GROUP BY folio
             )
-            SELECT dia AS etiqueta,
-                   SUM(imp)::numeric(12,2) AS total
-            FROM t
+            SELECT fecha_ref AS etiqueta,
+                   SUM(importe_folio)::numeric(12,2) AS total
+            FROM folios
             GROUP BY 1
             ORDER BY 1 ASC
           `;
           break;
 
         case 'con-sin-descuento':
-          // Agrupamos por etiqueta de descuento sumando ambos servicios
           sql = `
             WITH t AS (
               SELECT
@@ -259,20 +288,14 @@ export default async function reportesIngresos(req, res) {
                 END AS etiqueta,
                 ${COL_IMPORTE('total_pago')} AS imp
               FROM reservaciones
-              WHERE ${fechaExpr(base)}::date BETWEEN $1 AND $2
-
-              UNION ALL
-
-              SELECT
-                CASE WHEN ${COL_IMPORTE('total_pago')} < ${VAL_LISTA('precio_servicio')} THEN 'Con descuento'
-                     ELSE 'Sin descuento'
-                END AS etiqueta,
-                ${COL_IMPORTE('total_pago')} AS imp
-              FROM actividades
-              WHERE fecha::date BETWEEN $1 AND $2
+              WHERE (
+                (COALESCE(TRIM(tipo_servicio), '') ILIKE 'Actividad%' AND ${fcolAct}::date BETWEEN $1 AND $2)
+                OR
+                ((COALESCE(TRIM(tipo_servicio), '') = '' OR COALESCE(TRIM(tipo_servicio), '') NOT ILIKE 'Actividad%')
+                  AND ${fcolTrans}::date BETWEEN $1 AND $2)
+              )
             )
-            SELECT etiqueta,
-                   SUM(imp)::numeric(12,2) AS total
+            SELECT etiqueta, SUM(imp)::numeric(12,2) AS total
             FROM t
             GROUP BY 1
             ORDER BY 2 DESC
@@ -287,7 +310,6 @@ export default async function reportesIngresos(req, res) {
       return res.json({ ok: true, datos: rows });
     }
 
-    // Fallback
     return res.status(400).json({ ok: false, msg: 'servicio inválido' });
 
   } catch (err) {

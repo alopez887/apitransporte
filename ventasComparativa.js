@@ -1,6 +1,6 @@
 import pool from './conexion.js';
 
-// === helpers existentes / extendidos ===
+// === columnas de fecha según base (solo transporte usa base) ===
 function fechaExpr(base) {
   switch ((base || 'fecha').toLowerCase()) {
     case 'llegada': return 'fecha_llegada';
@@ -9,7 +9,7 @@ function fechaExpr(base) {
   }
 }
 
-// Limpieza robusta de total_pago por si viene con símbolos ($, comas, espacios)
+// Limpieza robusta de importe (por si viene como texto con $ o comas)
 const COL_IMPORTE = (col = 'total_pago') => `
   COALESCE(
     NULLIF(
@@ -20,6 +20,7 @@ const COL_IMPORTE = (col = 'total_pago') => `
   )
 `;
 
+// Rango (mes actual y mes pasado)
 function rangoMesActualPasado() {
   const now = new Date();
   const desdeAct = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -33,34 +34,45 @@ function rangoMesActualPasado() {
   };
 }
 
-// por compat: nombre de tabla según servicio
-function tablaPorServicio(servicio) {
-  return (servicio === 'actividades') ? 'actividades' : 'reservaciones';
+// WHERE extra según servicio
+function filtroServicioSQL(servicio) {
+  const col = "COALESCE(TRIM(tipo_servicio), '')";
+  if (servicio === 'actividades') {
+    // Solo registros cuyo tipo_servicio empiece con 'Actividad'
+    return `AND ${col} ILIKE 'Actividad%'`;
+  }
+  if (servicio === 'transporte') {
+    // Todo lo que NO sea Actividad (incluye null/vacío)
+    return `AND (${col} = '' OR ${col} NOT ILIKE 'Actividad%')`;
+  }
+  // ambos: sin filtro
+  return '';
 }
 
 export default async function ventasComparativa(req, res) {
   try {
-    // servicio: transporte|actividades (default transporte)
     const servicio = String(req.query.servicio || 'transporte').toLowerCase();
-    const tabla = tablaPorServicio(servicio);
-
-    // base solo aplica a transporte; en actividades forzamos 'fecha'
-    const baseCol = (servicio === 'actividades') ? 'fecha' : fechaExpr(req.query.base);
+    // En actividades la base se ignora y usamos 'fecha'
+    const baseCol = (servicio === 'actividades')
+      ? 'fecha'
+      : fechaExpr(req.query.base);
 
     const { actual, pasado } = rangoMesActualPasado();
+    const filtro = filtroServicioSQL(servicio);
 
-    const q = (desde, hasta) => `
+    const q = `
       SELECT ${baseCol}::date AS dia,
              SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
-      FROM ${tabla}
+      FROM reservaciones
       WHERE ${baseCol}::date BETWEEN $1 AND $2
+        ${filtro}
       GROUP BY 1
       ORDER BY 1
     `;
 
     const [act, ant] = await Promise.all([
-      pool.query(q(actual.desde, actual.hasta), [actual.desde, actual.hasta]),
-      pool.query(q(pasado.desde, pasado.hasta), [pasado.desde, pasado.hasta]),
+      pool.query(q, [actual.desde, actual.hasta]),
+      pool.query(q, [pasado.desde, pasado.hasta]),
     ]);
 
     const sum = rows => rows.reduce((acc, r) => acc + Number(r.total || 0), 0);
