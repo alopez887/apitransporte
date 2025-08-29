@@ -4,7 +4,7 @@ import pool from "./conexion.js"; // tu pool existente
 // Valida YYYY-MM-DD
 const isYMD = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 
-// Utilidad para "hoy" en zona del servidor (YYYY-MM-DD)
+// Utilidad para "hoy" (YYYY-MM-DD)
 const hoyYMD = () => {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, "0");
@@ -21,17 +21,18 @@ export default async function buscarReservas(req, res) {
     desde = isYMD(desde) ? desde : hoy;
     hasta = isYMD(hasta) ? hasta : hoy;
 
-    const svc = String(servicio || "").toLowerCase();
+    // Default robusto: transporte
+    const svc = (servicio || "transporte").toString().trim().toLowerCase();
 
     // === ACTIVIDADES ===
     if (svc === "actividades" || svc === "actividad") {
       const sqlA = `
         SELECT
           folio,
-          nombre_tour,                         -- ← nombre de la actividad
-          proveedor,                            -- ← operador/proveedor
+          nombre_tour,                         -- Actividad
+          proveedor,                            -- Operador
           nombre_cliente,
-          fecha::date AS fecha,                 -- ← fecha de la reserva
+          fecha::date AS fecha,                 -- Fecha de reservación
           COALESCE(cantidad_adulto, 0) AS cantidad_adulto,
           COALESCE(cantidad_nino,   0) AS cantidad_nino
         FROM reservaciones
@@ -43,8 +44,8 @@ export default async function buscarReservas(req, res) {
       return res.json({ ok: true, reservas: rows });
     }
 
-    // === TRANSPORTE (como ya estaba) ===
-    if (svc === "transporte" || svc === "") {
+    // === TRANSPORTE (igual que siempre) ===
+    if (svc === "transporte") {
       const sqlT = `
         SELECT
           folio,
@@ -66,7 +67,7 @@ export default async function buscarReservas(req, res) {
       return res.json({ ok: true, reservas: rows });
     }
 
-    // === AMBOS → por si lo usas directo (tu front hoy hace 2 llamadas separadas) ===
+    // === AMBOS (opcional; el front hoy hace 2 llamadas separadas) ===
     if (svc === "ambos") {
       const sqlT = `
         SELECT folio, tipo_viaje, nombre_cliente, fecha_llegada, fecha_salida, cantidad_pasajeros
@@ -99,10 +100,11 @@ export default async function buscarReservas(req, res) {
         reservas_actividades: ra.rows,
       });
     }
+
+    // Si llega algo raro en 'servicio'
+    return res.json({ ok: true, reservas: [] });
   } catch (err) {
     console.error("❌ /api/buscarreservas:", err);
-    return res
-      .status(500)
-      .json({ ok: false, msg: "Error al consultar reservaciones" });
+    res.status(500).json({ ok: false, msg: "Error al consultar reservaciones" });
   }
 }
