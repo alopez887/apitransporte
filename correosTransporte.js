@@ -40,7 +40,7 @@ async function postJSON(url, body, timeoutMs) {
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json; charset=utf-8' }, // 👈 fuerza UTF-8
       body: JSON.stringify(body),
       signal: ctrl.signal
     });
@@ -62,7 +62,7 @@ function formatoHora12(hora){
 // ---------- Bloques de texto ----------
 const politicasHTML = `
   <div style="margin-top:30px;padding-top:15px;border-top:1px solid #ccc;font-size:13px;color:#555;">
-    <strong>📌 Cancellation Policy:</strong><br>
+    <strong>&#128204; Cancellation Policy:</strong><br>
     - All cancellations or refund requests are subject to a 10% fee of the total amount paid.<br>
     <strong>- No refunds will be issued for cancellations made less than 24 hours in advance or in case of no-shows.</strong>
   </div>
