@@ -79,17 +79,16 @@ async function enviarCorreoTransporte(datos){
     const img0 = sanitizeUrl(datos.imagen);
     const imgUrl = img0 ? forceJpgIfWix(img0) : '';
 
-    // ⬇️ QR desde data URL (igual proceso que tu código viejo)
+    // ⬇️ QR desde data URL (tal como tu flujo viejo)
     let qrAttachment = null;
     if (typeof datos.qr === 'string' && datos.qr.startsWith('data:image')) {
-      const [meta, b64] = datos.qr.split(',');
-      const mime = meta.substring(5, meta.indexOf(';')) || 'image/png';
+      // GAS usa "data" y "mimeType" (buildAttachments_ acepta dataURL)
       qrAttachment = {
-        base64: b64,
+        data: datos.qr,               // data:image/png;base64,AAAA...
         filename: 'qr.png',
         inline: true,
-        cid: 'qrReserva',          // 👈 mantiene el mismo CID
-        contentType: mime
+        cid: 'qrReserva',             // coincide con <img src="cid:qrReserva">
+        mimeType: 'image/png'
       };
     }
 
@@ -181,7 +180,7 @@ async function enviarCorreoTransporte(datos){
       `.trim();
     }
 
-    // Imagen principal (igual que tenías) …
+    // Imagen principal (igual)
     const imagenHTML = imgUrl ? `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:10px;border-collapse:collapse;">
         <tr>
@@ -249,7 +248,7 @@ async function enviarCorreoTransporte(datos){
       </table>
     `.trim();
 
-    // Adjuntos (inline por CID) — GAS debe aceptar url/base64
+    // Adjuntos (inline por CID) — GAS acepta url o dataURL/base64 en "data"
     const attachments = [
       { url: logoUrl, filename: 'logo.png', inline: true, cid: 'logoEmpresa' }
     ];
@@ -257,7 +256,7 @@ async function enviarCorreoTransporte(datos){
       attachments.push({ url: imgUrl, filename: 'transporte.jpg', inline: true, cid: 'imagenTransporte' });
     }
     if (qrAttachment) {
-      attachments.push(qrAttachment); // { base64, filename, inline:true, cid:'qrReserva', contentType }
+      attachments.push(qrAttachment); // { data, filename, inline:true, cid:'qrReserva', mimeType }
     }
 
     const payload = {
