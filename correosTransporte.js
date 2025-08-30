@@ -1,4 +1,4 @@
-// correosTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP), **CON QR**
+// correosTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP), CON QR robusto
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -68,6 +68,51 @@ const politicasHTML = `
   </div>
 `;
 
+// *** Normalizador de QR ***
+// Acepta: data URL ("data:image/png;base64,..."), base64 pelón, o URL http(s).
+function normalizeQrAttachment(qr, fallbackMime = 'image/png') {
+  if (!qr) return null;
+  const s = String(qr).trim();
+
+  // Caso 1: URL http(s) al PNG/JPG del QR → deja que GAS la descargue
+  if (/^https?:\/\//i.test(s)) {
+    return {
+      url: s,
+      filename: 'qr.png',
+      inline: true,
+      cid: 'qrReserva',
+      mimeType: fallbackMime
+    };
+  }
+
+  // Caso 2: Data URL
+  if (/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(s)) {
+    return {
+      data: s,                  // GAS buildAttachments_ acepta dataURL
+      filename: 'qr.png',
+      inline: true,
+      cid: 'qrReserva',
+      mimeType: fallbackMime
+    };
+  }
+
+  // Caso 3: Base64 “pelón” → lo envolvemos como dataURL válido
+  // Limpia espacios, saltos de línea y posibles URL-encodes
+  const clean = s.replace(/\s+/g,'').replace(/%2B/gi, '+').replace(/%2F/gi,'/').replace(/%3D/gi,'=');
+  if (/^[A-Za-z0-9+/=]+$/.test(clean)) {
+    return {
+      data: `data:${fallbackMime};base64,${clean}`,
+      filename: 'qr.png',
+      inline: true,
+      cid: 'qrReserva',
+      mimeType: fallbackMime
+    };
+  }
+
+  // Nada válido
+  return null;
+}
+
 async function enviarCorreoTransporte(datos){
   try{
     if (!GAS_URL || !/^https:\/\/script\.google\.com\/macros\/s\//.test(GAS_URL)) {
@@ -79,17 +124,10 @@ async function enviarCorreoTransporte(datos){
     const img0 = sanitizeUrl(datos.imagen);
     const imgUrl = img0 ? forceJpgIfWix(img0) : '';
 
-    // ⬇️ QR desde data URL (tal como tu flujo viejo)
-    let qrAttachment = null;
-    if (typeof datos.qr === 'string' && datos.qr.startsWith('data:image')) {
-      // GAS usa "data" y "mimeType" (buildAttachments_ acepta dataURL)
-      qrAttachment = {
-        data: datos.qr,               // data:image/png;base64,AAAA...
-        filename: 'qr.png',
-        inline: true,
-        cid: 'qrReserva',             // coincide con <img src="cid:qrReserva">
-        mimeType: 'image/png'
-      };
+    // ⬇️ QR robusto
+    const qrAttachment = normalizeQrAttachment(datos.qr, 'image/png');
+    if (EMAIL_DEBUG) {
+      DBG('QR adjunto valido:', !!qrAttachment, qrAttachment && (qrAttachment.url ? 'url' : 'data'));
     }
 
     const tripType = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
@@ -131,7 +169,7 @@ async function enviarCorreoTransporte(datos){
               ${p('Folio', datos.folio)}
               ${!esShuttle ? p('Transport', datos.tipo_transporte) : ''}
               ${!esShuttle ? p('Capacity', datos.capacidad) : ''}
-              ${p('Trip Type', tripType)}
+              ${p('Trip Type', traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje)}
               ${p('Total', `$${safeToFixed(datos.total_pago)} USD`)}
             </td>
           </tr>
@@ -174,13 +212,13 @@ async function enviarCorreoTransporte(datos){
         ${datos.hora_llegada ? p('Time', formatoHora12(datos.hora_llegada)) : ''}
         ${datos.aerolinea_llegada ? p('Airline', datos.aerolinea_llegada) : ''}
         ${datos.vuelo_llegada ? p('Flight', datos.vuelo_llegada) : ''}
-        ${p('Trip Type', tripType)}
+        ${p('Trip Type', traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje)}
         ${p('Total', `$${safeToFixed(datos.total_pago)} USD`)}
         ${nota && nota.trim() !== '' ? p('Note', nota) : ''}
       `.trim();
     }
 
-    // Imagen principal (igual)
+    // Imagen principal
     const imagenHTML = imgUrl ? `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:10px;border-collapse:collapse;">
         <tr>
@@ -192,7 +230,7 @@ async function enviarCorreoTransporte(datos){
       </table>
     ` : '';
 
-    // ⬇️ QR debajo de la imagen, centrado, ancho 180px (igual que el viejo)
+    // QR debajo de la imagen, centrado, 180px
     const qrHTML = qrAttachment ? `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:20px;border-collapse:collapse;">
         <tr>
@@ -230,7 +268,7 @@ async function enviarCorreoTransporte(datos){
       </div>
     `.trim();
 
-    // Wrapper 600px centrado (igual)
+    // Wrapper 600px centrado
     const mensajeHTML = `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
         <tr>
@@ -256,7 +294,7 @@ async function enviarCorreoTransporte(datos){
       attachments.push({ url: imgUrl, filename: 'transporte.jpg', inline: true, cid: 'imagenTransporte' });
     }
     if (qrAttachment) {
-      attachments.push(qrAttachment); // { data, filename, inline:true, cid:'qrReserva', mimeType }
+      attachments.push(qrAttachment);
     }
 
     const payload = {
