@@ -1,4 +1,4 @@
-// enviarCorreoTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP), SIN QR
+// correosTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP), **CON QR**
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -40,7 +40,7 @@ async function postJSON(url, body, timeoutMs) {
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json; charset=utf-8' }, // 👈 fuerza UTF-8
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
       body: JSON.stringify(body),
       signal: ctrl.signal
     });
@@ -68,9 +68,6 @@ const politicasHTML = `
   </div>
 `;
 
-// ======================================================
-//                ENVÍO DE CORREO (SIN QR)
-// ======================================================
 async function enviarCorreoTransporte(datos){
   try{
     if (!GAS_URL || !/^https:\/\/script\.google\.com\/macros\/s\//.test(GAS_URL)) {
@@ -82,11 +79,25 @@ async function enviarCorreoTransporte(datos){
     const img0 = sanitizeUrl(datos.imagen);
     const imgUrl = img0 ? forceJpgIfWix(img0) : '';
 
+    // ⬇️ QR desde data URL (igual proceso que tu código viejo)
+    let qrAttachment = null;
+    if (typeof datos.qr === 'string' && datos.qr.startsWith('data:image')) {
+      const [meta, b64] = datos.qr.split(',');
+      const mime = meta.substring(5, meta.indexOf(';')) || 'image/png';
+      qrAttachment = {
+        base64: b64,
+        filename: 'qr.png',
+        inline: true,
+        cid: 'qrReserva',          // 👈 mantiene el mismo CID
+        contentType: mime
+      };
+    }
+
     const tripType = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
     const nota = datos.nota || datos.cliente?.nota || '';
     const esShuttle = datos.tipo_viaje === 'Shuttle';
 
-    // Header (h2 izq + logo der) — 600px wrapper se arma más abajo
+    // Header (h2 izq + logo der)
     const headerHTML = `
       <table style="width:100%;margin-bottom:10px;border-collapse:collapse;" role="presentation" cellspacing="0" cellpadding="0">
         <tr>
@@ -170,13 +181,25 @@ async function enviarCorreoTransporte(datos){
       `.trim();
     }
 
+    // Imagen principal (igual que tenías) …
     const imagenHTML = imgUrl ? `
-      <!-- Imagen principal: wrapper en tabla + CID width=400 (igual Tours) -->
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:10px;border-collapse:collapse;">
         <tr>
           <td>
             <img src="cid:imagenTransporte" width="400" alt="Transport image"
                  style="display:block;width:100%;height:auto;max-width:100%;border-radius:8px;" />
+          </td>
+        </tr>
+      </table>
+    ` : '';
+
+    // ⬇️ QR debajo de la imagen, centrado, ancho 180px (igual que el viejo)
+    const qrHTML = qrAttachment ? `
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:20px;border-collapse:collapse;">
+        <tr>
+          <td align="center">
+            <p style="font-weight:bold;margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;">Show this QR code to your provider:</p>
+            <img src="cid:qrReserva" alt="QR Code" style="width:180px;display:block;border-radius:8px;" />
           </td>
         </tr>
       </table>
@@ -201,13 +224,14 @@ async function enviarCorreoTransporte(datos){
       <div style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;line-height:1.4;">
         ${cuerpoHTML}
         ${imagenHTML}
+        ${qrHTML}
         ${recomendacionesHTML}
         ${destinatarioHTML}
         ${politicasHTML}
       </div>
     `.trim();
 
-    // Wrapper 600px centrado (tabla), borde 2px, radius 10, padding 24/26/32 (calcado)
+    // Wrapper 600px centrado (igual)
     const mensajeHTML = `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
         <tr>
@@ -225,12 +249,15 @@ async function enviarCorreoTransporte(datos){
       </table>
     `.trim();
 
-    // Adjuntos (inline por CID) — GAS los descarga por URL
+    // Adjuntos (inline por CID) — GAS debe aceptar url/base64
     const attachments = [
       { url: logoUrl, filename: 'logo.png', inline: true, cid: 'logoEmpresa' }
     ];
     if (imgUrl) {
       attachments.push({ url: imgUrl, filename: 'transporte.jpg', inline: true, cid: 'imagenTransporte' });
+    }
+    if (qrAttachment) {
+      attachments.push(qrAttachment); // { base64, filename, inline:true, cid:'qrReserva', contentType }
     }
 
     const payload = {
