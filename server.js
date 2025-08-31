@@ -340,6 +340,7 @@ app.get('/api/reportes-ingresos-csv', exportarCsvReportesIngresos);
 app.get('/api/ventas-comparativa-csv', exportarCsvVentasComparativa);
 
 // ⬇️ NUEVO: registra rutas de cache/descarga PNG
+import registerCanvasCache from './canvasCache.js';
 registerCanvasCache(app);
 
 app.listen(PORT, () => {
