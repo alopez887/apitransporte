@@ -1,19 +1,17 @@
-// correosTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP), CON QR robusto
+// correosTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP), CON QR (solo si viene válido)
 import dotenv from 'dotenv';
 dotenv.config();
 
-const GAS_URL        = process.env.GAS_URL;                 // https://script.google.com/macros/s/XXXX/exec
-const GAS_TOKEN      = process.env.GAS_TOKEN;               // SECRET en Script Properties (llave "SECRET")
+const GAS_URL = process.env.GAS_URL;                 // https://script.google.com/macros/s/XXXX/exec
+const GAS_TOKEN = process.env.GAS_TOKEN;             // SECRET en Script Properties
 const GAS_TIMEOUT_MS = Number(process.env.GAS_TIMEOUT_MS || 15000);
 const MAIL_FAST_MODE = /^(1|true|yes)$/i.test(process.env.MAIL_FAST_MODE || '');
-const EMAIL_DEBUG    = /^(1|true|yes)$/i.test(process.env.EMAIL_DEBUG || '');
+const EMAIL_DEBUG = /^(1|true|yes)$/i.test(process.env.EMAIL_DEBUG || '');
 const EMAIL_FROMNAME = process.env.EMAIL_FROMNAME || 'Cabo Travel Solutions';
-const EMAIL_BCC      = process.env.EMAIL_BCC || 'nkmsistemas@gmail.com';
-const DBG = (...a)=> { if (EMAIL_DEBUG) console.log('[MAIL]', ...a); };
+const EMAIL_BCC = process.env.EMAIL_BCC || 'nkmsistemas@gmail.com';
+const DBG = (...a) => { if (EMAIL_DEBUG) console.log('[MAIL]', ...a); };
 
-/* =========================
-   Utilidades
-========================= */
+// ---------- Utilidades ----------
 function sanitizeUrl(u = '') {
   try {
     let s = String(u || '').trim();
@@ -23,7 +21,7 @@ function sanitizeUrl(u = '') {
     return s;
   } catch { return ''; }
 }
-// Forzar JPG en Wix para evitar WEBP en clientes quisquillosos (Outlook)
+// Forzar JPG en Wix para evitar WEBP en clientes (Outlook, etc.)
 function forceJpgIfWix(url='') {
   try {
     const u = new URL(url);
@@ -51,9 +49,7 @@ async function postJSON(url, body, timeoutMs) {
   } finally { clearTimeout(id); }
 }
 
-/* =========================
-   Formateos
-========================= */
+// ---------- Formateos ----------
 const traduccionTripType = { "Llegada":"Arrival","Salida":"Departure","Redondo":"Round Trip","Shuttle":"Shuttle" };
 const safeToFixed = (v)=>{ const n=Number(v); return isNaN(n)?'0.00':n.toFixed(2); };
 function formatoHora12(hora){
@@ -63,9 +59,7 @@ function formatoHora12(hora){
   return `${h12}:${m} ${suf}`;
 }
 
-/* =========================
-   Bloques de texto
-========================= */
+// ---------- Bloques de texto ----------
 const politicasHTML = `
   <div style="margin-top:30px;padding-top:15px;border-top:1px solid #ccc;font-size:13px;color:#555;">
     <strong>&#128204; Cancellation Policy:</strong><br>
@@ -74,82 +68,39 @@ const politicasHTML = `
   </div>
 `;
 
-/* =========================
-   Normalización del QR (a prueba de GAS)
-   Acepta: http(s) URL, data URL, o base64 “pelón” (con/without padding y con %xx)
-========================= */
-function decodeURIComponentSafe(s=''){
-  try { return decodeURIComponent(s); } catch { return s; }
-}
-function fixBase64ForGAS(b64raw='') {
-  // Limpia espacios y arregla transformaciones comunes (espacio por '+', %xx)
-  let b64 = String(b64raw)
-    .replace(/\s+/g,'')
-    .replace(/ /g, '+')
-    .replace(/%2B/gi, '+')
-    .replace(/%2F/gi, '/')
-    .replace(/%3D/gi, '=')
-    .replace(/[^A-Za-z0-9+/=]/g, ''); // quita cualquier basura
-  // Re-pad a múltiplo de 4
-  const mod = b64.length % 4;
-  if (mod === 2) b64 += '==';
-  else if (mod === 3) b64 += '=';
-  else if (mod === 1) {
-    // muy corrupto; mejor fallar controlado
-    throw new Error('invalid base64 length');
-  }
-  return b64;
-}
-function normalizeQrAttachment(qr, fallbackMime = 'image/png') {
-  if (!qr) return null;
-  let s = String(qr).trim();
+// 👉 Sólo acepta QR si ya viene como data URL o como URL http(s)
+function buildQrAttachment(datos) {
+  const q = datos?.qr;
+  if (!q || typeof q !== 'string') return null;
+  const s = q.trim();
 
-  // 1) Si ya es URL http(s), que GAS la descargue directo
+  // data URL válida
+  if (/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(s)) {
+    return {
+      data: s,                  // GAS buildAttachments_ acepta dataURL directo
+      filename: 'qr.png',
+      inline: true,
+      cid: 'qrReserva',
+      mimeType: 'image/png'
+    };
+  }
+
+  // URL http(s) válida (PNG/JPG/etc.)
   if (/^https?:\/\//i.test(s)) {
+    const url = sanitizeUrl(s);
     return {
-      url: s,
+      url,
       filename: 'qr.png',
       inline: true,
       cid: 'qrReserva',
-      mimeType: fallbackMime
+      mimeType: 'image/png'
     };
   }
 
-  // 2) Si es data URL
-  const mData = s.match(/^data:([^;]+);base64,(.+)$/i);
-  if (mData) {
-    const mime = mData[1] || fallbackMime;
-    const raw  = mData[2] || '';
-    const clean = fixBase64ForGAS(raw);
-    return {
-      data: `data:${mime};base64,${clean}`,
-      filename: 'qr.png',
-      inline: true,
-      cid: 'qrReserva',
-      mimeType: mime
-    };
-  }
-
-  // 3) Si es base64 “pelón” (a veces llega URL-encoded)
-  const maybe = decodeURIComponentSafe(s).replace(/\s+/g,'');
-  if (/^[A-Za-z0-9+/=]+$/.test(maybe)) {
-    const clean = fixBase64ForGAS(maybe);
-    return {
-      data: `data:${fallbackMime};base64,${clean}`,
-      filename: 'qr.png',
-      inline: true,
-      cid: 'qrReserva',
-      mimeType: fallbackMime
-    };
-  }
-
-  // 4) Nada válido
+  // Nada válido -> no adjuntar (evita el "Could not decode string")
   return null;
 }
 
-/* =========================
-   Envío principal
-========================= */
 async function enviarCorreoTransporte(datos){
   try{
     if (!GAS_URL || !/^https:\/\/script\.google\.com\/macros\/s\//.test(GAS_URL)) {
@@ -161,15 +112,9 @@ async function enviarCorreoTransporte(datos){
     const img0 = sanitizeUrl(datos.imagen);
     const imgUrl = img0 ? forceJpgIfWix(img0) : '';
 
-    // ⬇️ QR robusto (soporta URL / dataURL / base64)
-    let qrAttachment = null;
-    try {
-      qrAttachment = normalizeQrAttachment(datos.qr, 'image/png');
-    } catch (e) {
-      // Si viene muy corrupto, no detengas todo: simplemente no adjuntes QR
-      if (EMAIL_DEBUG) DBG('QR inválido, no se adjunta:', e && e.message);
-      qrAttachment = null;
-    }
+    // QR (solo si es data URL o URL)
+    const qrAttachment = buildQrAttachment(datos);
+    if (EMAIL_DEBUG) DBG('QR adjunto:', !!qrAttachment, qrAttachment?.data ? 'dataURL' : (qrAttachment?.url ? 'url' : 'none'));
 
     const tripType = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
     const nota = datos.nota || datos.cliente?.nota || '';
@@ -309,7 +254,7 @@ async function enviarCorreoTransporte(datos){
       </div>
     `.trim();
 
-    // Wrapper 600px centrado (idéntico a tu estándar)
+    // Wrapper 600px centrado (igual)
     const mensajeHTML = `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
         <tr>
@@ -327,7 +272,7 @@ async function enviarCorreoTransporte(datos){
       </table>
     `.trim();
 
-    // Adjuntos (inline por CID) — GAS acepta url o dataURL/base64 en "data"
+    // Adjuntos (inline por CID) — GAS los descarga o decodifica según "url"/"data"
     const attachments = [
       { url: logoUrl, filename: 'logo.png', inline: true, cid: 'logoEmpresa' }
     ];
@@ -335,7 +280,7 @@ async function enviarCorreoTransporte(datos){
       attachments.push({ url: imgUrl, filename: 'transporte.jpg', inline: true, cid: 'imagenTransporte' });
     }
     if (qrAttachment) {
-      attachments.push(qrAttachment); // { url|data, filename, inline:true, cid:'qrReserva', mimeType }
+      attachments.push(qrAttachment); // { data: dataURL  |  url: https..., inline:true, cid:'qrReserva' }
     }
 
     const payload = {
