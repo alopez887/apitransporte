@@ -2,16 +2,18 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-const GAS_URL = process.env.GAS_URL;                 // https://script.google.com/macros/s/XXXX/exec
-const GAS_TOKEN = process.env.GAS_TOKEN;             // SECRET en Script Properties
+const GAS_URL        = process.env.GAS_URL;                 // https://script.google.com/macros/s/XXXX/exec
+const GAS_TOKEN      = process.env.GAS_TOKEN;               // SECRET en Script Properties (llave "SECRET")
 const GAS_TIMEOUT_MS = Number(process.env.GAS_TIMEOUT_MS || 15000);
 const MAIL_FAST_MODE = /^(1|true|yes)$/i.test(process.env.MAIL_FAST_MODE || '');
-const EMAIL_DEBUG = /^(1|true|yes)$/i.test(process.env.EMAIL_DEBUG || '');
+const EMAIL_DEBUG    = /^(1|true|yes)$/i.test(process.env.EMAIL_DEBUG || '');
 const EMAIL_FROMNAME = process.env.EMAIL_FROMNAME || 'Cabo Travel Solutions';
-const EMAIL_BCC = process.env.EMAIL_BCC || 'nkmsistemas@gmail.com';
-const DBG = (...a) => { if (EMAIL_DEBUG) console.log('[MAIL]', ...a); };
+const EMAIL_BCC      = process.env.EMAIL_BCC || 'nkmsistemas@gmail.com';
+const DBG = (...a)=> { if (EMAIL_DEBUG) console.log('[MAIL]', ...a); };
 
-// ---------- Utilidades ----------
+/* =========================
+   Utilidades
+========================= */
 function sanitizeUrl(u = '') {
   try {
     let s = String(u || '').trim();
@@ -21,7 +23,7 @@ function sanitizeUrl(u = '') {
     return s;
   } catch { return ''; }
 }
-// Forzar JPG en Wix para evitar WEBP en clientes (Outlook, etc.)
+// Forzar JPG en Wix para evitar WEBP en clientes quisquillosos (Outlook)
 function forceJpgIfWix(url='') {
   try {
     const u = new URL(url);
@@ -49,7 +51,9 @@ async function postJSON(url, body, timeoutMs) {
   } finally { clearTimeout(id); }
 }
 
-// ---------- Formateos ----------
+/* =========================
+   Formateos
+========================= */
 const traduccionTripType = { "Llegada":"Arrival","Salida":"Departure","Redondo":"Round Trip","Shuttle":"Shuttle" };
 const safeToFixed = (v)=>{ const n=Number(v); return isNaN(n)?'0.00':n.toFixed(2); };
 function formatoHora12(hora){
@@ -59,7 +63,9 @@ function formatoHora12(hora){
   return `${h12}:${m} ${suf}`;
 }
 
-// ---------- Bloques de texto ----------
+/* =========================
+   Bloques de texto
+========================= */
 const politicasHTML = `
   <div style="margin-top:30px;padding-top:15px;border-top:1px solid #ccc;font-size:13px;color:#555;">
     <strong>&#128204; Cancellation Policy:</strong><br>
@@ -68,13 +74,37 @@ const politicasHTML = `
   </div>
 `;
 
-// *** Normalizador de QR ***
-// Acepta: data URL ("data:image/png;base64,..."), base64 pelón, o URL http(s).
+/* =========================
+   Normalización del QR (a prueba de GAS)
+   Acepta: http(s) URL, data URL, o base64 “pelón” (con/without padding y con %xx)
+========================= */
+function decodeURIComponentSafe(s=''){
+  try { return decodeURIComponent(s); } catch { return s; }
+}
+function fixBase64ForGAS(b64raw='') {
+  // Limpia espacios y arregla transformaciones comunes (espacio por '+', %xx)
+  let b64 = String(b64raw)
+    .replace(/\s+/g,'')
+    .replace(/ /g, '+')
+    .replace(/%2B/gi, '+')
+    .replace(/%2F/gi, '/')
+    .replace(/%3D/gi, '=')
+    .replace(/[^A-Za-z0-9+/=]/g, ''); // quita cualquier basura
+  // Re-pad a múltiplo de 4
+  const mod = b64.length % 4;
+  if (mod === 2) b64 += '==';
+  else if (mod === 3) b64 += '=';
+  else if (mod === 1) {
+    // muy corrupto; mejor fallar controlado
+    throw new Error('invalid base64 length');
+  }
+  return b64;
+}
 function normalizeQrAttachment(qr, fallbackMime = 'image/png') {
   if (!qr) return null;
-  const s = String(qr).trim();
+  let s = String(qr).trim();
 
-  // Caso 1: URL http(s) al PNG/JPG del QR → deja que GAS la descargue
+  // 1) Si ya es URL http(s), que GAS la descargue directo
   if (/^https?:\/\//i.test(s)) {
     return {
       url: s,
@@ -85,21 +115,25 @@ function normalizeQrAttachment(qr, fallbackMime = 'image/png') {
     };
   }
 
-  // Caso 2: Data URL
-  if (/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(s)) {
+  // 2) Si es data URL
+  const mData = s.match(/^data:([^;]+);base64,(.+)$/i);
+  if (mData) {
+    const mime = mData[1] || fallbackMime;
+    const raw  = mData[2] || '';
+    const clean = fixBase64ForGAS(raw);
     return {
-      data: s,                  // GAS buildAttachments_ acepta dataURL
+      data: `data:${mime};base64,${clean}`,
       filename: 'qr.png',
       inline: true,
       cid: 'qrReserva',
-      mimeType: fallbackMime
+      mimeType: mime
     };
   }
 
-  // Caso 3: Base64 “pelón” → lo envolvemos como dataURL válido
-  // Limpia espacios, saltos de línea y posibles URL-encodes
-  const clean = s.replace(/\s+/g,'').replace(/%2B/gi, '+').replace(/%2F/gi,'/').replace(/%3D/gi,'=');
-  if (/^[A-Za-z0-9+/=]+$/.test(clean)) {
+  // 3) Si es base64 “pelón” (a veces llega URL-encoded)
+  const maybe = decodeURIComponentSafe(s).replace(/\s+/g,'');
+  if (/^[A-Za-z0-9+/=]+$/.test(maybe)) {
+    const clean = fixBase64ForGAS(maybe);
     return {
       data: `data:${fallbackMime};base64,${clean}`,
       filename: 'qr.png',
@@ -109,10 +143,13 @@ function normalizeQrAttachment(qr, fallbackMime = 'image/png') {
     };
   }
 
-  // Nada válido
+  // 4) Nada válido
   return null;
 }
 
+/* =========================
+   Envío principal
+========================= */
 async function enviarCorreoTransporte(datos){
   try{
     if (!GAS_URL || !/^https:\/\/script\.google\.com\/macros\/s\//.test(GAS_URL)) {
@@ -124,10 +161,14 @@ async function enviarCorreoTransporte(datos){
     const img0 = sanitizeUrl(datos.imagen);
     const imgUrl = img0 ? forceJpgIfWix(img0) : '';
 
-    // ⬇️ QR robusto
-    const qrAttachment = normalizeQrAttachment(datos.qr, 'image/png');
-    if (EMAIL_DEBUG) {
-      DBG('QR adjunto valido:', !!qrAttachment, qrAttachment && (qrAttachment.url ? 'url' : 'data'));
+    // ⬇️ QR robusto (soporta URL / dataURL / base64)
+    let qrAttachment = null;
+    try {
+      qrAttachment = normalizeQrAttachment(datos.qr, 'image/png');
+    } catch (e) {
+      // Si viene muy corrupto, no detengas todo: simplemente no adjuntes QR
+      if (EMAIL_DEBUG) DBG('QR inválido, no se adjunta:', e && e.message);
+      qrAttachment = null;
     }
 
     const tripType = traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje;
@@ -169,7 +210,7 @@ async function enviarCorreoTransporte(datos){
               ${p('Folio', datos.folio)}
               ${!esShuttle ? p('Transport', datos.tipo_transporte) : ''}
               ${!esShuttle ? p('Capacity', datos.capacidad) : ''}
-              ${p('Trip Type', traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje)}
+              ${p('Trip Type', tripType)}
               ${p('Total', `$${safeToFixed(datos.total_pago)} USD`)}
             </td>
           </tr>
@@ -212,13 +253,13 @@ async function enviarCorreoTransporte(datos){
         ${datos.hora_llegada ? p('Time', formatoHora12(datos.hora_llegada)) : ''}
         ${datos.aerolinea_llegada ? p('Airline', datos.aerolinea_llegada) : ''}
         ${datos.vuelo_llegada ? p('Flight', datos.vuelo_llegada) : ''}
-        ${p('Trip Type', traduccionTripType[datos.tipo_viaje] || datos.tipo_viaje)}
+        ${p('Trip Type', tripType)}
         ${p('Total', `$${safeToFixed(datos.total_pago)} USD`)}
         ${nota && nota.trim() !== '' ? p('Note', nota) : ''}
       `.trim();
     }
 
-    // Imagen principal
+    // Imagen principal (igual)
     const imagenHTML = imgUrl ? `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:10px;border-collapse:collapse;">
         <tr>
@@ -230,7 +271,7 @@ async function enviarCorreoTransporte(datos){
       </table>
     ` : '';
 
-    // QR debajo de la imagen, centrado, 180px
+    // QR debajo de la imagen, centrado, 180px (solo si hay adjunto válido)
     const qrHTML = qrAttachment ? `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:20px;border-collapse:collapse;">
         <tr>
@@ -268,7 +309,7 @@ async function enviarCorreoTransporte(datos){
       </div>
     `.trim();
 
-    // Wrapper 600px centrado
+    // Wrapper 600px centrado (idéntico a tu estándar)
     const mensajeHTML = `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
         <tr>
@@ -294,7 +335,7 @@ async function enviarCorreoTransporte(datos){
       attachments.push({ url: imgUrl, filename: 'transporte.jpg', inline: true, cid: 'imagenTransporte' });
     }
     if (qrAttachment) {
-      attachments.push(qrAttachment);
+      attachments.push(qrAttachment); // { url|data, filename, inline:true, cid:'qrReserva', mimeType }
     }
 
     const payload = {
@@ -308,7 +349,7 @@ async function enviarCorreoTransporte(datos){
       attachments
     };
 
-    DBG('POST → GAS', { to: datos.correo_cliente, subject: payload.subject });
+    DBG('POST → GAS', { to: datos.correo_cliente, subject: payload.subject, hasQR: !!qrAttachment });
 
     if (MAIL_FAST_MODE) {
       postJSON(GAS_URL, payload, GAS_TIMEOUT_MS).catch(err => console.error('Error envío async GAS:', err.message));
