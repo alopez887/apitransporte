@@ -5,6 +5,7 @@ import pool from './conexion.js';
 import cors from 'cors';
 import pkg from 'pg';
 import dotenv from 'dotenv';
+
 import guardarTransporte from './guardarTransporte.js';
 import guardarRoundtrip from './guardarRoundtrip.js';
 import { generarQRTransporte } from './generarQRTransporte.js';
@@ -29,19 +30,20 @@ import ventasComparativa from './ventasComparativa.js';
 import exportarCsvReportesIngresos from './exportarCsvReportesIngresos.js';
 import exportarCsvVentasComparativa from './exportarCsvVentasComparativa.js';
 
-// ⬇️ NUEVO: import como función registradora
+// ⬇️ ÚNICO import de canvasCache (arregla el error de "ya fue declarado")
 import registerCanvasCache from './canvasCache.js';
 
 dotenv.config();
 const { Pool } = pkg;
 const app = express();
 
-// ⬇️ SUBE EL LÍMITE para dataURL grandes
+// ⬇️ Límite alto para data URLs (QR, etc.)
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 const PORT = process.env.PORT;
 
+// Log simple de una ruta específica (debug)
 app.use((req, res, next) => {
   if (req.url.includes('/api/obtener-reservas')) {
     console.log('🚨 Llamada a /api/obtener-reservas');
@@ -59,9 +61,11 @@ app.use(cors({
 
 app.locals.pool = pool;
 
+// ---------- Rutas principales ----------
 app.post('/reservar-transporte', guardarTransporte);
 app.post('/guardarroundtrip', guardarRoundtrip);
 
+// Zonas por hotel
 app.get('/zona-hotel', async (req, res) => {
   const { hotel } = req.query;
   if (!hotel) return res.status(400).json({ error: 'El parametro "hotel" es requerido' });
@@ -82,6 +86,7 @@ app.get('/zona-hotel', async (req, res) => {
   }
 });
 
+// Tarifa por transporte/zona/pasajeros (simple o con campo de descuento)
 app.get('/tarifa', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
   if (!transporte || !zona || !pasajeros) {
@@ -97,16 +102,16 @@ app.get('/tarifa', async (req, res) => {
         SELECT ${campo} AS precio
         FROM tarifas_transportacion
         WHERE UPPER(tipo_transporte) = UPPER($1)
-        AND zona_id = $2
-        AND rango_pasajeros = $3
+          AND zona_id = $2
+          AND rango_pasajeros = $3
       `;
     } else {
       query = `
         SELECT precio_original, precio_descuento_13 AS precio_descuento
         FROM tarifas_transportacion
         WHERE UPPER(tipo_transporte) = UPPER($1)
-        AND zona_id = $2
-        AND rango_pasajeros = $3
+          AND zona_id = $2
+          AND rango_pasajeros = $3
       `;
     }
 
@@ -122,6 +127,7 @@ app.get('/tarifa', async (req, res) => {
   }
 });
 
+// Tarifa shuttle
 app.get('/tarifa-shuttle', async (req, res) => {
   const { zona, pasajeros } = req.query;
   if (!zona || !pasajeros) {
@@ -136,8 +142,8 @@ app.get('/tarifa-shuttle', async (req, res) => {
         precio_descuento_15
       FROM tarifas_transportacion
       WHERE UPPER(tipo_transporte) = 'SHUTTLE'
-      AND zona_id = $1
-      AND rango_pasajeros = $2
+        AND zona_id = $1
+        AND rango_pasajeros = $2
     `, [zona, pasajeros]);
 
     if (result.rows.length > 0) {
@@ -151,6 +157,7 @@ app.get('/tarifa-shuttle', async (req, res) => {
   }
 });
 
+// Verificar código de descuento (simple)
 app.get('/api/verificar-codigo', async (req, res) => {
   const { codigo, transporte, zona } = req.query;
   if (!codigo || !transporte || !zona) {
@@ -188,6 +195,7 @@ app.get('/api/verificar-codigo', async (req, res) => {
   }
 });
 
+// Verificar código de descuento (redondo)
 app.get('/api/verificar-codigo-redondo', async (req, res) => {
   const { codigo, transporte, zona, pasajeros } = req.query;
   if (!codigo || !transporte || !zona || !pasajeros) {
@@ -238,6 +246,7 @@ app.get('/api/verificar-codigo-redondo', async (req, res) => {
   }
 });
 
+// Catálogos
 app.get('/obtener-hoteles', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -291,6 +300,7 @@ app.get('/hoteles-excluidos', async (req, res) => {
   }
 });
 
+// Tarifa redondo (con campo específico)
 app.get('/tarifa-redondo', async (req, res) => {
   const { transporte, zona, pasajeros, campo } = req.query;
   if (!transporte || !zona || !pasajeros || !campo) {
@@ -302,8 +312,8 @@ app.get('/tarifa-redondo', async (req, res) => {
       SELECT ${campo} AS precio
       FROM tarifas_transportacion
       WHERE UPPER(tipo_transporte) = UPPER($1)
-      AND zona_id = $2
-      AND rango_pasajeros = $3
+        AND zona_id = $2
+        AND rango_pasajeros = $3
     `;
     const result = await pool.query(query, [transporte, zona, pasajeros]);
 
@@ -318,6 +328,7 @@ app.get('/tarifa-redondo', async (req, res) => {
   }
 });
 
+// Auth y endpoints de operaciones
 app.post('/api/login-usuario', loginUsuario);
 app.get('/api/obtener-reserva-transporte', obtenerReservaTransporte);
 app.post('/api/actualizar-datos-transporte', actualizarDatosTransporte);
@@ -339,10 +350,10 @@ app.get('/api/ventas-comparativa', ventasComparativa);
 app.get('/api/reportes-ingresos-csv', exportarCsvReportesIngresos);
 app.get('/api/ventas-comparativa-csv', exportarCsvVentasComparativa);
 
-// ⬇️ NUEVO: registra rutas de cache/descarga PNG
-import registerCanvasCache from './canvasCache.js';
+// ⬇️ Registra rutas de cache/descarga PNG (SOLO la llamada, sin re-import)
 registerCanvasCache(app);
 
+// ---------- Arranque ----------
 app.listen(PORT, () => {
   console.log(`API de transportacion corriendo en el puerto ${PORT}`);
 });
