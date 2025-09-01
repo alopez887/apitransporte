@@ -1,9 +1,9 @@
-// correosTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP) **MISM0 FLUJO QUE EL VIEJO**
+// correosTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP) + QR inline (cid: qrReserva)
 import dotenv from 'dotenv';
 dotenv.config();
 
 const GAS_URL = process.env.GAS_URL;                 // https://script.google.com/macros/s/XXXX/exec
-const GAS_TOKEN = process.env.GAS_TOKEN;             // SECRET en Script Properties (llave "SECRET")
+const GAS_TOKEN = process.env.GAS_TOKEN;             // SECRET en Script Properties
 const GAS_TIMEOUT_MS = Number(process.env.GAS_TIMEOUT_MS || 15000);
 const MAIL_FAST_MODE = /^(1|true|yes)$/i.test(process.env.MAIL_FAST_MODE || '');
 const EMAIL_DEBUG = /^(1|true|yes)$/i.test(process.env.EMAIL_DEBUG || '');
@@ -11,7 +11,7 @@ const EMAIL_FROMNAME = process.env.EMAIL_FROMNAME || 'Cabo Travel Solutions';
 const EMAIL_BCC = process.env.EMAIL_BCC || 'nkmsistemas@gmail.com';
 const DBG = (...a) => { if (EMAIL_DEBUG) console.log('[MAIL]', ...a); };
 
-// ---------- Utilidades (tus mismas) ----------
+// ---------- Utilidades ----------
 function sanitizeUrl(u = '') {
   try {
     let s = String(u || '').trim();
@@ -21,6 +21,7 @@ function sanitizeUrl(u = '') {
     return s;
   } catch { return ''; }
 }
+// Forzar JPG en Wix para evitar WEBP en clientes (Outlook, etc.)
 function forceJpgIfWix(url='') {
   try {
     const u = new URL(url);
@@ -32,13 +33,14 @@ function forceJpgIfWix(url='') {
   } catch {}
   return url;
 }
+// POST JSON con timeout
 async function postJSON(url, body, timeoutMs) {
   const ctrl = new AbortController();
   const id = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      headers: { 'Content-Type': 'application/json; charset=utf-8' }, // 👈 fuerza UTF-8
       body: JSON.stringify(body),
       signal: ctrl.signal
     });
@@ -66,20 +68,43 @@ const politicasHTML = `
   </div>
 `;
 
-// === Igual que antes: SOLO acepta QR si viene como data URL ===
-function buildQrAttachment(qr) {
-  if (!qr || typeof qr !== 'string') return null;
-  const s = qr.trim();
-  if (!/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(s)) return null; // misma validación que tu viejo
+// ---------- QR: normalización y adjunto (igual que en Tours) ----------
+/**
+ * Devuelve solo BASE64 canónico (sin encabezado data URL, sin espacios).
+ * Acepta DataURL o base64 “pelón”.
+ */
+function normalizeQrBase64(qr) {
+  if (!qr) return '';
+  let s = String(qr).trim();
+  // Si viene como data URL, corta el prefijo:
+  if (s.startsWith('data:')) {
+    const idx = s.indexOf(',');
+    if (idx >= 0) s = s.slice(idx + 1);
+  }
+  // Limpia espacios/saltos (y caracteres fuera del alfabeto base64):
+  s = s.replace(/\s+/g,'').replace(/[^A-Za-z0-9+/=]/g,'');
+  // Padding (por si acaso):
+  const mod = s.length % 4;
+  if (mod === 1) return '';     // inválido
+  if (mod === 2) s += '==';
+  else if (mod === 3) s += '=';
+  return s;
+}
+function buildQrAttachmentTransporte(qr) {
+  const base64 = normalizeQrBase64(qr);
+  if (!base64) return null;
   return {
-    data: s,                      // GAS: buildAttachments_ soporta dataURL directo
+    data: base64,               // 👈 SOLO base64 (sin "data:image/...;base64,")
     filename: 'qr.png',
     inline: true,
-    cid: 'qrReserva',             // mismo CID que tu HTML
+    cid: 'qrReserva',           // 👈 CID que usa el HTML
     mimeType: 'image/png'
   };
 }
 
+// ===============================================================
+//                       ENVÍO PRINCIPAL
+// ===============================================================
 async function enviarCorreoTransporte(datos){
   try{
     if (!GAS_URL || !/^https:\/\/script\.google\.com\/macros\/s\//.test(GAS_URL)) {
@@ -95,7 +120,7 @@ async function enviarCorreoTransporte(datos){
     const nota = datos.nota || datos.cliente?.nota || '';
     const esShuttle = datos.tipo_viaje === 'Shuttle';
 
-    // Header (h2 izq + logo der) — wrapper 600px se arma luego
+    // Header (h2 izq + logo der) — 600px wrapper se arma más abajo
     const headerHTML = `
       <table style="width:100%;margin-bottom:10px;border-collapse:collapse;" role="presentation" cellspacing="0" cellpadding="0">
         <tr>
@@ -180,6 +205,7 @@ async function enviarCorreoTransporte(datos){
     }
 
     const imagenHTML = imgUrl ? `
+      <!-- Imagen principal -->
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:10px;border-collapse:collapse;">
         <tr>
           <td>
@@ -190,8 +216,8 @@ async function enviarCorreoTransporte(datos){
       </table>
     ` : '';
 
-    // === EXACTO como el viejo: solo mostramos QR si hay adjunto (data URL) ===
-    const qrAttachment = buildQrAttachment(datos.qr);
+    // === QR debajo de la imagen, centrado, 180px ===
+    const qrAttachment = buildQrAttachmentTransporte(datos.qr);
     const qrHTML = qrAttachment ? `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:20px;border-collapse:collapse;">
         <tr>
@@ -209,6 +235,7 @@ async function enviarCorreoTransporte(datos){
         <span style="color:#333;"> Please confirm your reservation at least 24 hours in advance to avoid any inconvenience.</span>
       </div>
     `;
+
     const destinatarioHTML = `
       <p style="margin-top:14px;font-size:14px;color:#555;line-height:1.3;font-family:Arial,Helvetica,sans-serif;">
         &#128231; This confirmation was sent to:
@@ -222,12 +249,13 @@ async function enviarCorreoTransporte(datos){
         ${cuerpoHTML}
         ${imagenHTML}
         ${qrHTML}
+        ${recomendacionesHTML}
         ${destinatarioHTML}
         ${politicasHTML}
-        ${recomendacionesHTML}
       </div>
     `.trim();
 
+    // Wrapper 600px centrado (tabla), borde 2px, radius 10, padding 24/26/32 (calcado)
     const mensajeHTML = `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
         <tr>
@@ -245,7 +273,7 @@ async function enviarCorreoTransporte(datos){
       </table>
     `.trim();
 
-    // ---------- Adjuntos (inline por CID) para GAS ----------
+    // Adjuntos (inline por CID) — GAS los descarga por URL o decodifica base64 de data
     const attachments = [
       { url: logoUrl, filename: 'logo.png', inline: true, cid: 'logoEmpresa' }
     ];
@@ -253,7 +281,7 @@ async function enviarCorreoTransporte(datos){
       attachments.push({ url: imgUrl, filename: 'transporte.jpg', inline: true, cid: 'imagenTransporte' });
     }
     if (qrAttachment) {
-      attachments.push(qrAttachment); // { data: dataURL, inline:true, cid:'qrReserva' }
+      attachments.push(qrAttachment);
     }
 
     const payload = {
@@ -273,13 +301,14 @@ async function enviarCorreoTransporte(datos){
       postJSON(GAS_URL, payload, GAS_TIMEOUT_MS).catch(err => console.error('Error envío async GAS:', err.message));
       return true;
     }
+
     const { status, json } = await postJSON(GAS_URL, payload, GAS_TIMEOUT_MS);
     if (!json || json.ok !== true) {
       throw new Error(`Error al enviar correo: ${(json && json.error) || status}`);
     }
+
     DBG('✔ GAS ok:', json);
     return true;
-
   } catch (err) {
     console.error('❌ Error al enviar correo de transporte (GAS):', err.message);
     throw err;
