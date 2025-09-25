@@ -29,7 +29,6 @@ async function logDistribucion(desde, hasta) {
 }
 
 // GET /api/buscarreservas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&servicio=transporte|actividades|ambos
-// Nota: 'transporte' en el query del front se mapea aquí a tipo_servicio='Transportacion' en la BD.
 export default async function buscarReservas(req, res) {
   const t0 = Date.now();
   const hoy = hoyYMD();
@@ -73,13 +72,24 @@ export default async function buscarReservas(req, res) {
           nombre_cliente,
           fecha_llegada,
           fecha_salida,
+          -- Hotel unificado según tipo_viaje
+          CASE
+            WHEN LOWER(TRIM(tipo_viaje)) = 'llegada'
+              THEN COALESCE(NULLIF(hotel_llegada,''), '')
+            WHEN LOWER(TRIM(tipo_viaje)) = 'salida'
+              THEN COALESCE(NULLIF(hotel_salida,''), '')
+            WHEN LOWER(TRIM(tipo_viaje)) = 'redondo'
+              THEN COALESCE(NULLIF(hotel_salida,''), NULLIF(hotel_llegada,''), '')
+            ELSE COALESCE(NULLIF(hotel_salida,''), NULLIF(hotel_llegada,''), '')
+          END AS hotel,
+          ''::text AS nombre_tour,             -- vacío para transporte
           cantidad_pasajeros
         FROM reservaciones
         WHERE fecha::date BETWEEN $1 AND $2
           AND (
             tipo_servicio IS NULL
             OR TRIM(tipo_servicio) = ''
-            OR LOWER(TRIM(tipo_servicio)) IN ('transportacion','transporte') -- 'Transportacion' es el valor real
+            OR LOWER(TRIM(tipo_servicio)) IN ('transportacion','transporte')
           )
         ORDER BY fecha DESC, folio DESC
       `;
@@ -95,6 +105,16 @@ export default async function buscarReservas(req, res) {
             nombre_cliente,
             fecha_llegada,
             fecha_salida,
+            CASE
+              WHEN LOWER(TRIM(tipo_viaje)) = 'llegada'
+                THEN COALESCE(NULLIF(hotel_llegada,''), '')
+              WHEN LOWER(TRIM(tipo_viaje)) = 'salida'
+                THEN COALESCE(NULLIF(hotel_salida,''), '')
+              WHEN LOWER(TRIM(tipo_viaje)) = 'redondo'
+                THEN COALESCE(NULLIF(hotel_salida,''), NULLIF(hotel_llegada,''), '')
+              ELSE COALESCE(NULLIF(hotel_salida,''), NULLIF(hotel_llegada,''), '')
+            END AS hotel,
+            ''::text AS nombre_tour,
             cantidad_pasajeros
           FROM reservaciones
           WHERE fecha::date BETWEEN $1 AND $2
@@ -113,7 +133,19 @@ export default async function buscarReservas(req, res) {
     // === AMBOS ===
     if (svc === "ambos") {
       const sqlT = `
-        SELECT folio, tipo_viaje, nombre_cliente, fecha_llegada, fecha_salida, cantidad_pasajeros
+        SELECT
+          folio, tipo_viaje, nombre_cliente, fecha_llegada, fecha_salida,
+          CASE
+            WHEN LOWER(TRIM(tipo_viaje)) = 'llegada'
+              THEN COALESCE(NULLIF(hotel_llegada,''), '')
+            WHEN LOWER(TRIM(tipo_viaje)) = 'salida'
+              THEN COALESCE(NULLIF(hotel_salida,''), '')
+            WHEN LOWER(TRIM(tipo_viaje)) = 'redondo'
+              THEN COALESCE(NULLIF(hotel_salida,''), NULLIF(hotel_llegada,''), '')
+            ELSE COALESCE(NULLIF(hotel_salida,''), NULLIF(hotel_llegada,''), '')
+          END AS hotel,
+          ''::text AS nombre_tour,
+          cantidad_pasajeros
         FROM reservaciones
         WHERE fecha::date BETWEEN $1 AND $2
           AND (
