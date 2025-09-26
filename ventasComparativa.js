@@ -1,9 +1,11 @@
+// ventasComparativa.js
 import pool from './conexion.js';
 
-/* === SIEMPRE usar 'fecha' (registro de venta) === */
-const FECHA_COL = 'fecha';
+/* =========================
+   CONFIG
+   ========================= */
 
-/* Limpieza robusta de importe (si viene texto con $ o comas) */
+// Limpieza robusta de importe (acepta $, comas, espacios, etc.)
 const COL_IMPORTE = (col = 'total_pago') => `
   COALESCE(
     NULLIF(
@@ -14,75 +16,92 @@ const COL_IMPORTE = (col = 'total_pago') => `
   )
 `;
 
-/* YYYY-MM-DD sin líos de zona horaria */
-function ymd(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-/* Rango mes actual vs pasado (por 'fecha') */
-function rangoMesActualPasado() {
-  const now = new Date();
-  const desdeAct = new Date(now.getFullYear(), now.getMonth(), 1);
-  const hastaAct = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const desdeAnt = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const hastaAnt = new Date(now.getFullYear(), now.getMonth(), 0);
-  return {
-    actual: { desde: ymd(desdeAct), hasta: ymd(hastaAct) },
-    pasado: { desde: ymd(desdeAnt), hasta: ymd(hastaAnt) },
-  };
-}
-
-/* Filtro por servicio (case-insensitive)
-   - actividades: ILIKE 'Actividad%'
-   - tours:       ILIKE 'Tours%'
-   - transporte:  todo lo que NO sea Actividad% NI Tours% (incluye vacío/null)
-   - ambos:       sin filtro
-*/
+// Filtrado por servicio basado SOLO en tipo_servicio (insensible a mayúsculas)
 function filtroServicioSQL(servicio) {
+  // normalizamos a minúsculas y quitamos espacios
   const col = "LOWER(COALESCE(TRIM(tipo_servicio), ''))";
-  switch (servicio) {
-    case 'actividades': return `AND ${col} LIKE 'actividad%'`;
-    case 'tours':       return `AND ${col} LIKE 'tours%'`;
-    case 'transporte':  return `AND (${col} = '' OR (${col} NOT LIKE 'actividad%' AND ${col} NOT LIKE 'tours%'))`;
+
+  switch ((servicio || '').toLowerCase()) {
+    case 'actividades':
+      // actividad, actividades, actividad - x
+      return `AND ${col} ~ '^actividad'`;
+
+    case 'tours':
+      // tour, tours, tour privado, excursion / excursión…
+      return `AND (${col} ~ '^tours?' OR ${col} ~ '^excurs')`;
+
+    case 'transporte':
+      // todo lo que NO sea actividad NI tour/excursión (incluye vacío/null)
+      return `AND NOT(${col} ~ '^actividad' OR ${col} ~ '^tours?' OR ${col} ~ '^excurs')`;
+
     case 'ambos':
-    default:            return '';
+    default:
+      // sin filtro (todas las ventas)
+      return '';
   }
 }
 
+// Rango (mes actual y mes pasado) en formato YYYY-MM-DD
+function rangoMesActualPasado() {
+  const now = new Date();
+  const dActDesde = new Date(now.getFullYear(), now.getMonth(), 1);
+  const dActHasta = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const dAntDesde = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const dAntHasta = new Date(now.getFullYear(), now.getMonth(), 0);
+
+  const fmt = d => d.toISOString().slice(0, 10);
+  return {
+    actual: { desde: fmt(dActDesde), hasta: fmt(dActHasta) },
+    pasado: { desde: fmt(dAntDesde), hasta: fmt(dAntHasta) },
+  };
+}
+
+/* =========================
+   HANDLER
+   ========================= */
+
 export default async function ventasComparativa(req, res) {
   try {
-    const servicioRaw = String(req.query.servicio || 'transporte').toLowerCase();
-    const servicio = ['transporte','actividades','tours','ambos'].includes(servicioRaw)
-      ? servicioRaw
-      : 'transporte';
+    const servicio = String(req.query.servicio || 'transporte').toLowerCase();
+
+    // *** SIEMPRE por 'fecha' ***
+    const baseCol = 'fecha';
 
     const { actual, pasado } = rangoMesActualPasado();
-    const filtro = filtroServicioSQL(servicio);
+    const filtroServicio = filtroServicioSQL(servicio);
 
-    const q = `
-      SELECT ${FECHA_COL}::date AS dia,
+    // misma consulta para ambos rangos
+    const sql = `
+      SELECT ${baseCol}::date AS dia,
              SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
       FROM reservaciones
-      WHERE ${FECHA_COL}::date BETWEEN $1 AND $2
-        ${filtro}
+      WHERE ${baseCol}::date BETWEEN $1 AND $2
+        ${filtroServicio}
       GROUP BY 1
       ORDER BY 1
     `;
 
-    const [act, ant] = await Promise.all([
-      pool.query(q, [actual.desde, actual.hasta]),
-      pool.query(q, [pasado.desde, pasado.hasta]),
+    const [cur, prev] = await Promise.all([
+      pool.query(sql, [actual.desde, actual.hasta]),
+      pool.query(sql, [pasado.desde, pasado.hasta]),
     ]);
 
     const sum = rows => rows.reduce((acc, r) => acc + Number(r.total || 0), 0);
 
     res.json({
       ok: true,
-      rango_actual: { desde: actual.desde, hasta: actual.hasta, dias: act.rows, total: sum(act.rows) },
-      rango_pasado: { desde: pasado.desde, hasta: pasado.hasta, dias: ant.rows, total: sum(ant.rows) },
+      rango_actual: {
+        desde: actual.desde,
+        hasta: actual.hasta,
+        dias: cur.rows,           // [{ dia: 'YYYY-MM-DD', total: n }]
+        total: Number(sum(cur.rows).toFixed(2)),
+      },
+      rango_pasado: {
+        desde: pasado.desde,
+        hasta: pasado.hasta,
+        dias: prev.rows,
+        total: Number(sum(prev.rows).toFixed(2)),
+      },
     });
   } catch (err) {
     console.error('❌ /api/ventas-comparativa:', err);
