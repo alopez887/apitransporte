@@ -1,6 +1,6 @@
 import pool from './conexion.js';
 
-// === columnas de fecha según base (solo transporte usa base) ===
+/* ====== columnas de fecha según base (solo transporte usa base) ====== */
 function fechaExpr(base) {
   switch ((base || 'fecha').toLowerCase()) {
     case 'llegada': return 'fecha_llegada';
@@ -9,7 +9,7 @@ function fechaExpr(base) {
   }
 }
 
-// Limpieza robusta de importe (por si viene como texto con $ o comas)
+/* ====== limpieza robusta de importe ====== */
 const COL_IMPORTE = (col = 'total_pago') => `
   COALESCE(
     NULLIF(
@@ -20,40 +20,51 @@ const COL_IMPORTE = (col = 'total_pago') => `
   )
 `;
 
-// Rango (mes actual y mes pasado)
+/* ====== helpers de fecha SIN UTC (evitar corrimientos) ====== */
+function ymdLocal(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 function rangoMesActualPasado() {
   const now = new Date();
+  // límites del mes en HORA LOCAL (no UTC)
   const desdeAct = new Date(now.getFullYear(), now.getMonth(), 1);
   const hastaAct = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const desdeAnt = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const hastaAnt = new Date(now.getFullYear(), now.getMonth(), 0);
-  const fmt = d => d.toISOString().slice(0, 10);
   return {
-    actual: { desde: fmt(desdeAct), hasta: fmt(hastaAct) },
-    pasado: { desde: fmt(desdeAnt), hasta: fmt(hastaAnt) },
+    actual: { desde: ymdLocal(desdeAct), hasta: ymdLocal(hastaAct) },
+    pasado: { desde: ymdLocal(desdeAnt), hasta: ymdLocal(hastaAnt) },
   };
 }
 
-// WHERE extra según servicio
+/* ====== WHERE extra según servicio (separando Tours) ====== */
 function filtroServicioSQL(servicio) {
-  const col = "COALESCE(TRIM(tipo_servicio), '')";
-  if (servicio === 'actividades') {
-    // Solo registros cuyo tipo_servicio empiece con 'Actividad'
-    return `AND ${col} ILIKE 'Actividad%'`;
+  const col = "LOWER(COALESCE(TRIM(tipo_servicio), ''))";
+  switch ((servicio || '').toLowerCase()) {
+    case 'actividades':
+      // Solo “Actividad…”
+      return `AND ${col} LIKE 'actividad%'`;
+    case 'tours':
+      // Solo “Tour…” / “Tours…”
+      return `AND ${col} LIKE 'tour%'`;
+    case 'transporte':
+      // Transporte explícito o legacy vacío/nulo
+      return `AND ( ${col} = '' OR ${col} LIKE 'transporte%' )`;
+    // 'ambos' o cualquier otro → sin filtro (incluye todo)
+    default:
+      return '';
   }
-  if (servicio === 'transporte') {
-    // Todo lo que NO sea Actividad (incluye null/vacío)
-    return `AND (${col} = '' OR ${col} NOT ILIKE 'Actividad%')`;
-  }
-  // ambos: sin filtro
-  return '';
 }
 
 export default async function ventasComparativa(req, res) {
   try {
     const servicio = String(req.query.servicio || 'transporte').toLowerCase();
-    // En actividades la base se ignora y usamos 'fecha'
-    const baseCol = (servicio === 'actividades')
+
+    // En actividades/tours la base se ignora y usamos 'fecha'
+    const baseCol = (servicio === 'actividades' || servicio === 'tours')
       ? 'fecha'
       : fechaExpr(req.query.base);
 
