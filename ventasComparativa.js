@@ -1,11 +1,7 @@
 // ventasComparativa.js
 import pool from './conexion.js';
 
-/* =========================
-   CONFIG
-   ========================= */
-
-// Limpieza robusta de importe (acepta $, comas, espacios, etc.)
+/* ===== Importe robusto ===== */
 const COL_IMPORTE = (col = 'total_pago') => `
   COALESCE(
     NULLIF(
@@ -16,67 +12,89 @@ const COL_IMPORTE = (col = 'total_pago') => `
   )
 `;
 
-// Filtrado por servicio basado SOLO en tipo_servicio (insensible a mayúsculas)
+/* ===== filtros por servicio ===== */
 function filtroServicioSQL(servicio) {
-  // normalizamos a minúsculas y quitamos espacios
   const col = "LOWER(COALESCE(TRIM(tipo_servicio), ''))";
-
   switch ((servicio || '').toLowerCase()) {
     case 'actividades':
-      // actividad, actividades, actividad - x
       return `AND ${col} ~ '^actividad'`;
-
     case 'tours':
-      // tour, tours, tour privado, excursion / excursión…
+      // por si algún tour se guarda como “tour” o “excursión”
       return `AND (${col} ~ '^tours?' OR ${col} ~ '^excurs')`;
-
     case 'transporte':
-      // todo lo que NO sea actividad NI tour/excursión (incluye vacío/null)
+      // todo lo que NO es actividad ni tour
       return `AND NOT(${col} ~ '^actividad' OR ${col} ~ '^tours?' OR ${col} ~ '^excurs')`;
-
     case 'ambos':
     default:
-      // sin filtro (todas las ventas)
       return '';
   }
 }
 
-// Rango (mes actual y mes pasado) en formato YYYY-MM-DD
+/* ===== filtro por tipo de viaje (solo transporte) ===== */
+function filtroTipoViajeSQL(servicio, viaje) {
+  if ((servicio || '').toLowerCase() !== 'transporte') return '';
+  const v = (viaje || 'todos').toLowerCase();
+
+  // Usamos solo tipo_viaje. Para shuttle contemplamos también tipo_transporte por si acaso.
+  const tv = "LOWER(COALESCE(TRIM(tipo_viaje), ''))";
+  const tt = "LOWER(COALESCE(TRIM(tipo_transporte), ''))";
+
+  switch (v) {
+    case 'llegada':
+      return `AND (${tv} = 'llegada' OR ${tv} = 'arrival')`;
+    case 'salida':
+      return `AND (${tv} = 'salida' OR ${tv} = 'departure')`;
+    case 'redondo':
+      // redondo, roundtrip, etc.
+      return `AND (${tv} ~ '^redon' OR ${tv} ~ '^round')`;
+    case 'shuttle':
+      return `AND (${tv} = 'shuttle' OR ${tt} ~ '^shuttle')`;
+    case 'todos':
+    default:
+      return '';
+  }
+}
+
+/* ===== rango mes actual y pasado ===== */
 function rangoMesActualPasado() {
   const now = new Date();
-  const dActDesde = new Date(now.getFullYear(), now.getMonth(), 1);
-  const dActHasta = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const dAntDesde = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const dAntHasta = new Date(now.getFullYear(), now.getMonth(), 0);
-
+  const a1 = new Date(now.getFullYear(), now.getMonth(), 1);
+  const a2 = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const p1 = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const p2 = new Date(now.getFullYear(), now.getMonth(), 0);
   const fmt = d => d.toISOString().slice(0, 10);
   return {
-    actual: { desde: fmt(dActDesde), hasta: fmt(dActHasta) },
-    pasado: { desde: fmt(dAntDesde), hasta: fmt(dAntHasta) },
+    actual: { desde: fmt(a1), hasta: fmt(a2) },
+    pasado: { desde: fmt(p1), hasta: fmt(p2) },
   };
 }
 
-/* =========================
-   HANDLER
-   ========================= */
-
+/* ===== Handler ===== */
 export default async function ventasComparativa(req, res) {
   try {
     const servicio = String(req.query.servicio || 'transporte').toLowerCase();
 
-    // *** SIEMPRE por 'fecha' ***
+    // SIEMPRE por 'fecha' (ventas por fecha de registro)
     const baseCol = 'fecha';
 
-    const { actual, pasado } = rangoMesActualPasado();
-    const filtroServicio = filtroServicioSQL(servicio);
+    // Back-compat: si no viene ?viaje=... pero el front manda base=llegada/salida/redondo/shuttle,
+    // lo tomamos como "viaje" sin romper nada.
+    const baseParam = String(req.query.base || '').toLowerCase();
+    const viajeParam = String(req.query.viaje || '').toLowerCase();
+    const viaje = viajeParam || (['llegada', 'salida', 'redondo', 'shuttle'].includes(baseParam) ? baseParam : 'todos');
 
-    // misma consulta para ambos rangos
+    const { actual, pasado } = rangoMesActualPasado();
+
+    const filtroServicio = filtroServicioSQL(servicio);
+    const filtroViaje    = filtroTipoViajeSQL(servicio, viaje);
+
     const sql = `
       SELECT ${baseCol}::date AS dia,
              SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
       FROM reservaciones
       WHERE ${baseCol}::date BETWEEN $1 AND $2
         ${filtroServicio}
+        ${filtroViaje}
       GROUP BY 1
       ORDER BY 1
     `;
@@ -93,7 +111,7 @@ export default async function ventasComparativa(req, res) {
       rango_actual: {
         desde: actual.desde,
         hasta: actual.hasta,
-        dias: cur.rows,           // [{ dia: 'YYYY-MM-DD', total: n }]
+        dias: cur.rows, // [{ dia, total }]
         total: Number(sum(cur.rows).toFixed(2)),
       },
       rango_pasado: {
@@ -102,6 +120,8 @@ export default async function ventasComparativa(req, res) {
         dias: prev.rows,
         total: Number(sum(prev.rows).toFixed(2)),
       },
+      // extra útil para depurar desde el front
+      meta: { servicio, viaje_usado: viaje }
     });
   } catch (err) {
     console.error('❌ /api/ventas-comparativa:', err);
