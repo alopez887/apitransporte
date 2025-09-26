@@ -1,6 +1,6 @@
 import pool from './conexion.js';
 
-// === columnas de fecha según base (solo transporte usa base) ===
+// ===== columna de fecha según base (solo TRANSPORTE respeta base) =====
 function fechaExpr(base) {
   switch ((base || 'fecha').toLowerCase()) {
     case 'llegada': return 'fecha_llegada';
@@ -9,7 +9,7 @@ function fechaExpr(base) {
   }
 }
 
-// Limpieza robusta de importe (por si viene como texto con $ o comas)
+// ===== limpieza robusta del importe (quita $, comas, espacios) =====
 const COL_IMPORTE = (col = 'total_pago') => `
   COALESCE(
     NULLIF(
@@ -20,42 +20,59 @@ const COL_IMPORTE = (col = 'total_pago') => `
   )
 `;
 
-// Rango (mes actual y mes pasado)
+// ===== formateo YYYY-MM-DD sin UTC shift =====
+function fmtYYYYMMDD(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// ===== rangos de mes actual y pasado (en horario local, sin UTC) =====
 function rangoMesActualPasado() {
-  const now = new Date();
+  const now = new Date(); // local
   const desdeAct = new Date(now.getFullYear(), now.getMonth(), 1);
   const hastaAct = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const desdeAnt = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const hastaAnt = new Date(now.getFullYear(), now.getMonth(), 0);
-  const fmt = d => d.toISOString().slice(0, 10);
   return {
-    actual: { desde: fmt(desdeAct), hasta: fmt(hastaAct) },
-    pasado: { desde: fmt(desdeAnt), hasta: fmt(hastaAnt) },
+    actual: { desde: fmtYYYYMMDD(desdeAct), hasta: fmtYYYYMMDD(hastaAct) },
+    pasado: { desde: fmtYYYYMMDD(desdeAnt), hasta: fmtYYYYMMDD(hastaAnt) },
   };
 }
 
-// WHERE extra según servicio
+// ===== filtro por servicio =====
+// - actividades:   tipo_servicio ILIKE 'Actividad%'
+// - transporte:    (vacío) O ILIKE 'Transporte%'
+// - tours:         ILIKE 'Tours%'
+// - ambos:         sin filtro
 function filtroServicioSQL(servicio) {
-  const col = "COALESCE(TRIM(tipo_servicio), '')";
-  if (servicio === 'actividades') {
-    // Solo registros cuyo tipo_servicio empiece con 'Actividad'
-    return `AND ${col} ILIKE 'Actividad%'`;
+  const col = "LOWER(COALESCE(TRIM(tipo_servicio), ''))";
+  switch (servicio) {
+    case 'actividades':
+      return `AND ${col} LIKE 'actividad%'`;
+    case 'transporte':
+      // tratamos vacío como transporte; EXCLUYE tours y actividades
+      return `AND (${col} = '' OR ${col} LIKE 'transporte%')`;
+    case 'tours':
+      return `AND ${col} LIKE 'tours%'`;
+    case 'ambos':
+    default:
+      return '';
   }
-  if (servicio === 'transporte') {
-    // Todo lo que NO sea Actividad (incluye null/vacío)
-    return `AND (${col} = '' OR ${col} NOT ILIKE 'Actividad%')`;
-  }
-  // ambos: sin filtro
-  return '';
 }
 
 export default async function ventasComparativa(req, res) {
   try {
-    const servicio = String(req.query.servicio || 'transporte').toLowerCase();
-    // En actividades la base se ignora y usamos 'fecha'
-    const baseCol = (servicio === 'actividades')
-      ? 'fecha'
-      : fechaExpr(req.query.base);
+    const servicioRaw = String(req.query.servicio || 'transporte').toLowerCase();
+    const servicio = ['transporte','actividades','tours','ambos'].includes(servicioRaw)
+      ? servicioRaw
+      : 'transporte';
+
+    // Solo TRANSPORTE respeta base; para A/Tours usamos 'fecha'
+    const baseCol = (servicio === 'transporte')
+      ? fechaExpr(req.query.base)
+      : 'fecha';
 
     const { actual, pasado } = rangoMesActualPasado();
     const filtro = filtroServicioSQL(servicio);
@@ -82,7 +99,7 @@ export default async function ventasComparativa(req, res) {
       rango_pasado: { desde: pasado.desde, hasta: pasado.hasta, dias: ant.rows, total: sum(ant.rows) },
     });
   } catch (err) {
-    console.error('❌ /api/ventas-comparativa:', err.message);
+    console.error('❌ /api/ventas-comparativa:', err);
     res.status(500).json({ ok: false, msg: 'Error interno' });
   }
 }
