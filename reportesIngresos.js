@@ -41,7 +41,9 @@ function filtroServicioSQL(servicio) {
   return ''; // ambos
 }
 
-// === Filtro por viaje (tolerante) ===
+// === Filtro por viaje (más tolerante) ===
+// - Acepta valores con sufijos: 'redondo', 'redondo (rt)', etc.
+// - Compara en minúsculas y con prefijo: lower(tipo_viaje) LIKE '<viaje>%'
 function appendFiltroViaje(whereSQL, params, viaje) {
   const v = String(viaje || '').toLowerCase();
   if (['llegada', 'salida', 'redondo', 'shuttle'].includes(v)) {
@@ -51,7 +53,7 @@ function appendFiltroViaje(whereSQL, params, viaje) {
   return whereSQL;
 }
 
-// ==== Handler principal ====
+// === Handler principal ===
 // GET /api/reportes-ingresos?tipo=...&desde=YYYY-MM-DD&hasta=YYYY-MM-DD&base=fecha|llegada|salida&servicio=transporte|actividades|tours|ambos&viaje=...
 export default async function reportesIngresos(req, res) {
   try {
@@ -182,10 +184,10 @@ export default async function reportesIngresos(req, res) {
           `;
           break;
 
-        // 🔁 Ajuste: usar nombre_tour en lugar de tipo_actividad
+        // 👉 Ajuste: usar nombre_tour como "tipo de actividad"
         case 'por-tipo-actividad':
           sql = `
-            SELECT COALESCE(NULLIF(TRIM(nombre_tour), ''), '(Sin nombre)') AS etiqueta,
+            SELECT COALESCE(NULLIF(TRIM(nombre_tour), ''), '(Sin tipo)') AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
             FROM reservaciones
             WHERE ${fcolAct}::date BETWEEN $1 AND $2
@@ -195,10 +197,10 @@ export default async function reportesIngresos(req, res) {
           `;
           break;
 
-        // 🔁 Ajuste: usar proveedor en lugar de operador_actividad
+        // 👉 Ajuste: usar proveedor en lugar de operador_actividad
         case 'por-operador-actividad':
           sql = `
-            SELECT COALESCE(NULLIF(TRIM(proveedor), ''), '(Sin proveedor)') AS etiqueta,
+            SELECT COALESCE(NULLIF(TRIM(proveedor), ''), '(Sin operador)') AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
             FROM reservaciones
             WHERE ${fcolAct}::date BETWEEN $1 AND $2
@@ -208,19 +210,7 @@ export default async function reportesIngresos(req, res) {
           `;
           break;
 
-        case 'con-sin-descuento':
-          sql = `
-            SELECT CASE WHEN ${COL_IMPORTE('total_pago')} < ${VAL_LISTA('precio_servicio')}
-                        THEN 'Con descuento' ELSE 'Sin descuento' END AS etiqueta,
-                   SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
-            FROM reservaciones
-            WHERE ${fcolAct}::date BETWEEN $1 AND $2
-              ${filtro}
-            GROUP BY 1
-            ORDER BY 2 DESC
-          `;
-          break;
-
+        // ❌ Removido: 'con-sin-descuento' para actividades (no aplica)
         default:
           return res.status(400).json({ ok: false, msg: 'tipo inválido para actividades' });
       }
@@ -250,6 +240,8 @@ export default async function reportesIngresos(req, res) {
             ORDER BY 1 ASC
           `;
           break;
+
+        // Si luego pides más agrupaciones para Tours, se agregan aquí
         default:
           return res.status(400).json({ ok: false, msg: 'tipo inválido para tours' });
       }
