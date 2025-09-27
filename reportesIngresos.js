@@ -41,9 +41,7 @@ function filtroServicioSQL(servicio) {
   return ''; // ambos
 }
 
-// === Filtro por viaje (más tolerante) ===
-// - Acepta valores con sufijos: 'redondo', 'redondo (rt)', etc.
-// - Compara en minúsculas y con prefijo: lower(tipo_viaje) LIKE '<viaje>%'
+// === Filtro por viaje (sólo transporte) ===
 function appendFiltroViaje(whereSQL, params, viaje) {
   const v = String(viaje || '').toLowerCase();
   if (['llegada', 'salida', 'redondo', 'shuttle'].includes(v)) {
@@ -161,7 +159,7 @@ export default async function reportesIngresos(req, res) {
       return res.json({ ok: true, datos: rows });
     }
 
-    // ====== ACTIVIDADES ======
+    // ====== ACTIVIDADES ====== (sin "con-sin-descuento")
     if (servicio === 'actividades') {
       const filtro = filtroServicioSQL('actividades');
       switch (tipo) {
@@ -184,7 +182,6 @@ export default async function reportesIngresos(req, res) {
           `;
           break;
 
-        // 👉 Ajuste: usar nombre_tour como "tipo de actividad"
         case 'por-tipo-actividad':
           sql = `
             SELECT COALESCE(NULLIF(TRIM(nombre_tour), ''), '(Sin tipo)') AS etiqueta,
@@ -197,7 +194,6 @@ export default async function reportesIngresos(req, res) {
           `;
           break;
 
-        // 👉 Ajuste: usar proveedor en lugar de operador_actividad
         case 'por-operador-actividad':
           sql = `
             SELECT COALESCE(NULLIF(TRIM(proveedor), ''), '(Sin operador)') AS etiqueta,
@@ -210,7 +206,6 @@ export default async function reportesIngresos(req, res) {
           `;
           break;
 
-        // ❌ Removido: 'con-sin-descuento' para actividades (no aplica)
         default:
           return res.status(400).json({ ok: false, msg: 'tipo inválido para actividades' });
       }
@@ -241,7 +236,19 @@ export default async function reportesIngresos(req, res) {
           `;
           break;
 
-        // Si luego pides más agrupaciones para Tours, se agregan aquí
+        // NUEVO: agrupación por nombre_tour
+        case 'por-tour':
+          sql = `
+            SELECT COALESCE(NULLIF(TRIM(nombre_tour), ''), '(Sin tour)') AS etiqueta,
+                   SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
+            FROM reservaciones
+            WHERE ${fcolTours}::date BETWEEN $1 AND $2
+              ${filtro}
+            GROUP BY 1
+            ORDER BY 2 DESC
+          `;
+          break;
+
         default:
           return res.status(400).json({ ok: false, msg: 'tipo inválido para tours' });
       }
