@@ -41,9 +41,7 @@ function filtroServicioSQL(servicio) {
   return ''; // ambos
 }
 
-// === Filtro por viaje (más tolerante) ===
-// - Acepta valores con sufijos: 'redondo', 'redondo (rt)', etc.
-// - Compara en minúsculas y con prefijo: lower(tipo_viaje) LIKE '<viaje>%'
+// === Filtro por viaje (tolerante) ===
 function appendFiltroViaje(whereSQL, params, viaje) {
   const v = String(viaje || '').toLowerCase();
   if (['llegada', 'salida', 'redondo', 'shuttle'].includes(v)) {
@@ -53,7 +51,7 @@ function appendFiltroViaje(whereSQL, params, viaje) {
   return whereSQL;
 }
 
-// === Handler principal ===
+// ==== Handler principal ====
 // GET /api/reportes-ingresos?tipo=...&desde=YYYY-MM-DD&hasta=YYYY-MM-DD&base=fecha|llegada|salida&servicio=transporte|actividades|tours|ambos&viaje=...
 export default async function reportesIngresos(req, res) {
   try {
@@ -183,9 +181,11 @@ export default async function reportesIngresos(req, res) {
             ORDER BY 1 ASC
           `;
           break;
+
+        // 🔁 Ajuste: usar nombre_tour en lugar de tipo_actividad
         case 'por-tipo-actividad':
           sql = `
-            SELECT COALESCE(NULLIF(TRIM(tipo_actividad), ''), '(Sin tipo)') AS etiqueta,
+            SELECT COALESCE(NULLIF(TRIM(nombre_tour), ''), '(Sin nombre)') AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
             FROM reservaciones
             WHERE ${fcolAct}::date BETWEEN $1 AND $2
@@ -194,9 +194,11 @@ export default async function reportesIngresos(req, res) {
             ORDER BY 2 DESC
           `;
           break;
+
+        // 🔁 Ajuste: usar proveedor en lugar de operador_actividad
         case 'por-operador-actividad':
           sql = `
-            SELECT COALESCE(NULLIF(TRIM(operador_actividad), ''), '(Sin operador)') AS etiqueta,
+            SELECT COALESCE(NULLIF(TRIM(proveedor), ''), '(Sin proveedor)') AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
             FROM reservaciones
             WHERE ${fcolAct}::date BETWEEN $1 AND $2
@@ -205,6 +207,7 @@ export default async function reportesIngresos(req, res) {
             ORDER BY 2 DESC
           `;
           break;
+
         case 'con-sin-descuento':
           sql = `
             SELECT CASE WHEN ${COL_IMPORTE('total_pago')} < ${VAL_LISTA('precio_servicio')}
@@ -217,6 +220,7 @@ export default async function reportesIngresos(req, res) {
             ORDER BY 2 DESC
           `;
           break;
+
         default:
           return res.status(400).json({ ok: false, msg: 'tipo inválido para actividades' });
       }
