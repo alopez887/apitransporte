@@ -34,19 +34,23 @@ const VAL_LISTA = (col = 'precio_servicio') => `
   )
 `;
 
-// Filtro por servicio (mismo criterio que comparativa)
+// Filtro por servicio (corrige mezcla y añade Tours)
 function filtroServicioSQL(servicio) {
   const col = "COALESCE(TRIM(tipo_servicio), '')";
   if (servicio === 'actividades') {
     return `AND ${col} ILIKE 'Actividad%'`;
   }
   if (servicio === 'transporte') {
-    return `AND (${col} = '' OR ${col} NOT ILIKE 'Actividad%')`;
+    // Transporte explícito o vacío/heredado (NO usa NOT ILIKE 'Actividad%')
+    return `AND (${col} = '' OR ${col} ILIKE 'Transporte%')`;
+  }
+  if (servicio === 'tours') {
+    return `AND ${col} ILIKE 'Tours%'`;
   }
   return ''; // ambos
 }
 
-// GET /api/reportes-ingresos?tipo=...&desde=YYYY-MM-DD&hasta=YYYY-MM-DD&base=fecha|llegada|salida&servicio=transporte|actividades|ambos
+// GET /api/reportes-ingresos?tipo=.&desde=YYYY-MM-DD&hasta=YYYY-MM-DD&base=fecha|llegada|salida&servicio=transporte|actividades|tours|ambos
 export default async function reportesIngresos(req, res) {
   try {
     let {
@@ -62,11 +66,10 @@ export default async function reportesIngresos(req, res) {
     if (!isYMD(desde)) desde = hoy();
     if (!isYMD(hasta)) hasta = hoy();
 
-    // Columna de fecha efectiva:
-    // - actividades usa 'fecha' sí o sí
-    // - transporte/ambos usan la seleccionada para transporte
-    const fcolTrans = fechaExpr(base);
-    const fcolAct   = 'fecha';
+    // Columnas de fecha:
+    const fcolTrans = fechaExpr(base); // transporte / ambos
+    const fcolAct   = 'fecha';         // actividades usa 'fecha'
+    const fcolTours = 'fecha';         // tours usa 'fecha'
     const params    = [desde, hasta];
     let sql = '';
 
@@ -227,8 +230,43 @@ export default async function reportesIngresos(req, res) {
       return res.json({ ok: true, datos: rows });
     }
 
+    // ====== TOURS ======
+    if (servicio === 'tours') {
+      const filtro = filtroServicioSQL('tours');
+      switch (tipo) {
+        case 'por-fecha':
+          sql = `
+            WITH folios AS (
+              SELECT
+                folio,
+                MIN(${fcolTours}::date) AS fecha_ref,
+                MAX(${COL_IMPORTE('total_pago')}) AS importe_folio
+              FROM reservaciones
+              WHERE ${fcolTours}::date BETWEEN $1 AND $2
+                ${filtro}
+              GROUP BY folio
+            )
+            SELECT fecha_ref AS etiqueta,
+                   SUM(importe_folio)::numeric(12,2) AS total
+            FROM folios
+            GROUP BY 1
+            ORDER BY 1 ASC
+          `;
+          break;
+
+        // Fase 2 (si activas en la UI):
+        // case 'por-tipo-actividad': ... agrupar por 'actividad' o 'tipo_actividad'
+
+        default:
+          return res.status(400).json({ ok: false, msg: 'tipo inválido para tours' });
+      }
+
+      const { rows } = await pool.query(sql, params);
+      return res.json({ ok: true, datos: rows });
+    }
+
     // ====== AMBOS ======
-    // Permitimos: por-fecha (sumado), por-servicio (T vs A), con-sin-descuento (sumado)
+    // Permitimos: por-fecha (sumado), por-servicio (T vs A vs Tours), con-sin-descuento (sumado)
     if (servicio === 'ambos') {
       switch (tipo) {
         case 'por-servicio':
@@ -244,20 +282,26 @@ export default async function reportesIngresos(req, res) {
             FROM reservaciones
             WHERE ${fcolAct}::date BETWEEN $1 AND $2
               ${filtroServicioSQL('actividades')}
+            UNION ALL
+            SELECT 'Tours' AS etiqueta,
+                   SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
+            FROM reservaciones
+            WHERE ${fcolTours}::date BETWEEN $1 AND $2
+              ${filtroServicioSQL('tours')}
             ORDER BY 1
           `;
           break;
 
         case 'por-fecha':
-          // Unificamos día: transporte usa base elegida; actividades siempre 'fecha'
+          // Unificamos día por folio y servicio (T/A/Tours)
           sql = `
             WITH folios AS (
               SELECT
                 folio,
-                -- día por folio, escogiendo la fecha adecuada según el servicio
                 MIN(
                   CASE
                     WHEN COALESCE(TRIM(tipo_servicio), '') ILIKE 'Actividad%' THEN ${fcolAct}::date
+                    WHEN COALESCE(TRIM(tipo_servicio), '') ILIKE 'Tours%'      THEN ${fcolTours}::date
                     ELSE ${fcolTrans}::date
                   END
                 ) AS fecha_ref,
@@ -266,7 +310,9 @@ export default async function reportesIngresos(req, res) {
               WHERE (
                 (COALESCE(TRIM(tipo_servicio), '') ILIKE 'Actividad%' AND ${fcolAct}::date BETWEEN $1 AND $2)
                 OR
-                ((COALESCE(TRIM(tipo_servicio), '') = '' OR COALESCE(TRIM(tipo_servicio), '') NOT ILIKE 'Actividad%')
+                (COALESCE(TRIM(tipo_servicio), '') ILIKE 'Tours%' AND ${fcolTours}::date BETWEEN $1 AND $2)
+                OR
+                ((COALESCE(TRIM(tipo_servicio), '') = '' OR COALESCE(TRIM(tipo_servicio), '') ILIKE 'Transporte%')
                   AND ${fcolTrans}::date BETWEEN $1 AND $2)
               )
               GROUP BY folio
@@ -291,7 +337,9 @@ export default async function reportesIngresos(req, res) {
               WHERE (
                 (COALESCE(TRIM(tipo_servicio), '') ILIKE 'Actividad%' AND ${fcolAct}::date BETWEEN $1 AND $2)
                 OR
-                ((COALESCE(TRIM(tipo_servicio), '') = '' OR COALESCE(TRIM(tipo_servicio), '') NOT ILIKE 'Actividad%')
+                (COALESCE(TRIM(tipo_servicio), '') ILIKE 'Tours%' AND ${fcolTours}::date BETWEEN $1 AND $2)
+                OR
+                ((COALESCE(TRIM(tipo_servicio), '') = '' OR COALESCE(TRIM(tipo_servicio), '') ILIKE 'Transporte%')
                   AND ${fcolTrans}::date BETWEEN $1 AND $2)
               )
             )
