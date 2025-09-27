@@ -13,7 +13,7 @@ const fechaExpr = (base) => {
   }
 };
 
-// Limpieza numérica segura (precio/total en texto)
+// Limpieza numérica segura
 const COL_IMPORTE = (col = 'total_pago') => `
   COALESCE(
     NULLIF(REGEXP_REPLACE(TRIM(${col}::text), '[^0-9\\.]', '', 'g'), '')::numeric,
@@ -31,25 +31,24 @@ const VAL_LISTA = (col = 'precio_servicio') => `
 function filtroServicioSQL(servicio) {
   const col = "COALESCE(TRIM(tipo_servicio), '')";
 
-  if (servicio === 'actividades') {
-    return `AND ${col} ILIKE 'Actividad%'`;
-  }
+  if (servicio === 'actividades') return `AND ${col} ILIKE 'Actividad%'`;
+  if (servicio === 'tours')       return `AND ${col} ILIKE 'Tours%'`;
+
   if (servicio === 'transporte') {
     // Transporte = vacío o cualquier valor que NO sea Actividades ni Tours
     return `AND (${col} = '' OR (${col} NOT ILIKE 'Actividad%' AND ${col} NOT ILIKE 'Tours%'))`;
   }
-  if (servicio === 'tours') {
-    return `AND ${col} ILIKE 'Tours%'`;
-  }
   return ''; // ambos
 }
 
-// Construye filtro por viaje (Transporte) y agrega parámetro
+// === Filtro por viaje (más tolerante) ===
+// - Acepta valores con sufijos: 'redondo', 'redondo (rt)', etc.
+// - Compara en minúsculas y con prefijo: lower(tipo_viaje) LIKE '<viaje>%'
 function appendFiltroViaje(whereSQL, params, viaje) {
   const v = String(viaje || '').toLowerCase();
   if (['llegada', 'salida', 'redondo', 'shuttle'].includes(v)) {
-    whereSQL += ` AND lower(COALESCE(NULLIF(TRIM(tipo_viaje), ''), '')) = $${params.length + 1}`;
-    params.push(v);
+    whereSQL += ` AND lower(COALESCE(NULLIF(TRIM(tipo_viaje), ''), '')) LIKE $${params.length + 1}`;
+    params.push(v + '%');
   }
   return whereSQL;
 }
@@ -68,13 +67,12 @@ export default async function reportesIngresos(req, res) {
     } = req.query;
 
     servicio = String(servicio || 'transporte').toLowerCase();
-
     if (!isYMD(desde)) desde = hoy();
     if (!isYMD(hasta)) hasta = hoy();
 
     const fcolTrans = fechaExpr(base); // transporte/ambos
-    const fcolAct   = 'fecha';         // actividades
-    const fcolTours = 'fecha';         // tours
+    const fcolAct   = 'fecha';
+    const fcolTours = 'fecha';
     let params      = [desde, hasta];
     let sql = '';
 
@@ -84,16 +82,13 @@ export default async function reportesIngresos(req, res) {
 
       switch (tipo) {
         case 'por-fecha': {
-          // sumo por día (uno por folio); si viene viaje, filtro por tipo_viaje
           let where = `WHERE ${fcolTrans}::date BETWEEN $1 AND $2 ${filtroServ}`;
           where = appendFiltroViaje(where, params, viaje);
-
           sql = `
             WITH folios AS (
-              SELECT
-                folio,
-                MIN(${fcolTrans}::date) AS fecha_ref,
-                MAX(${COL_IMPORTE('total_pago')}) AS importe_folio
+              SELECT folio,
+                     MIN(${fcolTrans}::date) AS fecha_ref,
+                     MAX(${COL_IMPORTE('total_pago')}) AS importe_folio
               FROM reservaciones
               ${where}
               GROUP BY folio
@@ -106,12 +101,9 @@ export default async function reportesIngresos(req, res) {
           `;
           break;
         }
-
         case 'por-tipo-viaje': {
-          // agrupo por tipo_viaje; si viene viaje, lo filtro
           let where = `WHERE ${fcolTrans}::date BETWEEN $1 AND $2 ${filtroServ}`;
           where = appendFiltroViaje(where, params, viaje);
-
           sql = `
             SELECT COALESCE(NULLIF(TRIM(tipo_viaje), ''), '(Sin tipo)') AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
@@ -122,11 +114,9 @@ export default async function reportesIngresos(req, res) {
           `;
           break;
         }
-
         case 'por-tipo-transporte': {
           let where = `WHERE ${fcolTrans}::date BETWEEN $1 AND $2 ${filtroServ}`;
           where = appendFiltroViaje(where, params, viaje);
-
           sql = `
             SELECT COALESCE(NULLIF(TRIM(tipo_transporte), ''), '(Sin transporte)') AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
@@ -137,16 +127,11 @@ export default async function reportesIngresos(req, res) {
           `;
           break;
         }
-
         case 'por-zona-hotel': {
           let where = `WHERE ${fcolTrans}::date BETWEEN $1 AND $2 ${filtroServ}`;
           where = appendFiltroViaje(where, params, viaje);
-
           sql = `
-            SELECT COALESCE(
-                     NULLIF(TRIM(COALESCE(zona, hotel_llegada, hotel_salida)), ''),
-                     '(Sin hotel/zona)'
-                   ) AS etiqueta,
+            SELECT COALESCE(NULLIF(TRIM(COALESCE(zona, hotel_llegada, hotel_salida)), ''), '(Sin hotel/zona)') AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
             FROM reservaciones
             ${where}
@@ -155,16 +140,12 @@ export default async function reportesIngresos(req, res) {
           `;
           break;
         }
-
         case 'con-sin-descuento': {
           let where = `WHERE ${fcolTrans}::date BETWEEN $1 AND $2 ${filtroServ}`;
           where = appendFiltroViaje(where, params, viaje);
-
           sql = `
-            SELECT CASE
-                     WHEN ${COL_IMPORTE('total_pago')} < ${VAL_LISTA('precio_servicio')}
-                     THEN 'Con descuento' ELSE 'Sin descuento'
-                   END AS etiqueta,
+            SELECT CASE WHEN ${COL_IMPORTE('total_pago')} < ${VAL_LISTA('precio_servicio')}
+                        THEN 'Con descuento' ELSE 'Sin descuento' END AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
             FROM reservaciones
             ${where}
@@ -173,11 +154,9 @@ export default async function reportesIngresos(req, res) {
           `;
           break;
         }
-
         default:
           return res.status(400).json({ ok: false, msg: 'tipo inválido' });
       }
-
       const { rows } = await pool.query(sql, params);
       return res.json({ ok: true, datos: rows });
     }
@@ -185,15 +164,13 @@ export default async function reportesIngresos(req, res) {
     // ====== ACTIVIDADES ======
     if (servicio === 'actividades') {
       const filtro = filtroServicioSQL('actividades');
-
       switch (tipo) {
         case 'por-fecha':
           sql = `
             WITH folios AS (
-              SELECT
-                folio,
-                MIN(${fcolAct}::date) AS fecha_ref,
-                MAX(${COL_IMPORTE('total_pago')}) AS importe_folio
+              SELECT folio,
+                     MIN(${fcolAct}::date) AS fecha_ref,
+                     MAX(${COL_IMPORTE('total_pago')}) AS importe_folio
               FROM reservaciones
               WHERE ${fcolAct}::date BETWEEN $1 AND $2
                 ${filtro}
@@ -206,7 +183,6 @@ export default async function reportesIngresos(req, res) {
             ORDER BY 1 ASC
           `;
           break;
-
         case 'por-tipo-actividad':
           sql = `
             SELECT COALESCE(NULLIF(TRIM(tipo_actividad), ''), '(Sin tipo)') AS etiqueta,
@@ -218,7 +194,6 @@ export default async function reportesIngresos(req, res) {
             ORDER BY 2 DESC
           `;
           break;
-
         case 'por-operador-actividad':
           sql = `
             SELECT COALESCE(NULLIF(TRIM(operador_actividad), ''), '(Sin operador)') AS etiqueta,
@@ -230,13 +205,10 @@ export default async function reportesIngresos(req, res) {
             ORDER BY 2 DESC
           `;
           break;
-
         case 'con-sin-descuento':
           sql = `
-            SELECT CASE
-                     WHEN ${COL_IMPORTE('total_pago')} < ${VAL_LISTA('precio_servicio')}
-                     THEN 'Con descuento' ELSE 'Sin descuento'
-                   END AS etiqueta,
+            SELECT CASE WHEN ${COL_IMPORTE('total_pago')} < ${VAL_LISTA('precio_servicio')}
+                        THEN 'Con descuento' ELSE 'Sin descuento' END AS etiqueta,
                    SUM(${COL_IMPORTE('total_pago')})::numeric(12,2) AS total
             FROM reservaciones
             WHERE ${fcolAct}::date BETWEEN $1 AND $2
@@ -245,11 +217,9 @@ export default async function reportesIngresos(req, res) {
             ORDER BY 2 DESC
           `;
           break;
-
         default:
           return res.status(400).json({ ok: false, msg: 'tipo inválido para actividades' });
       }
-
       const { rows } = await pool.query(sql, params);
       return res.json({ ok: true, datos: rows });
     }
@@ -257,15 +227,13 @@ export default async function reportesIngresos(req, res) {
     // ====== TOURS ======
     if (servicio === 'tours') {
       const filtro = filtroServicioSQL('tours');
-
       switch (tipo) {
         case 'por-fecha':
           sql = `
             WITH folios AS (
-              SELECT
-                folio,
-                MIN(${fcolTours}::date) AS fecha_ref,
-                MAX(${COL_IMPORTE('total_pago')}) AS importe_folio
+              SELECT folio,
+                     MIN(${fcolTours}::date) AS fecha_ref,
+                     MAX(${COL_IMPORTE('total_pago')}) AS importe_folio
               FROM reservaciones
               WHERE ${fcolTours}::date BETWEEN $1 AND $2
                 ${filtro}
@@ -278,11 +246,9 @@ export default async function reportesIngresos(req, res) {
             ORDER BY 1 ASC
           `;
           break;
-
         default:
           return res.status(400).json({ ok: false, msg: 'tipo inválido para tours' });
       }
-
       const { rows } = await pool.query(sql, params);
       return res.json({ ok: true, datos: rows });
     }
@@ -316,16 +282,15 @@ export default async function reportesIngresos(req, res) {
         case 'por-fecha':
           sql = `
             WITH folios AS (
-              SELECT
-                folio,
-                MIN(
-                  CASE
-                    WHEN COALESCE(TRIM(tipo_servicio), '') ILIKE 'Actividad%' THEN ${fcolAct}::date
-                    WHEN COALESCE(TRIM(tipo_servicio), '') ILIKE 'Tours%'      THEN ${fcolTours}::date
-                    ELSE ${fechaExpr('fecha')}::date
-                  END
-                ) AS fecha_ref,
-                MAX(${COL_IMPORTE('total_pago')}) AS importe_folio
+              SELECT folio,
+                     MIN(
+                       CASE
+                         WHEN COALESCE(TRIM(tipo_servicio), '') ILIKE 'Actividad%' THEN ${fcolAct}::date
+                         WHEN COALESCE(TRIM(tipo_servicio), '') ILIKE 'Tours%'      THEN ${fcolTours}::date
+                         ELSE ${fechaExpr('fecha')}::date
+                       END
+                     ) AS fecha_ref,
+                     MAX(${COL_IMPORTE('total_pago')}) AS importe_folio
               FROM reservaciones
               WHERE (
                 (COALESCE(TRIM(tipo_servicio), '') ILIKE 'Actividad%' AND ${fcolAct}::date BETWEEN $1 AND $2)
@@ -348,10 +313,9 @@ export default async function reportesIngresos(req, res) {
         case 'con-sin-descuento':
           sql = `
             WITH t AS (
-              SELECT
-                CASE WHEN ${COL_IMPORTE('total_pago')} < ${VAL_LISTA('precio_servicio')}
-                     THEN 'Con descuento' ELSE 'Sin descuento' END AS etiqueta,
-                ${COL_IMPORTE('total_pago')} AS imp
+              SELECT CASE WHEN ${COL_IMPORTE('total_pago')} < ${VAL_LISTA('precio_servicio')}
+                          THEN 'Con descuento' ELSE 'Sin descuento' END AS etiqueta,
+                     ${COL_IMPORTE('total_pago')} AS imp
               FROM reservaciones
               WHERE (
                 (COALESCE(TRIM(tipo_servicio), '') ILIKE 'Actividad%' AND ${fcolAct}::date BETWEEN $1 AND $2)
@@ -372,12 +336,10 @@ export default async function reportesIngresos(req, res) {
         default:
           return res.status(400).json({ ok: false, msg: 'tipo inválido para ambos' });
       }
-
       const { rows } = await pool.query(sql, params);
       return res.json({ ok: true, datos: rows });
     }
 
-    // Servicio inválido
     return res.status(400).json({ ok: false, msg: 'servicio inválido' });
 
   } catch (err) {
