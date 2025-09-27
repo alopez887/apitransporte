@@ -28,6 +28,7 @@ import exportarExcelReservas from './exportarExcelReservas.js';
 import reportesIngresos from './reportesIngresos.js';
 import ventasComparativa from './ventasComparativa.js';
 import exportarCsvReportesIngresos from './exportarCsvReportesIngresos.js';
+import exportarReportesIngresosExcel from './exportarReportesIngresosExcel.js';
 import exportarCsvVentasComparativa from './exportarCsvVentasComparativa.js';
 
 // ⬇️ ÚNICO import de canvasCache (arregla el error de "ya fue declarado")
@@ -347,7 +348,7 @@ app.get('/api/buscarreservas', buscarReservas);
 app.get('/api/exportarExcelReservas', exportarExcelReservas);
 app.get('/api/reportes-ingresos', reportesIngresos);
 app.get('/api/ventas-comparativa', ventasComparativa);
-app.get('/api/reportes-ingresos-csv', exportarCsvReportesIngresos);
+app.get('/api/reportes-ingresos-excel', exportarReportesIngresosExcel);
 app.get('/api/ventas-comparativa-csv', exportarCsvVentasComparativa);
 
 // ⬇️ Registra rutas de cache/descarga PNG (SOLO la llamada, sin re-import)
