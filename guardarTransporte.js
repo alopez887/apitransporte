@@ -11,7 +11,7 @@ export default async function guardarTransporte(req, res) {
   // === idioma (nuevo) ===
   const idioma = (String(datos?.idioma || '').toLowerCase().startsWith('es')) ? 'es' : 'en';
 
-  // Validación básica (igual)
+  // Validación básica
   const cantidadPasajeros = parseInt(datos.pasajeros, 10) || parseInt(datos.cantidad_pasajeros, 10) || 0;
   const nombre   = datos.nombre   || datos.cliente?.nombre   || '';
   const apellido = datos.apellido || datos.cliente?.apellido || '';
@@ -26,24 +26,29 @@ export default async function guardarTransporte(req, res) {
   }
 
   try {
-    const result = await pool.query("SELECT folio FROM reservaciones WHERE folio LIKE 'TR-%' ORDER BY id DESC LIMIT 1");
+    // Folio
+    const result = await pool.query(
+      "SELECT folio FROM reservaciones WHERE folio LIKE 'TR-%' ORDER BY id DESC LIMIT 1"
+    );
     const ultimoFolio = result.rows[0]?.folio || 'TR-000000';
-    const numero      = parseInt(ultimoFolio.replace('TR-', '')) + 1;
+    const numero      = parseInt(ultimoFolio.replace('TR-', ''), 10) + 1;
     const nuevoFolio  = `TR-${numero.toString().padStart(6, '0')}`;
 
+    // Token + QR
     const token_qr = crypto.randomBytes(20).toString('hex');
     const qr = await generarQRTransporte(token_qr);
 
+    // Números
     const porcentaje_descuento = (datos.porcentaje_descuento && !isNaN(Number(datos.porcentaje_descuento)))
       ? Number(datos.porcentaje_descuento) : 0;
 
     const precio_servicio = (datos.precio_servicio && !isNaN(Number(datos.precio_servicio)))
       ? Number(datos.precio_servicio) : 0;
 
-    // 🧳 Variables de llegada y salida (sin cambios funcionales)
+    // 🧳 Variables de llegada y salida
     let fecha_llegada = null, hora_llegada = null, aerolinea_llegada = '', vuelo_llegada = '', hotel_llegada = '';
     let fecha_salida  = datos.fecha_salida || null;
-    let hora_salida   = datos.hora_salida?.trim() || null;
+    let hora_salida   = (typeof datos.hora_salida === 'string' ? datos.hora_salida.trim() : null) || null;
     let aerolinea_salida = datos.aerolinea_salida || '';
     let vuelo_salida     = datos.vuelo_salida || '';
     let hotel_salida     = datos.hotel_salida || '';
@@ -51,13 +56,13 @@ export default async function guardarTransporte(req, res) {
     const esShuttle = datos.tipo_viaje === "Shuttle";
     if (datos.tipo_viaje === "Llegada" || esShuttle) {
       fecha_llegada      = datos.fecha_llegada || datos.fecha || null;
-      hora_llegada       = datos.hora_llegada?.trim() || datos.hora || null;
+      hora_llegada       = (typeof datos.hora_llegada === 'string' ? datos.hora_llegada.trim() : null) || datos.hora || null;
       aerolinea_llegada  = datos.aerolinea_llegada || datos.aerolinea || '';
       vuelo_llegada      = datos.vuelo_llegada || datos.numero_vuelo || '';
       hotel_llegada      = datos.hotel_llegada || datos.hotel || '';
     }
 
-    // Normalización de hora (igual)
+    // Normalización de hora llegada
     if (typeof hora_llegada === 'string' && hora_llegada.trim() !== '') {
       const cruda = hora_llegada.trim();
       const formato24 = cruda.match(/^(\d{1,2}):(\d{2})$/);
@@ -74,19 +79,25 @@ export default async function guardarTransporte(req, res) {
       }
     }
 
-    // Zona (igual)
+    // Zona
     let zonaBD = '';
     if (datos.zona && String(datos.zona).trim() !== '') {
       zonaBD = String(datos.zona).trim();
     } else if (hotel_llegada) {
-      const r = await pool.query("SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)", [`%${hotel_llegada}%`]);
+      const r = await pool.query(
+        "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
+        [`%${hotel_llegada}%`]
+      );
       zonaBD = r.rows[0]?.zona_id || '';
     } else if (hotel_salida) {
-      const r = await pool.query("SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)", [`%${hotel_salida}%`]);
+      const r = await pool.query(
+        "SELECT zona_id FROM hoteles_zona WHERE UPPER(nombre_hotel) LIKE UPPER($1)",
+        [`%${hotel_salida}%`]
+      );
       zonaBD = r.rows[0]?.zona_id || '';
     }
 
-    // === INSERT con columna idioma (NUEVO) ===
+    // === INSERT con columna idioma (corregido) ===
     const query = `
       INSERT INTO reservaciones (
         folio, tipo_servicio, tipo_transporte, proveedor, estatus, zona,
@@ -103,41 +114,48 @@ export default async function guardarTransporte(req, res) {
         $15, $16, $17, $18,
         $19, $20, $21, $22, $23,
         $24, $25, $26,
-        NOW() AT TIME ZONE 'America/Mazatlan'), $27, $28,
+        NOW() AT TIME ZONE 'America/Mazatlan', $27, $28,
         $29
       )
     `;
 
     const valores = [
-      nuevoFolio,
-      'Transportacion',
-      datos.tipo_transporte || '',
-      '', // proveedor
-      1,
-      zonaBD,
-      datos.capacidad || '',
-      cantidadPasajeros,
-      hotel_llegada,
-      hotel_salida,
-      fecha_llegada,
-      hora_llegada,
-      aerolinea_llegada,
-      vuelo_llegada,
-      fecha_salida,
-      hora_salida,
-      aerolinea_salida,
-      vuelo_salida,
-      nombre_cliente,
-      correo_cliente,
-      nota,
-      telefono_cliente,
-      datos.codigo_descuento || '',
-      porcentaje_descuento,
-      precio_servicio,
-      total_pago,
-      datos.tipo_viaje || '',
-      token_qr,
-      idioma // <--- NUEVO
+      nuevoFolio,                         // $1
+      'Transportacion',                   // $2
+      datos.tipo_transporte || '',        // $3
+      '',                                 // $4 proveedor
+      1,                                  // $5 estatus
+      zonaBD,                             // $6
+
+      datos.capacidad || '',              // $7
+      cantidadPasajeros,                  // $8
+      hotel_llegada,                      // $9
+      hotel_salida,                       // $10
+
+      fecha_llegada,                      // $11
+      hora_llegada,                       // $12
+      aerolinea_llegada,                  // $13
+      vuelo_llegada,                      // $14
+
+      fecha_salida,                       // $15
+      hora_salida,                        // $16
+      aerolinea_salida,                   // $17
+      vuelo_salida,                       // $18
+
+      nombre_cliente,                     // $19
+      correo_cliente,                     // $20
+      nota,                               // $21
+      telefono_cliente,                   // $22
+      datos.codigo_descuento || '',       // $23
+
+      porcentaje_descuento,               // $24
+      precio_servicio,                    // $25
+      total_pago,                         // $26
+
+      // fecha → NOW() AT TIME ZONE 'America/Mazatlan'
+      datos.tipo_viaje || '',             // $27
+      token_qr,                           // $28
+      idioma                              // $29
     ];
 
     console.log("🗂 DB payload reservaciones →", {
@@ -154,6 +172,7 @@ export default async function guardarTransporte(req, res) {
 
     await pool.query(query, valores);
 
+    // Correo (pasamos idioma)
     await enviarCorreoTransporte({
       ...datos,
       nombre_cliente,
@@ -162,7 +181,7 @@ export default async function guardarTransporte(req, res) {
       total_pago,
       imagen: datos.imagen || '',
       qr,
-      idioma // <--- pasar idioma al mailer (lo ajustamos luego)
+      idioma
     });
 
     res.status(200).json({
