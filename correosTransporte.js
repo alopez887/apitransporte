@@ -1,4 +1,4 @@
-// correosTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP) + QR inline (cid: qrReserva) 
+// correosTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP) + QR inline (cid: qrReserva)
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -149,38 +149,6 @@ function buildQrAttachmentTransporte(qr) {
   };
 }
 
-/* ========= helper de envío con reintentos para 429/408/5xx ========= */
-async function sendToGAS(payload){
-  const RETRIES = [400, 800, 1600, 3200]; // ms
-  let lastErr = null;
-
-  for (let i = 0; i <= RETRIES.length; i++){
-    try{
-      const { status, json } = await postJSON(GAS_URL, payload, GAS_TIMEOUT_MS);
-      if (EMAIL_DEBUG) DBG('GAS resp', { status, json });
-      // ok explícito
-      if (json && json.ok === true) return true;
-
-      // decide si reintentar
-      if (status === 429 || status === 408 || (status >= 500 && status <= 599)) {
-        lastErr = new Error(`GAS ${status} retry`);
-      } else {
-        lastErr = new Error(`GAS error: ${(json && json.error) || status}`);
-        break; // no sirve reintentar en 4xx ≠ 408/429
-      }
-    } catch (e) {
-      lastErr = e;
-    }
-
-    if (i < RETRIES.length){
-      const wait = RETRIES[i];
-      if (EMAIL_DEBUG) DBG(`retry in ${wait}ms`);
-      await new Promise(r=>setTimeout(r, wait));
-    }
-  }
-  throw lastErr || new Error('GAS envío falló');
-}
-
 // ===============================================================
 //                       ENVÍO PRINCIPAL (diseño intacto)
 // ===============================================================
@@ -191,26 +159,15 @@ async function enviarCorreoTransporte(datos){
     }
     if (!GAS_TOKEN) throw new Error('GAS_TOKEN no configurado');
 
-    // ✅ Respeta estrictamente el idioma que llega desde el front/backend
-    const _rawLang = String(datos?.idioma || datos?.cliente?.idioma || '').trim();
-    const _lang    = _rawLang.toLowerCase().startsWith('es') ? 'es' : 'en';
-    const L        = pickLang(_lang);
-    DBG('[MAIL][idioma-usado]', { raw:_rawLang, usado:_lang, folio: datos?.folio });
-
+    const L = pickLang(datos.idioma);
+    const logoUrl = 'https://static.wixstatic.com/media/f81ced_636e76aeb741411b87c4fa8aa9219410~mv2.png';
     const img0    = sanitizeUrl(datos.imagen);
     const imgUrl  = img0 ? forceJpgIfWix(img0) : '';
     const tripType = (L.tripType[datos.tipo_viaje] || datos.tipo_viaje);
     const nota     = datos.nota || datos.cliente?.nota || '';
     const esShuttle= datos.tipo_viaje === 'Shuttle';
 
-    // === Resolver nombre del transporte según idioma del correo (SOLO correo) ===
-    const catEN = String((datos.categoria ?? datos.nombreEN) || '').trim();
-    const catES = String((datos.categoria_es ?? datos.nombreES) || '').trim();
-    const categoria_i18n = (L.code === 'es')
-      ? (catES || catEN || datos.tipo_transporte || '')
-      : (catEN || catES || datos.tipo_transporte || '');
-
-    // Header (h2 izq + logo der)
+    // Header (h2 izq + logo der) — color verde, igual que tu diseño
     const headerHTML = `
       <table style="width:100%;margin-bottom:10px;border-collapse:collapse;" role="presentation" cellspacing="0" cellpadding="0">
         <tr>
@@ -245,7 +202,7 @@ async function enviarCorreoTransporte(datos){
             </td>
             <td style="vertical-align:top;width:48%;">
               ${p(L.labels.folio, datos.folio)}
-              ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}
+              ${!esShuttle ? p(L.labels.transport, datos.tipo_transporte) : ''}
               ${!esShuttle ? p(L.labels.capacity,  datos.capacidad) : ''}
               ${p(L.labels.tripType, tripType)}
               ${p(L.labels.total, `$${safeToFixed(datos.total_pago)} USD`)}
@@ -283,7 +240,7 @@ async function enviarCorreoTransporte(datos){
         ${p(L.labels.name,  datos.nombre_cliente)}
         ${p(L.labels.email, datos.correo_cliente)}
         ${p(L.labels.phone, datos.telefono_cliente)}
-        ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}
+        ${!esShuttle ? p(L.labels.transport, datos.tipo_transporte) : ''}
         ${!esShuttle ? p(L.labels.capacity,  datos.capacidad) : ''}
         ${(datos.cantidad_pasajeros || datos.pasajeros) ? p(L.labels.passengers, (datos.cantidad_pasajeros || datos.pasajeros)) : ''}
         ${datos.hotel_llegada   ? p(L.labels.hotel,   datos.hotel_llegada)   : ''}
@@ -374,25 +331,26 @@ async function enviarCorreoTransporte(datos){
       ts: Date.now(),
       to: datos.correo_cliente,
       bcc: EMAIL_BCC,
-      subject: pickLang(_lang).subject(datos.folio), // sujeto consistente con idioma elegido
+      subject: L.subject(datos.folio),
       html: mensajeHTML,
       fromName: EMAIL_FROMNAME,
       attachments
     };
 
-    DBG('POST → GAS', { to: datos.correo_cliente, lang:_lang, subject: payload.subject, hasQR: !!qrAttachment });
+    DBG('POST → GAS', { to: datos.correo_cliente, subject: payload.subject, hasQR: !!qrAttachment });
 
     if (MAIL_FAST_MODE) {
-      // Fire-and-forget: no podremos actualizar DB después
       postJSON(GAS_URL, payload, GAS_TIMEOUT_MS).catch(err => console.error('Error envío async GAS:', err.message));
       return true;
     }
 
-    // En modo síncrono: reintentos con backoff
-    await sendToGAS(payload);
-    DBG('✔ GAS ok');
-    return true;
+    const { status, json } = await postJSON(GAS_URL, payload, GAS_TIMEOUT_MS);
+    if (!json || json.ok !== true) {
+      throw new Error(`Error al enviar correo: ${(json && json.error) || status}`);
+    }
 
+    DBG('✔ GAS ok:', json);
+    return true;
   } catch (err) {
     console.error('❌ Error al enviar correo de transporte (GAS):', err.message);
     throw err;
