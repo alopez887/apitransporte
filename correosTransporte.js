@@ -159,7 +159,12 @@ async function enviarCorreoTransporte(datos){
     }
     if (!GAS_TOKEN) throw new Error('GAS_TOKEN no configurado');
 
-    const L = pickLang(datos.idioma);
+    // ✅ Respeta estrictamente el idioma que llega desde el front/backend
+    const _rawLang = String(datos?.idioma || datos?.cliente?.idioma || '').trim();
+    const _lang    = _rawLang.toLowerCase().startsWith('es') ? 'es' : 'en';
+    const L        = pickLang(_lang);
+    DBG('[MAIL][idioma-usado]', { raw:_rawLang, usado:_lang, folio: datos?.folio });
+
     const logoUrl = 'https://static.wixstatic.com/media/f81ced_636e76aeb741411b87c4fa8aa9219410~mv2.png';
     const img0    = sanitizeUrl(datos.imagen);
     const imgUrl  = img0 ? forceJpgIfWix(img0) : '';
@@ -209,7 +214,7 @@ async function enviarCorreoTransporte(datos){
             </td>
             <td style="vertical-align:top;width:48%;">
               ${p(L.labels.folio, datos.folio)}
-              ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}   <!-- 👈 aquí -->
+              ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}
               ${!esShuttle ? p(L.labels.capacity,  datos.capacidad) : ''}
               ${p(L.labels.tripType, tripType)}
               ${p(L.labels.total, `$${safeToFixed(datos.total_pago)} USD`)}
@@ -247,7 +252,7 @@ async function enviarCorreoTransporte(datos){
         ${p(L.labels.name,  datos.nombre_cliente)}
         ${p(L.labels.email, datos.correo_cliente)}
         ${p(L.labels.phone, datos.telefono_cliente)}
-        ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}        <!-- 👈 aquí -->
+        ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}
         ${!esShuttle ? p(L.labels.capacity,  datos.capacidad) : ''}
         ${(datos.cantidad_pasajeros || datos.pasajeros) ? p(L.labels.passengers, (datos.cantidad_pasajeros || datos.pasajeros)) : ''}
         ${datos.hotel_llegada   ? p(L.labels.hotel,   datos.hotel_llegada)   : ''}
