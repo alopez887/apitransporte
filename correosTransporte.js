@@ -1,4 +1,4 @@
-// correosTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP) + QR inline (cid: qrReserva)
+// correosTransporte.js — Envío vía Google Apps Script WebApp (sin SMTP) + QR inline (cid: qrReserva) 
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -149,6 +149,38 @@ function buildQrAttachmentTransporte(qr) {
   };
 }
 
+/* ========= helper de envío con reintentos para 429/408/5xx ========= */
+async function sendToGAS(payload){
+  const RETRIES = [400, 800, 1600, 3200]; // ms
+  let lastErr = null;
+
+  for (let i = 0; i <= RETRIES.length; i++){
+    try{
+      const { status, json } = await postJSON(GAS_URL, payload, GAS_TIMEOUT_MS);
+      if (EMAIL_DEBUG) DBG('GAS resp', { status, json });
+      // ok explícito
+      if (json && json.ok === true) return true;
+
+      // decide si reintentar
+      if (status === 429 || status === 408 || (status >= 500 && status <= 599)) {
+        lastErr = new Error(`GAS ${status} retry`);
+      } else {
+        lastErr = new Error(`GAS error: ${(json && json.error) || status}`);
+        break; // no sirve reintentar en 4xx ≠ 408/429
+      }
+    } catch (e) {
+      lastErr = e;
+    }
+
+    if (i < RETRIES.length){
+      const wait = RETRIES[i];
+      if (EMAIL_DEBUG) DBG(`retry in ${wait}ms`);
+      await new Promise(r=>setTimeout(r, wait));
+    }
+  }
+  throw lastErr || new Error('GAS envío falló');
+}
+
 // ===============================================================
 //                       ENVÍO PRINCIPAL (diseño intacto)
 // ===============================================================
@@ -165,21 +197,20 @@ async function enviarCorreoTransporte(datos){
     const L        = pickLang(_lang);
     DBG('[MAIL][idioma-usado]', { raw:_rawLang, usado:_lang, folio: datos?.folio });
 
-    const logoUrl = 'https://static.wixstatic.com/media/f81ced_636e76aeb741411b87c4fa8aa9219410~mv2.png';
     const img0    = sanitizeUrl(datos.imagen);
     const imgUrl  = img0 ? forceJpgIfWix(img0) : '';
     const tripType = (L.tripType[datos.tipo_viaje] || datos.tipo_viaje);
     const nota     = datos.nota || datos.cliente?.nota || '';
     const esShuttle= datos.tipo_viaje === 'Shuttle';
 
-    // === Resolver nombre del transporte según idioma de la reserva (SOLO correo) ===
+    // === Resolver nombre del transporte según idioma del correo (SOLO correo) ===
     const catEN = String((datos.categoria ?? datos.nombreEN) || '').trim();
     const catES = String((datos.categoria_es ?? datos.nombreES) || '').trim();
     const categoria_i18n = (L.code === 'es')
       ? (catES || catEN || datos.tipo_transporte || '')
       : (catEN || catES || datos.tipo_transporte || '');
 
-    // Header (h2 izq + logo der) — color verde, igual que tu diseño
+    // Header (h2 izq + logo der)
     const headerHTML = `
       <table style="width:100%;margin-bottom:10px;border-collapse:collapse;" role="presentation" cellspacing="0" cellpadding="0">
         <tr>
@@ -343,26 +374,25 @@ async function enviarCorreoTransporte(datos){
       ts: Date.now(),
       to: datos.correo_cliente,
       bcc: EMAIL_BCC,
-      subject: L.subject(datos.folio),
+      subject: pickLang(_lang).subject(datos.folio), // sujeto consistente con idioma elegido
       html: mensajeHTML,
       fromName: EMAIL_FROMNAME,
       attachments
     };
 
-    DBG('POST → GAS', { to: datos.correo_cliente, subject: payload.subject, hasQR: !!qrAttachment });
+    DBG('POST → GAS', { to: datos.correo_cliente, lang:_lang, subject: payload.subject, hasQR: !!qrAttachment });
 
     if (MAIL_FAST_MODE) {
+      // Fire-and-forget: no podremos actualizar DB después
       postJSON(GAS_URL, payload, GAS_TIMEOUT_MS).catch(err => console.error('Error envío async GAS:', err.message));
       return true;
     }
 
-    const { status, json } = await postJSON(GAS_URL, payload, GAS_TIMEOUT_MS);
-    if (!json || json.ok !== true) {
-      throw new Error(`Error al enviar correo: ${(json && json.error) || status}`);
-    }
-
-    DBG('✔ GAS ok:', json);
+    // En modo síncrono: reintentos con backoff
+    await sendToGAS(payload);
+    DBG('✔ GAS ok');
     return true;
+
   } catch (err) {
     console.error('❌ Error al enviar correo de transporte (GAS):', err.message);
     throw err;
