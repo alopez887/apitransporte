@@ -167,6 +167,13 @@ async function enviarCorreoTransporte(datos){
     const nota     = datos.nota || datos.cliente?.nota || '';
     const esShuttle= datos.tipo_viaje === 'Shuttle';
 
+    // === Resolver nombre del transporte según idioma de la reserva (SOLO correo) ===
+    const catEN = String((datos.categoria ?? datos.nombreEN) || '').trim();
+    const catES = String((datos.categoria_es ?? datos.nombreES) || '').trim();
+    const categoria_i18n = (L.code === 'es')
+      ? (catES || catEN || datos.tipo_transporte || '')
+      : (catEN || catES || datos.tipo_transporte || '');
+
     // Header (h2 izq + logo der) — color verde, igual que tu diseño
     const headerHTML = `
       <table style="width:100%;margin-bottom:10px;border-collapse:collapse;" role="presentation" cellspacing="0" cellpadding="0">
@@ -202,7 +209,7 @@ async function enviarCorreoTransporte(datos){
             </td>
             <td style="vertical-align:top;width:48%;">
               ${p(L.labels.folio, datos.folio)}
-              ${!esShuttle ? p(L.labels.transport, datos.tipo_transporte) : ''}
+              ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}   <!-- 👈 aquí -->
               ${!esShuttle ? p(L.labels.capacity,  datos.capacidad) : ''}
               ${p(L.labels.tripType, tripType)}
               ${p(L.labels.total, `$${safeToFixed(datos.total_pago)} USD`)}
@@ -240,7 +247,7 @@ async function enviarCorreoTransporte(datos){
         ${p(L.labels.name,  datos.nombre_cliente)}
         ${p(L.labels.email, datos.correo_cliente)}
         ${p(L.labels.phone, datos.telefono_cliente)}
-        ${!esShuttle ? p(L.labels.transport, datos.tipo_transporte) : ''}
+        ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}        <!-- 👈 aquí -->
         ${!esShuttle ? p(L.labels.capacity,  datos.capacidad) : ''}
         ${(datos.cantidad_pasajeros || datos.pasajeros) ? p(L.labels.passengers, (datos.cantidad_pasajeros || datos.pasajeros)) : ''}
         ${datos.hotel_llegada   ? p(L.labels.hotel,   datos.hotel_llegada)   : ''}
