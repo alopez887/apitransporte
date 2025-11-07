@@ -1,4 +1,10 @@
-import fetch from 'node-fetch';
+// correosTransporte.js — usa fetch nativo de Node 18
+import dotenv from 'dotenv';
+dotenv.config();
+
+// ⛔️ Quitamos: import fetch from 'node-fetch';
+// ✅ Usamos el fetch nativo:
+const fetch = globalThis.fetch.bind(globalThis);
 
 // === ENV ===
 const GAS_URL   = process.env.GAS_URL || '';
