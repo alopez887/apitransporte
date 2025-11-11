@@ -23,6 +23,10 @@ export default async function guardarTransporte(req, res) {
 
   const total_pago       = Number(datos.total_pago ?? datos.total ?? 0);
 
+  // === NUEVO: normalizamos texto de tipo y el código del transporte ===
+  const tipoTransporteTexto = (datos.tipo_transporte || datos.nombre_transporte || '').toString().trim();
+  const codigoTransporte    = (datos.codigo_transporte || datos.codigo || '').toString().trim();
+
   if (!nombre_cliente || !telefono_cliente || !total_pago) {
     return res.status(400).json({ error: 'Faltan datos requeridos' });
   }
@@ -99,7 +103,7 @@ export default async function guardarTransporte(req, res) {
       zonaBD = rz.rows[0]?.zona_id || '';
     }
 
-    // === INSERT (corrige paréntesis del NOW AT TIME ZONE) ===
+    // === INSERT (agregamos columna 'codigo' para guardar el codigo_transporte) ===
     const query = `
       INSERT INTO reservaciones (
         folio, tipo_servicio, tipo_transporte, proveedor, estatus, zona,
@@ -108,7 +112,7 @@ export default async function guardarTransporte(req, res) {
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
         nombre_cliente, correo_cliente, nota, telefono_cliente, codigo_descuento,
         porcentaje_descuento, precio_servicio, total_pago, fecha, tipo_viaje, token_qr,
-        idioma
+        idioma, codigo
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
@@ -117,15 +121,15 @@ export default async function guardarTransporte(req, res) {
         $19, $20, $21, $22, $23,
         $24, $25, $26,
         NOW() AT TIME ZONE 'America/Mazatlan', $27, $28,
-        $29
+        $29, $30
       )
     `;
 
     const valores = [
       folio,
       'Transportacion',
-      datos.tipo_transporte || '',
-      '', // proveedor
+      tipoTransporteTexto,        // <-- texto que viene del padre (nunca undefined)
+      '',                         // proveedor
       1,
       zonaBD,
       datos.capacidad || '',
@@ -150,11 +154,14 @@ export default async function guardarTransporte(req, res) {
       total_pago,
       (datos.tipo_viaje || '').toString(),
       token_qr,
-      idioma
+      idioma,
+      codigoTransporte            // <-- NUEVO: guardamos en columna 'codigo'
     ];
 
     console.log('🗂 DB payload reservaciones →', {
-      folio, tipo_servicio:'Transportacion', tipo_transporte: datos.tipo_transporte || '',
+      folio, tipo_servicio:'Transportacion',
+      tipo_transporte: tipoTransporteTexto,
+      codigo: codigoTransporte,
       zona: zonaBD, capacidad: datos.capacidad || '', cantidad: cant,
       hoteles: { llegada: hotel_llegada, salida: hotel_salida },
       fechas:  { llegada: fecha_llegada, salida: fecha_salida },
@@ -171,6 +178,7 @@ export default async function guardarTransporte(req, res) {
     try {
       await enviarCorreoTransporte({
         ...datos,
+        // aseguramos consistencia en correo
         nombre_cliente,
         correo_cliente,
         telefono_cliente,
@@ -179,7 +187,9 @@ export default async function guardarTransporte(req, res) {
         total_pago,
         imagen: datos.imagen || '',
         qr,
-        idioma
+        idioma,
+        tipo_transporte: tipoTransporteTexto, // para template de correo
+        codigo_transporte: codigoTransporte
       });
 
       await pool.query(
@@ -208,3 +218,4 @@ export default async function guardarTransporte(req, res) {
     res.status(500).json({ error: 'Error interno al guardar transporte.' });
   }
 }
+
