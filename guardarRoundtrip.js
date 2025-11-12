@@ -1,3 +1,4 @@
+// guardarRoundtrip.js
 import pool from './conexion.js';
 import { enviarCorreoTransporte } from './correosTransporte.js';
 import { generarQRTransporte } from './generarQRTransporte.js';
@@ -75,10 +76,17 @@ export default async function guardarRoundtrip(req, res) {
       zonaBD = rz.rows[0]?.zona_id || '';
     }
 
-    // INSERT (mismo formato, tipo_viaje = 'Redondo')
+    // 🔹 NUEVO: resolver "codigo" (igual que llegada)
+    const codigo =
+      (datos.codigo ??
+       datos.codigo_transporte ??
+       datos.codigoTransporte ??
+       '').toString().trim();
+
+    // INSERT (agregamos la columna "codigo" después de tipo_transporte)
     const query = `
       INSERT INTO reservaciones (
-        folio, tipo_servicio, tipo_transporte, proveedor, estatus, zona,
+        folio, tipo_servicio, tipo_transporte, codigo, proveedor, estatus, zona,
         capacidad, cantidad_pasajeros, hotel_llegada, hotel_salida,
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
@@ -86,14 +94,14 @@ export default async function guardarRoundtrip(req, res) {
         porcentaje_descuento, precio_servicio, total_pago, fecha, tipo_viaje, token_qr,
         idioma
       ) VALUES (
-        $1, $2, $3, $4, $5, $6,
-        $7, $8, $9, $10,
-        $11, $12, $13, $14,
-        $15, $16, $17, $18,
-        $19, $20, $21, $22, $23,
-        $24, $25, $26,
-        NOW() AT TIME ZONE 'America/Mazatlan', $27, $28,
-        $29
+        $1, $2, $3, $4, $5, $6, $7,
+        $8, $9, $10, $11,
+        $12, $13, $14, $15,
+        $16, $17, $18, $19,
+        $20, $21, $22, $23, $24,
+        $25, $26, $27,
+        NOW() AT TIME ZONE 'America/Mazatlan', $28, $29,
+        $30
       )
     `;
 
@@ -101,8 +109,9 @@ export default async function guardarRoundtrip(req, res) {
       folio,
       'Transportacion',
       (datos.tipo_transporte || 'ROUNDTRIP'),
-      '', // proveedor
-      1,
+      codigo,                 // <- NUEVO: "codigo"
+      '',                     // proveedor
+      1,                      // estatus
       zonaBD,
       datos.capacidad || '',
       cantidad,
@@ -149,7 +158,6 @@ export default async function guardarRoundtrip(req, res) {
         "UPDATE reservaciones SET email_reservacion = 'enviado' WHERE folio = $1",
         [folio]
       );
-
     } catch (mailErr) {
       console.error('❌ Error al enviar correo de roundtrip (GAS):', mailErr);
       await pool.query(
@@ -160,7 +168,6 @@ export default async function guardarRoundtrip(req, res) {
     }
 
     res.status(200).json({ exito: true, folio, correo: correo_cliente });
-
   } catch (err) {
     console.error('❌ Error al guardar roundtrip:', err);
     res.status(500).json({ error: 'Error interno al guardar roundtrip.' });
