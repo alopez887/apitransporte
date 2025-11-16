@@ -31,7 +31,7 @@ export default async function actualizarDatosTransporte(req, res) {
     tipo_viaje;
 
   const tiposValidos = ['llegada', 'salida', 'shuttle'];
-  // 🔧 Validamos contra el tipo normalizado
+  // 🔧 FIX: validar contra tipoViajeBase (normalizado)
   if (!tipoViajeBase || !tiposValidos.includes(tipoViajeBase)) {
     return res.status(400).json({ success: false, message: 'Tipo de viaje inválido' });
   }
@@ -80,7 +80,6 @@ export default async function actualizarDatosTransporte(req, res) {
       values.push(valor);
     };
 
-    // Representantes
     if (tipoViajeBase === 'llegada' && representante_llegada !== undefined) {
       updates.push(`representante_llegada = $${paramIndex++}`);
       values.push(representante_llegada);
@@ -90,61 +89,44 @@ export default async function actualizarDatosTransporte(req, res) {
       values.push(representante_salida);
     }
 
-    // Campos comunes
-    setCampo('comentarios',       comentarios);
-    setCampo('firma_cliente',     firma_cliente);
+    setCampo('comentarios', comentarios);
+    setCampo('firma_cliente', firma_cliente);
     setCampo('cantidad_pasajerosok', cantidad_pasajerosok);
 
-    // ⚠️ AQUÍ EL AJUSTE FINO DE FECHAS
-    // Tus iframes mandan "YYYY-MM-DD HH:mm:ss" ya en horario Mazatlán.
-    // Usamos fromSQL con zone 'America/Mazatlan' para generar un ISO correcto.
     if (fecha_inicioviaje) {
-      const fechaInicio = DateTime
-        .fromSQL(fecha_inicioviaje, { zone: 'America/Mazatlan' })
-        .toISO();
-
+      const fechaInicio = DateTime.fromISO(fecha_inicioviaje).setZone('America/Mazatlan').toISO();
       setCampo('fecha_inicioviaje', fechaInicio);
       estatusViaje = 'asignado';
     }
 
     if (fecha_finalviaje) {
-      const fechaFin = DateTime
-        .fromSQL(fecha_finalviaje, { zone: 'America/Mazatlan' })
-        .toISO();
-
+      const fechaFin = DateTime.fromISO(fecha_finalviaje).setZone('America/Mazatlan').toISO();
       setCampo('fecha_finalviaje', fechaFin);
       estatusViaje = 'finalizado';
     }
 
-    // Estatus del viaje
     if (estatusViaje) {
       updates.push(`${campoEstatus} = $${paramIndex++}`);
       values.push(estatusViaje);
     }
 
-    // Chofer externo vs interno
     if (chofer_externonombre && choferexterno_tel && chofer_empresaext) {
-      // Chofer EXTERNO
       updates.push(`chofer_externonombre = $${paramIndex++}`);
       updates.push(`choferexterno_tel   = $${paramIndex++}`);
       updates.push(`chofer_empresaext   = $${paramIndex++}`);
       values.push(chofer_externonombre, choferexterno_tel, chofer_empresaext);
 
-      // Limpiamos chofer interno para ese tramo
       updates.push(`chofer${sufijo} = NULL`);
 
-      // Unidad
       if (unit !== undefined && unit !== null && unit !== '') {
         setCampo('numero_unidad', unit);
       } else {
         updates.push(`numero_unidad${sufijo} = NULL`);
       }
     } else {
-      // Chofer INTERNO
-      setCampo('chofer',        chofer_nombre);
+      setCampo('chofer', chofer_nombre);
       setCampo('numero_unidad', unit);
 
-      // Limpiamos campos de chofer externo
       updates.push(`chofer_externonombre = NULL`);
       updates.push(`choferexterno_tel    = NULL`);
       updates.push(`chofer_empresaext    = NULL`);
