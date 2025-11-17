@@ -19,11 +19,12 @@ export default async function loginUsuario(req, res) {
 
     const user = result.rows[0];
 
-    // ✅ Comparar contraseña tal cual (sin hash)
+    // ✅ Comparar contraseña simple (sin hash)
     if (password !== user.password) {
       return res.status(401).json({ success: false, message: 'Contraseña incorrecta' });
     }
 
+    // ✅ Respuesta estandarizada
     res.json({ 
       success: true, 
       message: 'Login exitoso', 
@@ -31,7 +32,10 @@ export default async function loginUsuario(req, res) {
         id: user.id,
         usuario: user.usuario,
         nombre: user.nombre,
-        rol: user.tipo_usuario   // 🔥 ← ← ← AQUI
+        tipo_usuario: user.tipo_usuario,   // 👈 mantenemos este
+        rol: user.tipo_usuario,            // 👈 compatibilidad con front
+        provider: user.proveedor_slug || null,
+        provider_name: user.proveedor_nombre || null
       }
     });
 
