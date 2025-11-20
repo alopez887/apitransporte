@@ -40,7 +40,7 @@ async function postJSON(url, body, timeoutMs) {
   try {
     const res  = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json; charset=utf-8' }, // 👈 fuerza UTF-8
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
       body: JSON.stringify(body),
       signal: ctrl.signal
     });
@@ -56,6 +56,11 @@ function formatoHora12(hora){
   const [h,m] = String(hora).split(':');
   const H = parseInt(h,10); const suf = H>=12?'p.m.':'a.m.'; const h12 = (H%12)||12;
   return `${h12}:${m} ${suf}`;
+}
+function formatCurrency(monto, moneda) {
+  const val = safeToFixed(monto);
+  // Mantengo el estilo que ya usas: $<monto> <CÓDIGO>
+  return `$${val} ${moneda === 'MXN' ? 'MXN' : 'USD'}`;
 }
 
 // ---------- i18n (textos, SIN cambiar diseño) ----------
@@ -141,10 +146,10 @@ function buildQrAttachmentTransporte(qr) {
   const base64 = normalizeQrBase64(qr);
   if (!base64) return null;
   return {
-    data: base64,               // 👈 SOLO base64 (sin "data:image/...;base64,")
+    data: base64,
     filename: 'qr.png',
     inline: true,
-    cid: 'qrReserva',           // 👈 CID que usa el HTML
+    cid: 'qrReserva',
     mimeType: 'image/png'
   };
 }
@@ -167,13 +172,24 @@ async function enviarCorreoTransporte(datos){
     const nota     = datos.nota || datos.cliente?.nota || '';
     const esShuttle= datos.tipo_viaje === 'Shuttle';
 
-    /* ===== ÚNICO AJUSTE: nombre del transporte según idioma del correo ===== */
+    /* ===== Nombre del transporte según idioma del correo ===== */
     const catEN = String((datos.categoria ?? datos.nombreEN) || '').trim();
     const catES = String((datos.categoria_es ?? datos.nombreES) || '').trim();
     const categoria_i18n = (L.code === 'es')
       ? (catES || catEN || datos.tipo_transporte || '')
       : (catEN || catES || datos.tipo_transporte || '');
-    /* ===================================================================== */
+
+    /* ===== MONEDA y MONTO a mostrar =====
+       - moneda: preferimos datos.moneda; si no, moneda_cobro_real | moneda_cobro | 'USD'
+       - monto:  preferimos datos.total_cobrado; si no, total_pago
+    */
+    const moneda = (String(
+      datos.moneda || datos.moneda_cobro_real || datos.moneda_cobro || 'USD'
+    ).toUpperCase() === 'MXN') ? 'MXN' : 'USD';
+
+    const totalMostrar = Number(
+      Number.isFinite(datos.total_cobrado) ? datos.total_cobrado : datos.total_pago
+    ) || 0;
 
     // Header (h2 izq + logo der)
     const headerHTML = `
@@ -213,7 +229,7 @@ async function enviarCorreoTransporte(datos){
               ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}   <!-- antes: datos.tipo_transporte -->
               ${!esShuttle ? p(L.labels.capacity,  datos.capacidad) : ''}
               ${p(L.labels.tripType, tripType)}
-              ${p(L.labels.total, `$${safeToFixed(datos.total_pago)} USD`)}
+              ${p(L.labels.total, formatCurrency(totalMostrar, moneda))}
             </td>
           </tr>
         </table>
@@ -262,7 +278,7 @@ async function enviarCorreoTransporte(datos){
         ${datos.aerolinea_salida ? p(L.labels.airline, datos.aerolinea_salida) : ''}
         ${datos.vuelo_salida    ? p(L.labels.flight,  datos.vuelo_salida)    : ''}
         ${p(L.labels.tripType, tripType)}
-        ${p(L.labels.total, `$${safeToFixed(datos.total_pago)} USD`)}
+        ${p(L.labels.total, formatCurrency(totalMostrar, moneda))}
         ${nota && nota.trim() !== '' ? p(L.labels.note, nota) : ''}
       `.trim();
     }
@@ -345,7 +361,7 @@ async function enviarCorreoTransporte(datos){
       attachments
     };
 
-    DBG('POST → GAS', { to: datos.correo_cliente, subject: payload.subject, hasQR: !!qrAttachment });
+    DBG('POST → GAS', { to: datos.correo_cliente, subject: payload.subject, hasQR: !!qrAttachment, moneda, totalMostrar });
 
     if (MAIL_FAST_MODE) {
       postJSON(GAS_URL, payload, GAS_TIMEOUT_MS).catch(err => console.error('Error envío async GAS:', err.message));
