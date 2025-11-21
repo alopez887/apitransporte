@@ -33,6 +33,9 @@ export default async function guardarTransporte(req, res) {
   const tipoTransporteTexto = (datos.tipo_transporte || datos.nombre_transporte || '').toString().trim();
   const codigoTransporte    = (datos.codigo_transporte || datos.codigo || '').toString().trim();
 
+  // === NUEVO: imagen que viene del front (URL pública) ===
+  const imagen = (datos.imagen || '').toString().trim();
+
   if (!nombre_cliente || !telefono_cliente || !total_pago) {
     return res.status(400).json({ error: 'Faltan datos requeridos' });
   }
@@ -109,7 +112,7 @@ export default async function guardarTransporte(req, res) {
       zonaBD = rz.rows[0]?.zona_id || '';
     }
 
-    // === INSERT (agregamos 'moneda' y mantenemos todo lo demás igual) ===
+    // === INSERT (agregamos 'moneda' e 'imagen' y mantenemos todo lo demás igual) ===
     const query = `
       INSERT INTO reservaciones (
         folio, tipo_servicio, tipo_transporte, proveedor, estatus, zona,
@@ -118,7 +121,7 @@ export default async function guardarTransporte(req, res) {
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
         nombre_cliente, correo_cliente, nota, telefono_cliente, codigo_descuento,
         porcentaje_descuento, precio_servicio, total_pago, moneda,
-        fecha, tipo_viaje, token_qr, idioma, codigo
+        fecha, tipo_viaje, token_qr, idioma, codigo, imagen
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
@@ -126,7 +129,7 @@ export default async function guardarTransporte(req, res) {
         $15, $16, $17, $18,
         $19, $20, $21, $22, $23,
         $24, $25, $26, $27,
-        NOW() AT TIME ZONE 'America/Mazatlan', $28, $29, $30, $31
+        NOW() AT TIME ZONE 'America/Mazatlan', $28, $29, $30, $31, $32
       )
     `;
 
@@ -168,15 +171,16 @@ export default async function guardarTransporte(req, res) {
       porcentaje_descuento,
       precio_servicio,
       total_pago,
-      moneda,                    // ⬅️ NUEVO
+      moneda,                    // ⬅️ moneda
 
       // fecha -> NOW() AT TIME ZONE ...
 
-      // $28..$31
+      // $28..$32
       (datos.tipo_viaje || '').toString(),
       token_qr,
       idioma,
-      codigoTransporte           // guardamos en columna 'codigo'
+      codigoTransporte,          // guardamos en columna 'codigo'
+      imagen                     // ⬅️ NUEVO: columna imagen
     ];
 
     console.log('🗂 DB payload reservaciones →', {
@@ -190,7 +194,9 @@ export default async function guardarTransporte(req, res) {
       vuelos:  { llegada: vuelo_llegada, salida: vuelo_salida },
       cliente: { nombre: nombre_cliente, correo: correo_cliente, tel: telefono_cliente },
       descuentos: { codigo: datos.codigo_descuento || '', porcentaje: porcentaje_descuento },
-      precio_servicio, total_pago, moneda, tipo_viaje: datos.tipo_viaje || '', idioma
+      precio_servicio, total_pago, moneda,
+      tipo_viaje: datos.tipo_viaje || '', idioma,
+      imagen                      // log de imagen que se guarda
     });
 
     await pool.query(query, valores);
