@@ -1,4 +1,4 @@
-// guardarTransporte.js
+// guardarTransporte.js 
 import pool from './conexion.js';
 import { enviarCorreoTransporte } from './correosTransporte.js';
 import { generarQRTransporte } from './generarQRTransporte.js';
