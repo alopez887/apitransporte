@@ -83,7 +83,8 @@ export default async function guardarRoundtrip(req, res) {
        datos.codigoTransporte ??
        '').toString().trim();
 
-    // INSERT (agregamos la columna "codigo" después de tipo_transporte)
+    // INSERT (agregamos la columna "codigo" después de tipo_transporte
+    //  y AHORA también "imagen" antes de fecha)
     const query = `
       INSERT INTO reservaciones (
         folio, tipo_servicio, tipo_transporte, codigo, proveedor, estatus, zona,
@@ -91,7 +92,7 @@ export default async function guardarRoundtrip(req, res) {
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
         nombre_cliente, correo_cliente, nota, telefono_cliente, codigo_descuento,
-        porcentaje_descuento, precio_servicio, total_pago, fecha, tipo_viaje, token_qr,
+        porcentaje_descuento, precio_servicio, total_pago, imagen, fecha, tipo_viaje, token_qr,
         idioma
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7,
@@ -99,9 +100,9 @@ export default async function guardarRoundtrip(req, res) {
         $12, $13, $14, $15,
         $16, $17, $18, $19,
         $20, $21, $22, $23, $24,
-        $25, $26, $27,
-        NOW() AT TIME ZONE 'America/Mazatlan', $28, $29,
-        $30
+        $25, $26, $27, $28,
+        NOW() AT TIME ZONE 'America/Mazatlan', $29, $30,
+        $31
       )
     `;
 
@@ -109,7 +110,7 @@ export default async function guardarRoundtrip(req, res) {
       folio,
       'Transportacion',
       (datos.tipo_transporte || 'ROUNDTRIP'),
-      codigo,                 // <- NUEVO: "codigo"
+      codigo,                 // "codigo"
       '',                     // proveedor
       1,                      // estatus
       zonaBD,
@@ -133,6 +134,7 @@ export default async function guardarRoundtrip(req, res) {
       porcentaje_descuento,
       precio_servicio,
       total_pago,
+      datos.imagen || '',     // ⬅️ NUEVO: guardamos la imagen en reservaciones.imagen
       'Redondo',
       token_qr,
       idioma
@@ -152,6 +154,7 @@ export default async function guardarRoundtrip(req, res) {
         total_pago,
         qr,
         idioma
+        // la imagen ya viaja en ...datos (datos.imagen)
       });
 
       await pool.query(
@@ -173,3 +176,4 @@ export default async function guardarRoundtrip(req, res) {
     res.status(500).json({ error: 'Error interno al guardar roundtrip.' });
   }
 }
+
