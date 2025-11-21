@@ -50,7 +50,16 @@ async function postJSON(url, body, timeoutMs) {
 }
 
 // ---------- Formateos ----------
-const safeToFixed = (v)=>{ const n=Number(v); return isNaN(n)?'0.00':n.toFixed(2); };
+const safeToFixed = (v) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '0.00';
+  // 1,234.56 con 2 decimales fijo
+  return n.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
 function formatoHora12(hora){
   if(!hora) return '';
   const [h,m] = String(hora).split(':');
@@ -346,7 +355,7 @@ async function enviarCorreoTransporte(datos){
     `.trim();
 
     // Adjuntos (inline por CID)
-    const attachments = [{ url: 'https://static.wixstatic.com/media/f81ced_636e76aeb741411b87c4fa8aa9219410~mv2.png', filename: 'logo.png', inline: true, cid: 'logoEmpresa' }];
+    const attachments = [{ url: logoUrl, filename: 'logo.png', inline: true, cid: 'logoEmpresa' }];
     if (imgUrl) attachments.push({ url: imgUrl, filename: 'transporte.jpg', inline: true, cid: 'imagenTransporte' });
     if (qrAttachment) attachments.push(qrAttachment);
 
