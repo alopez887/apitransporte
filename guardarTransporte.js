@@ -32,7 +32,7 @@ export default async function guardarTransporte(req, res) {
   const totalPagoRaw   = datos.total_pago ?? datos.total ?? 0;
   const totalPagoNum   = round2(totalPagoRaw);              // p.ej. 250.6566 → 250.66
   const total_pago     = Number(totalPagoNum.toFixed(2));   // num con 2 decimales "lógicos"
-  const total_pago_str = totalPagoNum.toFixed(2);           // "250.60", "250.04", etc. si lo quieres loguear o mandar como texto
+  const total_pago_str = totalPagoNum.toFixed(2);           // "250.60", "250.04", etc. para DB/log
 
   // === NUEVO: moneda real de cobro (USD|MXN) ===
   const moneda = (String(
@@ -180,8 +180,8 @@ export default async function guardarTransporte(req, res) {
       // $24..$27
       porcentaje_descuento,
       precio_servicio,
-      total_pago,   // ⬅️ ya viene con 2 decimales lógicos (round2 + toFixed)
-      moneda,       // ⬅️ moneda
+      total_pago_str,   // ⬅️ STRING con SIEMPRE 2 decimales ("250.60") para DB
+      moneda,           // ⬅️ moneda
 
       // fecha -> NOW() AT TIME ZONE ...
 
@@ -223,7 +223,7 @@ export default async function guardarTransporte(req, res) {
         telefono_cliente,
         folio,
         zona: zonaBD,
-        total_pago,           // num (en plantilla lo puedes formatear a 2 decimales si quieres)
+        total_pago,           // num (250.6 ≡ 250.60) → en plantilla lo formateas a 2 decimales
         moneda,               // ⬅️ útil si tu plantilla lo muestra
         imagen: datos.imagen || '',
         qr,
