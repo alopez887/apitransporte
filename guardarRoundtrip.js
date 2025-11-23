@@ -6,6 +6,12 @@ import crypto from 'crypto';
 
 console.log('🟢 guardando roundtrip — con idioma + email_reservacion');
 
+// 🔹 Helper: redondear a 2 decimales
+function round2(v) {
+  const n = Number(v) || 0;
+  return Math.round(n * 100) / 100;
+}
+
 export default async function guardarRoundtrip(req, res) {
   const datos = req.body || {};
 
@@ -23,8 +29,13 @@ export default async function guardarRoundtrip(req, res) {
   const cantSal  = parseInt(datos.pasajeros_salida ?? datos.pasajeros ?? 0, 10) || 0;
   const cantidad = Math.max(cantLleg, cantSal);
 
-  const total_pago       = Number(datos.total_pago ?? datos.total ?? 0);
-  const precio_servicio  = Number(datos.precio_servicio ?? 0) || 0;
+  // 🔹 total_pago con redondeo a 2 decimales
+  const totalPagoRaw   = datos.total_pago ?? datos.total ?? 0;
+  const totalPagoNum   = round2(totalPagoRaw);            // ej. 250.6566 → 250.66
+  const total_pago     = Number(totalPagoNum.toFixed(2)); // num con 2 decimales "lógicos"
+  const total_pago_str = totalPagoNum.toFixed(2);         // "250.60", "250.04", etc. si lo quieres ver en logs
+
+  const precio_servicio      = Number(datos.precio_servicio ?? 0) || 0;
   const porcentaje_descuento = Number(datos.porcentaje_descuento ?? 0) || 0;
 
   if (!nombre_cliente || !telefono_cliente || !total_pago) {
@@ -133,12 +144,32 @@ export default async function guardarRoundtrip(req, res) {
       datos.codigo_descuento || '',
       porcentaje_descuento,
       precio_servicio,
-      total_pago,
-      datos.imagen || '',     // ⬅️ NUEVO: guardamos la imagen en reservaciones.imagen
+      total_pago,             // ⬅️ ya viene redondeado a 2 decimales
+      datos.imagen || '',     // imagen
       'Redondo',
       token_qr,
       idioma
     ];
+
+    console.log('🗂 DB payload reservaciones (roundtrip) →', {
+      folio,
+      tipo_servicio: 'Transportacion',
+      tipo_transporte: datos.tipo_transporte || 'ROUNDTRIP',
+      codigo,
+      zona: zonaBD,
+      capacidad: datos.capacidad || '',
+      cantidad,
+      hoteles: { llegada: hotel_llegada, salida: hotel_salida },
+      fechas:  { llegada: fecha_llegada, salida: fecha_salida },
+      horas:   { llegada: hora_llegada,  salida: hora_salida  },
+      vuelos:  { llegada: vuelo_llegada, salida: vuelo_salida },
+      cliente: { nombre: nombre_cliente, correo: correo_cliente, tel: telefono_cliente },
+      descuentos: { codigo: datos.codigo_descuento || '', porcentaje: porcentaje_descuento },
+      precio_servicio,
+      total_pago: total_pago_str, // 👈 log en texto con siempre 2 decimales
+      tipo_viaje: 'Redondo',
+      idioma
+    });
 
     await pool.query(query, valores);
 
@@ -151,7 +182,7 @@ export default async function guardarRoundtrip(req, res) {
         telefono_cliente,
         folio,
         zona: zonaBD,
-        total_pago,
+        total_pago,   // num; en plantilla lo puedes formatear con 2 decimales
         qr,
         idioma
         // la imagen ya viaja en ...datos (datos.imagen)
