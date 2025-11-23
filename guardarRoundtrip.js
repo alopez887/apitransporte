@@ -33,10 +33,18 @@ export default async function guardarRoundtrip(req, res) {
   const totalPagoRaw   = datos.total_pago ?? datos.total ?? 0;
   const totalPagoNum   = round2(totalPagoRaw);            // ej. 250.6566 → 250.66
   const total_pago     = Number(totalPagoNum.toFixed(2)); // num con 2 decimales "lógicos"
-  const total_pago_str = totalPagoNum.toFixed(2);         // "250.60", "250.04", etc.
+  const total_pago_str = totalPagoNum.toFixed(2);         // "250.60", "250.04", etc. si lo quieres ver en logs
 
   const precio_servicio      = Number(datos.precio_servicio ?? 0) || 0;
   const porcentaje_descuento = Number(datos.porcentaje_descuento ?? 0) || 0;
+
+  // 🔹 moneda (igual criterio que en guardarTransporte)
+  const moneda = (() => {
+    const m = String(
+      datos.moneda || datos.moneda_cobro_real || datos.moneda_cobro || 'USD'
+    ).trim().toUpperCase();
+    return m.startsWith('MXN') ? 'MXN' : 'USD';
+  })();
 
   if (!nombre_cliente || !telefono_cliente || !total_pago) {
     return res.status(400).json({ error: 'Faltan datos requeridos' });
@@ -94,7 +102,7 @@ export default async function guardarRoundtrip(req, res) {
        datos.codigoTransporte ??
        '').toString().trim();
 
-    // INSERT
+    // INSERT (no tocamos columnas; total_pago ya viene redondeado)
     const query = `
       INSERT INTO reservaciones (
         folio, tipo_servicio, tipo_transporte, codigo, proveedor, estatus, zona,
@@ -143,7 +151,7 @@ export default async function guardarRoundtrip(req, res) {
       datos.codigo_descuento || '',
       porcentaje_descuento,
       precio_servicio,
-      total_pago_str,         // ⬅️ AQUÍ: string con SIEMPRE 2 decimales, igual que en reservar.js
+      total_pago,             // ⬅️ ya viene redondeado a 2 decimales
       datos.imagen || '',     // imagen
       'Redondo',
       token_qr,
@@ -166,6 +174,7 @@ export default async function guardarRoundtrip(req, res) {
       descuentos: { codigo: datos.codigo_descuento || '', porcentaje: porcentaje_descuento },
       precio_servicio,
       total_pago: total_pago_str, // 👈 log en texto con siempre 2 decimales
+      moneda,                     // 👈 para que veas qué se está usando
       tipo_viaje: 'Redondo',
       idioma
     });
@@ -181,7 +190,8 @@ export default async function guardarRoundtrip(req, res) {
         telefono_cliente,
         folio,
         zona: zonaBD,
-        total_pago,   // num (250.6 ≡ 250.60) → en la plantilla lo formateas con 2 decimales
+        total_pago,   // num; en plantilla lo puedes formatear con 2 decimales
+        moneda,       // 👈 AHORA SÍ SE ENVÍA LA MONEDA
         qr,
         idioma
         // la imagen ya viaja en ...datos (datos.imagen)
@@ -206,3 +216,4 @@ export default async function guardarRoundtrip(req, res) {
     res.status(500).json({ error: 'Error interno al guardar roundtrip.' });
   }
 }
+
