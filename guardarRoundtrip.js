@@ -29,16 +29,16 @@ export default async function guardarRoundtrip(req, res) {
   const cantSal  = parseInt(datos.pasajeros_salida ?? datos.pasajeros ?? 0, 10) || 0;
   const cantidad = Math.max(cantLleg, cantSal);
 
-  // 🔹 total_pago con redondeo a 2 decimales
+  // 🔹 total_pago con redondeo a 2 decimales (igual que guardarTransporte)
   const totalPagoRaw   = datos.total_pago ?? datos.total ?? 0;
   const totalPagoNum   = round2(totalPagoRaw);            // ej. 250.6566 → 250.66
   const total_pago     = Number(totalPagoNum.toFixed(2)); // num con 2 decimales "lógicos"
-  const total_pago_str = totalPagoNum.toFixed(2);         // "250.60", "250.04", etc. si lo quieres ver en logs
+  const total_pago_str = totalPagoNum.toFixed(2);         // "250.60", "250.04", etc. (DB/log)
 
   const precio_servicio      = Number(datos.precio_servicio ?? 0) || 0;
   const porcentaje_descuento = Number(datos.porcentaje_descuento ?? 0) || 0;
 
-  // 🔹 moneda (igual criterio que en guardarTransporte)
+  // 🔹 moneda (mismo criterio que en guardarTransporte)
   const moneda = (() => {
     const m = String(
       datos.moneda || datos.moneda_cobro_real || datos.moneda_cobro || 'USD'
@@ -95,14 +95,14 @@ export default async function guardarRoundtrip(req, res) {
       zonaBD = rz.rows[0]?.zona_id || '';
     }
 
-    // 🔹 NUEVO: resolver "codigo" (igual que llegada)
+    // 🔹 Resolver "codigo" (igual que llegada)
     const codigo =
       (datos.codigo ??
        datos.codigo_transporte ??
        datos.codigoTransporte ??
        '').toString().trim();
 
-    // INSERT (no tocamos columnas; total_pago ya viene redondeado)
+    // 🔹 INSERT: ahora incluye `moneda` y usa `total_pago_str` (2 decimales fijos)
     const query = `
       INSERT INTO reservaciones (
         folio, tipo_servicio, tipo_transporte, codigo, proveedor, estatus, zona,
@@ -110,52 +110,52 @@ export default async function guardarRoundtrip(req, res) {
         fecha_llegada, hora_llegada, aerolinea_llegada, vuelo_llegada,
         fecha_salida, hora_salida, aerolinea_salida, vuelo_salida,
         nombre_cliente, correo_cliente, nota, telefono_cliente, codigo_descuento,
-        porcentaje_descuento, precio_servicio, total_pago, imagen, fecha, tipo_viaje, token_qr,
-        idioma
+        porcentaje_descuento, precio_servicio, total_pago, moneda, imagen,
+        fecha, tipo_viaje, token_qr, idioma
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7,
         $8, $9, $10, $11,
         $12, $13, $14, $15,
         $16, $17, $18, $19,
         $20, $21, $22, $23, $24,
-        $25, $26, $27, $28,
-        NOW() AT TIME ZONE 'America/Mazatlan', $29, $30,
-        $31
+        $25, $26, $27, $28, $29,
+        NOW() AT TIME ZONE 'America/Mazatlan', $30, $31, $32
       )
     `;
 
     const valores = [
-      folio,
-      'Transportacion',
-      (datos.tipo_transporte || 'ROUNDTRIP'),
-      codigo,                 // "codigo"
-      '',                     // proveedor
-      1,                      // estatus
-      zonaBD,
-      datos.capacidad || '',
-      cantidad,
-      hotel_llegada,
-      hotel_salida,
-      fecha_llegada,
-      hora_llegada,
-      aerolinea_llegada,
-      vuelo_llegada,
-      fecha_salida,
-      hora_salida,
-      aerolinea_salida,
-      vuelo_salida,
-      nombre_cliente,
-      correo_cliente,
-      nota,
-      telefono_cliente,
-      datos.codigo_descuento || '',
-      porcentaje_descuento,
-      precio_servicio,
-      total_pago,             // ⬅️ ya viene redondeado a 2 decimales
-      datos.imagen || '',     // imagen
-      'Redondo',
-      token_qr,
-      idioma
+      folio,                                      // $1
+      'Transportacion',                           // $2
+      (datos.tipo_transporte || 'ROUNDTRIP'),     // $3
+      codigo,                                     // $4
+      '',                                         // $5 proveedor
+      1,                                          // $6 estatus
+      zonaBD,                                     // $7
+      datos.capacidad || '',                      // $8
+      cantidad,                                   // $9
+      hotel_llegada,                              // $10
+      hotel_salida,                               // $11
+      fecha_llegada,                              // $12
+      hora_llegada,                               // $13
+      aerolinea_llegada,                          // $14
+      vuelo_llegada,                              // $15
+      fecha_salida,                               // $16
+      hora_salida,                                // $17
+      aerolinea_salida,                           // $18
+      vuelo_salida,                               // $19
+      nombre_cliente,                             // $20
+      correo_cliente,                             // $21
+      nota,                                       // $22
+      telefono_cliente,                           // $23
+      datos.codigo_descuento || '',               // $24
+      porcentaje_descuento,                       // $25
+      precio_servicio,                            // $26
+      total_pago_str,                             // $27  "XXXX.XX" SIEMPRE 2 decimales
+      moneda,                                     // $28  'USD' | 'MXN'
+      datos.imagen || '',                         // $29
+      'Redondo',                                  // $30
+      token_qr,                                   // $31
+      idioma                                      // $32
     ];
 
     console.log('🗂 DB payload reservaciones (roundtrip) →', {
@@ -174,7 +174,7 @@ export default async function guardarRoundtrip(req, res) {
       descuentos: { codigo: datos.codigo_descuento || '', porcentaje: porcentaje_descuento },
       precio_servicio,
       total_pago: total_pago_str, // 👈 log en texto con siempre 2 decimales
-      moneda,                     // 👈 para que veas qué se está usando
+      moneda,                     // 👈 ahora sí alineado con guardarTransporte
       tipo_viaje: 'Redondo',
       idioma
     });
@@ -190,8 +190,8 @@ export default async function guardarRoundtrip(req, res) {
         telefono_cliente,
         folio,
         zona: zonaBD,
-        total_pago,   // num; en plantilla lo puedes formatear con 2 decimales
-        moneda,       // 👈 AHORA SÍ SE ENVÍA LA MONEDA
+        total_pago,   // num; en plantilla lo formateas a 2 decimales
+        moneda,       // 👈 ya la traes aquí también
         qr,
         idioma
         // la imagen ya viaja en ...datos (datos.imagen)
@@ -216,4 +216,3 @@ export default async function guardarRoundtrip(req, res) {
     res.status(500).json({ error: 'Error interno al guardar roundtrip.' });
   }
 }
-
