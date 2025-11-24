@@ -25,9 +25,16 @@ export default async function guardarRoundtrip(req, res) {
   const correo_cliente   = (datos.correo_cliente   ?? datos.cliente?.email    ?? '').toString().trim();
   const nota             = (datos.nota ?? datos.cliente?.nota ?? '').toString();
 
-  const cantLleg = parseInt(datos.pasajeros_llegada ?? datos.pasajeros ?? 0, 10) || 0;
-  const cantSal  = parseInt(datos.pasajeros_salida ?? datos.pasajeros ?? 0, 10) || 0;
-  const cantidad = Math.max(cantLleg, cantSal);
+  // 🔹 cantidad de pasajeros: usar lo que manda el iframe (cantidad_pasajeros)
+  const cantidad = (() => {
+    const fromIframe = parseInt(datos.cantidad_pasajeros ?? datos.pasajeros ?? 0, 10);
+    if (Number.isFinite(fromIframe) && fromIframe > 0) return fromIframe;
+
+    // compat por si algún flujo viejo manda pasajeros_llegada / pasajeros_salida
+    const cantLleg = parseInt(datos.pasajeros_llegada ?? datos.pasajeros ?? 0, 10) || 0;
+    const cantSal  = parseInt(datos.pasajeros_salida ?? datos.pasajeros ?? 0, 10) || 0;
+    return Math.max(cantLleg, cantSal, 0);
+  })();
 
   // 🔹 total_pago con redondeo a 2 decimales (igual que guardarTransporte)
   const totalPagoRaw   = datos.total_pago ?? datos.total ?? 0;
@@ -132,7 +139,7 @@ export default async function guardarRoundtrip(req, res) {
       1,                                          // $6 estatus
       zonaBD,                                     // $7
       datos.capacidad || '',                      // $8
-      cantidad,                                   // $9
+      cantidad,                                   // $9  → cantidad_pasajeros (ya del iframe)
       hotel_llegada,                              // $10
       hotel_salida,                               // $11
       fecha_llegada,                              // $12
