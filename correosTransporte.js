@@ -126,7 +126,7 @@ function pickLang(idioma){
       `,
       politicas: `
         <div style="margin-top:30px;padding-top:15px;border-top:1px solid #ccc;font-size:13px;color:#555;">
-          <strong>\u{1F4CC} Pol\u00edticas de cancelaci\u00f3n:</strong><br>
+          <strong>&#128204; Pol\u00edticas de cancelaci\u00f3n:</strong><br>
           - Toda cancelaci\u00f3n o solicitud de reembolso est\u00e1 sujeta a una penalizaci\u00f3n del 10% del monto pagado.<br>
           <strong>- No hay reembolsos por cancelaciones con menos de 24 horas de anticipaci\u00f3n o por inasistencias (no-show).</strong>
         </div>
@@ -162,7 +162,7 @@ function pickLang(idioma){
     `,
     politicas: `
       <div style="margin-top:30px;padding-top:15px;border-top:1px solid #ccc;font-size:13px;color:#555;">
-        <strong>\u{1F4CC} Cancellation Policy:</strong><br>
+        <strong>&#128204; Cancellation Policy:</strong><br>
         - All cancellations or refund requests are subject to a 10% fee of the total amount paid.<br>
         <strong>- No refunds will be issued for cancellations made less than 24 hours in advance or in case of no-shows.</strong>
       </div>
