@@ -2,14 +2,18 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-const GAS_URL         = process.env.GAS_URL;                 // https://script.google.com/macros/s/XXXX/exec
-const GAS_TOKEN       = process.env.GAS_TOKEN;               // SECRET en Script Properties
+const GAS_URL         = (process.env.GAS_URL || '').trim();  // https://script.google.com/macros/s/XXXX/exec
+const GAS_TOKEN       = (process.env.GAS_TOKEN || '').trim(); // SECRET en Script Properties
 const GAS_TIMEOUT_MS  = Number(process.env.GAS_TIMEOUT_MS || 15000);
+
+// ⚠️ Recomendación: para COMPRA deja esto apagado (si lo enciendes, no hay confirmación real)
 const MAIL_FAST_MODE  = /^(1|true|yes)$/i.test(process.env.MAIL_FAST_MODE || '');
+
 const EMAIL_DEBUG     = /^(1|true|yes)$/i.test(process.env.EMAIL_DEBUG || '');
 const EMAIL_FROMNAME  = process.env.EMAIL_FROMNAME || 'Cabo Travel Solutions';
-const EMAIL_BCC       = process.env.EMAIL_BCC || 'nkmsistemas@gmail.com';
-const DBG = (...a) => { if (EMAIL_DEBUG) console.log('[MAIL]', ...a); };
+const EMAIL_BCC       = process.env.EMAIL_BCC || 'nkcts.notyfi@gmail.com';
+
+const DBG = (...a) => { if (EMAIL_DEBUG) console.log('[MAIL][transporte]', ...a); };
 
 // ---------- Utilidades ----------
 function sanitizeUrl(u = '') {
@@ -21,6 +25,7 @@ function sanitizeUrl(u = '') {
     return s;
   } catch { return ''; }
 }
+
 // Forzar JPG en Wix para evitar WEBP en clientes (Outlook, etc.)
 function forceJpgIfWix(url='') {
   try {
@@ -33,82 +38,107 @@ function forceJpgIfWix(url='') {
   } catch {}
   return url;
 }
+
 // POST JSON con timeout (fetch nativo Node 18)
+// ✅ más robusto: intenta parsear JSON, si no puede guarda raw
 async function postJSON(url, body, timeoutMs) {
   const ctrl = new AbortController();
   const id = setTimeout(() => ctrl.abort(), timeoutMs);
+
   try {
-    const res  = await fetch(url, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json; charset=utf-8' },
       body: JSON.stringify(body),
       signal: ctrl.signal
     });
-    const json = await res.json().catch(() => ({}));
-    return { status: res.status, json };
-  } finally { clearTimeout(id); }
+
+    const raw = await res.text();
+    let json = {};
+    try { json = JSON.parse(raw); } catch { json = { ok:false, raw }; }
+
+    return { status: res.status, json, raw };
+  } finally {
+    clearTimeout(id);
+  }
 }
 
 // ---------- Formateos ----------
 const safeToFixed = (v) => {
   const n = Number(v);
   if (!Number.isFinite(n)) return '0.00';
-  // 1,234.56 con 2 decimales fijo
-  return n.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 function formatoHora12(hora){
   if(!hora) return '';
   const [h,m] = String(hora).split(':');
-  const H = parseInt(h,10); const suf = H>=12?'p.m.':'a.m.'; const h12 = (H%12)||12;
+  const H = parseInt(h,10); if (!Number.isFinite(H)) return String(hora);
+  const suf = H>=12 ? 'p.m.' : 'a.m.';
+  const h12 = (H%12)||12;
   return `${h12}:${m} ${suf}`;
 }
+
 function formatCurrency(monto, moneda) {
   const val = safeToFixed(monto);
-  // Mantengo el estilo que ya usas: $<monto> <CÓDIGO>
   return `$${val} ${moneda === 'MXN' ? 'MXN' : 'USD'}`;
 }
 
+function normTrip(v){
+  const s = String(v || '').trim().toLowerCase();
+  // tus valores reales vienen a veces como 'llegada'/'salida'/'shuttle'/'redondo'
+  if (s === 'llegada') return 'llegada';
+  if (s === 'salida')  return 'salida';
+  if (s === 'shuttle') return 'shuttle';
+  if (s === 'redondo' || s === 'roundtrip' || s === 'round trip') return 'redondo';
+  return s || '';
+}
+
 // ---------- i18n (textos, SIN cambiar diseño) ----------
+// ✅ Todo en unicode escapes para evitar encoding roto en Windows/Notepad++
 function pickLang(idioma){
   const es = String(idioma||'').toLowerCase().startsWith('es');
+
   if (es) {
     return {
       code: 'es',
-      header_ok: '✅ Reservación de Transporte Confirmada',
+      header_ok: '\u2705 Reservaci\u00f3n de Transporte Confirmada',
       labels: {
-        name:'Nombre', email:'Correo', phone:'Teléfono', passengers:'Pasajeros', note:'Nota',
+        name:'Nombre', email:'Correo', phone:'Tel\u00e9fono', passengers:'Pasajeros', note:'Nota',
         folio:'Folio', transport:'Transporte', capacity:'Capacidad', total:'Total',
         tripType:'Tipo de viaje', hotel:'Hotel', date:'Fecha', time:'Hora',
-        airline:'Aerolínea', flight:'Vuelo',
-        arrivalInfo:'Información de Llegada', departureInfo:'Información de Salida',
-        qrLegend:'Muestra este código QR a tu proveedor:',
-        sentTo:'Esta confirmación fue enviada a:'
+        airline:'Aerol\u00ednea', flight:'Vuelo',
+        arrivalInfo:'Informaci\u00f3n de Llegada', departureInfo:'Informaci\u00f3n de Salida',
+        qrLegend:'Muestra este c\u00f3digo QR a tu proveedor:',
+        sentTo:'Esta confirmaci\u00f3n fue enviada a:'
       },
-      tripType: { Llegada:'Llegada', Salida:'Salida', Redondo:'Viaje Redondo', Shuttle:'Shuttle' },
+      tripType: {
+        llegada:'Llegada',
+        salida:'Salida',
+        redondo:'Viaje Redondo',
+        shuttle:'Shuttle'
+      },
       recomendaciones: `
         <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:8px 12px;margin-top:14px;border-radius:5px;line-height:1.3;">
-          <strong style="color:#b00000;">⚠ Recomendaciones:</strong>
-          <span style="color:#333;"> Por favor confirma tu reservación con al menos 24 horas de anticipación para evitar contratiempos.</span>
+          <strong style="color:#b00000;">\u26a0 Recomendaciones:</strong>
+          <span style="color:#333;"> Por favor confirma tu reservaci\u00f3n con al menos 24 horas de anticipaci\u00f3n para evitar contratiempos.</span>
         </div>
       `,
       politicas: `
         <div style="margin-top:30px;padding-top:15px;border-top:1px solid #ccc;font-size:13px;color:#555;">
-          <strong>&#128204; Políticas de cancelación:</strong><br>
-          - Toda cancelación o solicitud de reembolso está sujeta a una penalización del 10% del monto pagado.<br>
-          <strong>- No hay reembolsos por cancelaciones con menos de 24 horas de anticipación o por inasistencias (no-show).</strong>
+          <strong>\u{1F4CC} Pol\u00edticas de cancelaci\u00f3n:</strong><br>
+          - Toda cancelaci\u00f3n o solicitud de reembolso est\u00e1 sujeta a una penalizaci\u00f3n del 10% del monto pagado.<br>
+          <strong>- No hay reembolsos por cancelaciones con menos de 24 horas de anticipaci\u00f3n o por inasistencias (no-show).</strong>
         </div>
       `,
-      subject: (folio)=>`Confirmación de Transporte - Folio ${folio}`
+      // ✅ subject con escapes (sin depender de encoding del archivo)
+      subject: (folio)=>`Confirmaci\u00f3n de Transporte - Folio ${folio || '\u2014'}`
     };
   }
-  // EN (default)
+
   return {
     code: 'en',
-    header_ok: '✅ Transport Reservation Confirmed',
+    header_ok: '\u2705 Transport Reservation Confirmed',
     labels: {
       name:'Name', email:'Email', phone:'Phone', passengers:'Passengers', note:'Note',
       folio:'Folio', transport:'Transport', capacity:'Capacity', total:'Total',
@@ -118,21 +148,26 @@ function pickLang(idioma){
       qrLegend:'Show this QR code to your provider:',
       sentTo:'This confirmation was sent to:'
     },
-    tripType: { Llegada:'Arrival', Salida:'Departure', Redondo:'Round Trip', Shuttle:'Shuttle' },
+    tripType: {
+      llegada:'Arrival',
+      salida:'Departure',
+      redondo:'Round Trip',
+      shuttle:'Shuttle'
+    },
     recomendaciones: `
       <div style="background-color:#fff3cd;border-left:6px solid #ffa500;padding:8px 12px;margin-top:14px;border-radius:5px;line-height:1.3;">
-        <strong style="color:#b00000;">⚠ Recommendations:</strong>
+        <strong style="color:#b00000;">\u26a0 Recommendations:</strong>
         <span style="color:#333;"> Please confirm your reservation at least 24 hours in advance to avoid any inconvenience.</span>
       </div>
     `,
     politicas: `
       <div style="margin-top:30px;padding-top:15px;border-top:1px solid #ccc;font-size:13px;color:#555;">
-        <strong>&#128204; Cancellation Policy:</strong><br>
+        <strong>\u{1F4CC} Cancellation Policy:</strong><br>
         - All cancellations or refund requests are subject to a 10% fee of the total amount paid.<br>
         <strong>- No refunds will be issued for cancellations made less than 24 hours in advance or in case of no-shows.</strong>
       </div>
     `,
-    subject: (folio)=>`Transport Reservation - Folio ${folio}`
+    subject: (folio)=>`Transport Reservation - Folio ${folio || '\u2014'}`
   };
 }
 
@@ -151,6 +186,7 @@ function normalizeQrBase64(qr) {
   else if (mod === 3) s += '=';
   return s;
 }
+
 function buildQrAttachmentTransporte(qr) {
   const base64 = normalizeQrBase64(qr);
   if (!base64) return null;
@@ -169,29 +205,30 @@ function buildQrAttachmentTransporte(qr) {
 async function enviarCorreoTransporte(datos){
   try{
     if (!GAS_URL || !/^https:\/\/script\.google\.com\/macros\/s\//.test(GAS_URL)) {
-      throw new Error('GAS_URL no configurado o inválido');
+      throw new Error('GAS_URL no configurado o inv\u00e1lido');
     }
     if (!GAS_TOKEN) throw new Error('GAS_TOKEN no configurado');
 
     const L = pickLang(datos.idioma);
     const logoUrl = 'https://static.wixstatic.com/media/f81ced_636e76aeb741411b87c4fa8aa9219410~mv2.png';
+
     const img0    = sanitizeUrl(datos.imagen);
     const imgUrl  = img0 ? forceJpgIfWix(img0) : '';
-    const tripType = (L.tripType[datos.tipo_viaje] || datos.tipo_viaje);
-    const nota     = datos.nota || datos.cliente?.nota || '';
-    const esShuttle= datos.tipo_viaje === 'Shuttle';
 
-    /* ===== Nombre del transporte según idioma del correo ===== */
+    const tripNorm = normTrip(datos.tipo_viaje);
+    const tripType = (L.tripType[tripNorm] || datos.tipo_viaje || '');
+
+    const nota     = (datos.nota || datos.cliente?.nota || '').toString();
+    const esShuttle= tripNorm === 'shuttle';
+
+    // Transporte según idioma
     const catEN = String((datos.categoria ?? datos.nombreEN) || '').trim();
     const catES = String((datos.categoria_es ?? datos.nombreES) || '').trim();
     const categoria_i18n = (L.code === 'es')
       ? (catES || catEN || datos.tipo_transporte || '')
       : (catEN || catES || datos.tipo_transporte || '');
 
-    /* ===== MONEDA y MONTO a mostrar =====
-       - moneda: preferimos datos.moneda; si no, moneda_cobro_real | moneda_cobro | 'USD'
-       - monto:  preferimos datos.total_cobrado; si no, total_pago
-    */
+    // Moneda y monto a mostrar
     const moneda = (String(
       datos.moneda || datos.moneda_cobro_real || datos.moneda_cobro || 'USD'
     ).toUpperCase() === 'MXN') ? 'MXN' : 'USD';
@@ -219,10 +256,10 @@ async function enviarCorreoTransporte(datos){
       return `<p style="margin:2px 0;font-family:Arial,Helvetica,sans-serif;line-height:1.4;"><strong>${label}:</strong> ${value}</p>`;
     };
 
-    // ======== Cuerpo (mismo orden/diseño) ========
     let cuerpoHTML = '';
-    if (datos.tipo_viaje === 'Redondo') {
-      // 2 columnas (Arrival / Departure)
+
+    // ✅ roundtrip (redondo) = 2 columnas
+    if (tripNorm === 'redondo' || String(datos.tipo_viaje || '').toLowerCase() === 'redondo') {
       cuerpoHTML += `
         <table style="width:100%;margin-bottom:10px;border-collapse:collapse;" role="presentation" cellspacing="0" cellpadding="0">
           <tr>
@@ -235,7 +272,7 @@ async function enviarCorreoTransporte(datos){
             </td>
             <td style="vertical-align:top;width:48%;">
               ${p(L.labels.folio, datos.folio)}
-              ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}   <!-- antes: datos.tipo_transporte -->
+              ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}
               ${!esShuttle ? p(L.labels.capacity,  datos.capacidad) : ''}
               ${p(L.labels.tripType, tripType)}
               ${p(L.labels.total, formatCurrency(totalMostrar, moneda))}
@@ -267,25 +304,28 @@ async function enviarCorreoTransporte(datos){
         </table>
       `.trim();
     } else {
-      // 1 columna (Llegada / Salida / Shuttle)
+      // ✅ 1 columna (llegada/salida/shuttle)
       cuerpoHTML += `
         ${p(L.labels.folio, datos.folio)}
         ${p(L.labels.name,  datos.nombre_cliente)}
         ${p(L.labels.email, datos.correo_cliente)}
         ${p(L.labels.phone, datos.telefono_cliente)}
-        ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}        <!-- antes: datos.tipo_transporte -->
+        ${!esShuttle ? p(L.labels.transport, categoria_i18n) : ''}
         ${!esShuttle ? p(L.labels.capacity,  datos.capacidad) : ''}
         ${(datos.cantidad_pasajeros || datos.pasajeros) ? p(L.labels.passengers, (datos.cantidad_pasajeros || datos.pasajeros)) : ''}
-        ${datos.hotel_llegada   ? p(L.labels.hotel,   datos.hotel_llegada)   : ''}
-        ${datos.fecha_llegada   ? p(L.labels.date,    datos.fecha_llegada)   : ''}
-        ${datos.hora_llegada    ? p(L.labels.time,    formatoHora12(datos.hora_llegada)) : ''}
+
+        ${datos.hotel_llegada ? p(L.labels.hotel,   datos.hotel_llegada) : ''}
+        ${datos.fecha_llegada ? p(L.labels.date,    datos.fecha_llegada) : ''}
+        ${datos.hora_llegada  ? p(L.labels.time,    formatoHora12(datos.hora_llegada)) : ''}
         ${datos.aerolinea_llegada ? p(L.labels.airline, datos.aerolinea_llegada) : ''}
-        ${datos.vuelo_llegada   ? p(L.labels.flight,  datos.vuelo_llegada)   : ''}
-        ${datos.hotel_salida    ? p(L.labels.hotel,   datos.hotel_salida)    : ''}
-        ${datos.fecha_salida    ? p(L.labels.date,    datos.fecha_salida)    : ''}
-        ${datos.hora_salida     ? p(L.labels.time,    formatoHora12(datos.hora_salida)) : ''}
+        ${datos.vuelo_llegada ? p(L.labels.flight,  datos.vuelo_llegada) : ''}
+
+        ${datos.hotel_salida ? p(L.labels.hotel,   datos.hotel_salida) : ''}
+        ${datos.fecha_salida ? p(L.labels.date,    datos.fecha_salida) : ''}
+        ${datos.hora_salida  ? p(L.labels.time,    formatoHora12(datos.hora_salida)) : ''}
         ${datos.aerolinea_salida ? p(L.labels.airline, datos.aerolinea_salida) : ''}
-        ${datos.vuelo_salida    ? p(L.labels.flight,  datos.vuelo_salida)    : ''}
+        ${datos.vuelo_salida ? p(L.labels.flight,  datos.vuelo_salida) : ''}
+
         ${p(L.labels.tripType, tripType)}
         ${p(L.labels.total, formatCurrency(totalMostrar, moneda))}
         ${nota && nota.trim() !== '' ? p(L.labels.note, nota) : ''}
@@ -293,7 +333,6 @@ async function enviarCorreoTransporte(datos){
     }
 
     const imagenHTML = imgUrl ? `
-      <!-- Imagen principal -->
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:10px;border-collapse:collapse;">
         <tr>
           <td>
@@ -304,7 +343,6 @@ async function enviarCorreoTransporte(datos){
       </table>
     ` : '';
 
-    // QR debajo de la imagen, centrado, 180px
     const qrAttachment = buildQrAttachmentTransporte(datos.qr);
     const qrHTML = qrAttachment ? `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:20px;border-collapse:collapse;">
@@ -336,7 +374,6 @@ async function enviarCorreoTransporte(datos){
       </div>
     `.trim();
 
-    // Wrapper 600px centrado (tabla), borde 2px, radius 10, padding 24/26/32 — diseño original
     const mensajeHTML = `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
         <tr>
@@ -355,14 +392,23 @@ async function enviarCorreoTransporte(datos){
     `.trim();
 
     // Adjuntos (inline por CID)
-    const attachments = [{ url: logoUrl, filename: 'logo.png', inline: true, cid: 'logoEmpresa' }];
+    const attachments = [
+      { url: logoUrl, filename: 'logo.png', inline: true, cid: 'logoEmpresa' }
+    ];
     if (imgUrl) attachments.push({ url: imgUrl, filename: 'transporte.jpg', inline: true, cid: 'imagenTransporte' });
     if (qrAttachment) attachments.push(qrAttachment);
 
+    // ✅ IMPORTANTÍSIMO: manda idioma + folio al GAS para fallback/diagnóstico
     const payload = {
       token: GAS_TOKEN,
       ts: Date.now(),
-      to: datos.correo_cliente,
+
+      // fallback helpers del GAS
+      idioma: L.code,
+      folio: String(datos.folio || '').trim(),
+      folio_reservacion: String(datos.folio || '').trim(),
+
+      to: String(datos.correo_cliente || '').trim(),
       bcc: EMAIL_BCC,
       subject: L.subject(datos.folio),
       html: mensajeHTML,
@@ -370,19 +416,30 @@ async function enviarCorreoTransporte(datos){
       attachments
     };
 
-    DBG('POST → GAS', { to: datos.correo_cliente, subject: payload.subject, hasQR: !!qrAttachment, moneda, totalMostrar });
+    DBG('POST → GAS', {
+      to: payload.to,
+      subject: payload.subject,
+      hasQR: !!qrAttachment,
+      moneda,
+      totalMostrar,
+      fast: MAIL_FAST_MODE
+    });
 
+    // ⚠️ Para compra, lo ideal es NO fast mode
     if (MAIL_FAST_MODE) {
-      postJSON(GAS_URL, payload, GAS_TIMEOUT_MS).catch(err => console.error('Error envío async GAS:', err.message));
+      // En fast mode NO puedes afirmar "enviado" con certeza
+      postJSON(GAS_URL, payload, GAS_TIMEOUT_MS)
+        .then(({ status, json }) => DBG('FAST GAS resp:', status, json?.ok))
+        .catch(err => console.error('Error env\u00edo async GAS:', err.message));
       return true;
     }
 
-    const { status, json } = await postJSON(GAS_URL, payload, GAS_TIMEOUT_MS);
+    const { status, json, raw } = await postJSON(GAS_URL, payload, GAS_TIMEOUT_MS);
     if (!json || json.ok !== true) {
-      throw new Error(`Error al enviar correo: ${(json && json.error) || status}`);
+      throw new Error(`Error al enviar correo: ${(json && (json.error || json.reason)) || raw || status}`);
     }
 
-    DBG('✔ GAS ok:', json);
+    DBG('\u2714 GAS ok:', json);
     return true;
   } catch (err) {
     console.error('❌ Error al enviar correo de transporte (GAS):', err.message);
