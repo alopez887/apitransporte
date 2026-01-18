@@ -5,7 +5,7 @@ export async function listarRepresentantes(req, res) {
   try {
     const result = await pool.query(
       `SELECT usuario, nombre, proveedor 
-       FROM usuarios_proveedor
+       FROM usuarios_cts
        WHERE tipo_usuario = 'representante' AND activo = true
        ORDER BY nombre ASC`
     );
