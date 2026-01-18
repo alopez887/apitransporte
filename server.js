@@ -13,7 +13,7 @@ import { obtenerReservaTransporte } from './obtenerReservaTransporte.js';
 console.log("✅ Función obtenerReservaTransporte importada:", obtenerReservaTransporte);
 import actualizarDatosTransporte from './actualizarDatosTransporte.js';
 import guardarFirma from './firmas/guardarFirmas.js';
-import loginUsuario from './loginUsuario.js';
+//import loginUsuario from './loginUsuario.js';
 import { obtenerChoferes } from './obtenerChoferes.js';
 import { obtenerServiciosAsignadosEstatus } from './obtenerServiciosasignadosestatus.js';
 import { obtenerServiciosRepresentante } from './obtenerServiciosRepresentante.js';
@@ -376,7 +376,7 @@ app.get('/tarifa-redondo', async (req, res) => {
 });
 
 // Auth y endpoints de operaciones
-app.post('/api/login-usuario', loginUsuario);
+//app.post('/api/login-usuario', loginUsuario);
 app.get('/api/obtener-reserva-transporte', obtenerReservaTransporte);
 app.post('/api/actualizar-datos-transporte', actualizarDatosTransporte);
 app.post('/api/guardar-firma', guardarFirma);
